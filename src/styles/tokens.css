@@ -1,0 +1,64 @@
+/* ============================================
+   NEXORA DESIGN TOKENS
+   Source of truth for all colors, spacing,
+   typography and elevation used across the app.
+   ============================================ */
+
+:root {
+  /* Brand colors */
+  --orange: #F1621B;
+  --orange-light: #FF8A3D;
+  --orange-bg: #FFF1E6;
+  --orange-soft: #FDECE3;
+
+  --blue: #2E5CE6;
+  --blue-bg: #EEF2FF;
+  --blue-soft: #E7EDFD;
+
+  --green: #12B76A;
+  --green-bg: #E9F9F1;
+  --green-bg2: #EAFBF2;
+  --green-soft: #DFF7EA;
+
+  --red: #F04438;
+  --red-bg: #FDEDEC;
+  --red-soft: #F8D9D5;
+
+  --purple: #7C3AED;
+  --purple-bg: #F1EDFC;
+  --purple-soft: #EFE6FC;
+
+  --teal: #0E9494;
+  --teal-bg: #E6F7F7;
+
+  /* Neutral palette */
+  --gray-text: #667085;
+  --gray-subtle: #98A2B3;
+  --gray-light: #D0D5DD;
+  --gray-track: #EEF0F2;
+  --gray-border: #EAECF0;
+  --dark: #101828;
+  --dark-2: #344054;
+  --border: #EDEEF1;
+  --page-bg: #F7F8FA;
+
+  /* Dark card gradients */
+  --dark-card: linear-gradient(115deg, #0B0F1A 0%, #14181F 55%, #4A2410 100%);
+  --dark-card-2: linear-gradient(120deg, #0B0F1A 0%, #14181F 55%, #4A2410 100%);
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-2xl: 20px;
+
+  /* Elevation */
+  --shadow-sm: 0 2px 6px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 8px 16px rgba(241, 98, 27, 0.35);
+  --shadow-drawer: 8px 0 24px rgba(16, 24, 40, 0.12);
+}

@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Nexora</title>
+<style>
+  :root{
+    --orange:#F1621B;
+    --orange-light:#FF8A3D;
+    --orange-bg:#FFF1E6;
+    --blue:#2E5CE6;
+    --green:#12B76A;
+    --green-bg:#E9F9F1;
+    --red:#F04438;
+    --red-bg:#FDEDEC;
+    --purple:#7C3AED;
+    --purple-bg:#F1EDFC;
+    --gray-text:#667085;
+    --dark:#101828;
+    --border:#EDEEF1;
+    --page-bg:#F7F8FA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--page-bg);
+    color:var(--dark);
+  }
+  .phone{
+    max-width:480px;
+    margin:0 auto;
+    background:var(--page-bg);
+    min-height:100vh;
+    padding-bottom:90px;
+    position:relative;
+  }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 18px 14px;
+  }
+  .header-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .menu-icon{
+    font-size:20px;
+    color:#101828;
+    cursor:pointer;
+  }
+  .greeting-title{
+    font-size:19px;
+    font-weight:800;
+    color:#101828;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .greeting-sub{
+    font-size:12.5px;
+    color:var(--gray-text);
+    margin-top:2px;
+  }
+  .header-right{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .bell-wrap{
+    position:relative;
+    font-size:19px;
+    color:#101828;
+  }
+  .bell-badge{
+    position:absolute;
+    top:-6px;right:-8px;
+    background:var(--orange);
+    color:#fff;
+    font-size:9.5px;
+    font-weight:800;
+    width:16px;height:16px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .avatar{
+    width:36px;height:36px;
+    border-radius:50%;
+    background:var(--orange-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    overflow:hidden;
+  }
+  .chevron-down{font-size:12px;color:#98A2B3;}
+
+  .content{padding:0 16px;}
+
+  /* Stats bar */
+  .stats-bar{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:18px 14px;
+    display:flex;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  .stat-block{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+  }
+  .stat-divider{
+    width:1px;
+    height:44px;
+    background:var(--border);
+    margin:0 8px;
+    flex-shrink:0;
+  }
+  .stat-icon{
+    width:42px;height:42px;
+    border-radius:50%;
+    background:var(--orange-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px;
+    flex-shrink:0;
+  }
+  .stat-label{
+    font-size:11px;
+    color:var(--gray-text);
+    margin-bottom:2px;
+    white-space:nowrap;
+  }
+  .stat-value{
+    font-size:19px;
+    font-weight:800;
+    color:#101828;
+    line-height:1.1;
+  }
+  .stat-value span{
+    font-size:11px;
+    font-weight:600;
+    color:var(--gray-text);
+  }
+  .stat-sub{
+    font-size:10.5px;
+    color:var(--gray-text);
+    margin-top:1px;
+    white-space:nowrap;
+  }
+  .goal-block{flex:1.4;}
+  .goal-progress-track{
+    height:6px;
+    background:#EEF0F2;
+    border-radius:4px;
+    margin-top:6px;
+    overflow:hidden;
+  }
+  .goal-progress-fill{
+    height:100%;
+    background:var(--orange);
+    border-radius:4px;
+    width:72%;
+  }
+  .goal-pct{
+    font-size:10.5px;
+    color:var(--gray-text);
+    margin-top:5px;
+  }
+  .goal-pct b{color:#101828;}
+  .streak-dots{
+    display:flex;
+    gap:4px;
+    margin-top:6px;
+  }
+  .streak-dot{
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--orange);
+  }
+  .streak-dot.off{background:#E4E7EC;}
+
+  /* Exam readiness card */
+  .readiness-card{
+    background:linear-gradient(115deg,#0B0F1A 0%, #14181F 55%, #4A2410 100%);
+    border-radius:20px;
+    padding:22px 18px;
+    margin-bottom:16px;
+    color:#fff;
+  }
+  .readiness-title{
+    font-size:12.5px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:#EAECF0;
+    margin-bottom:18px;
+  }
+  .readiness-top{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    margin-bottom:20px;
+    flex-wrap:nowrap;
+  }
+  .readiness-ring{
+    position:relative;
+    width:118px;
+    height:118px;
+    flex-shrink:0;
+  }
+  .readiness-ring svg{transform:rotate(-90deg);}
+  .readiness-ring-value{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .readiness-pct{
+    font-size:26px;
+    font-weight:800;
+    color:#fff;
+    line-height:1;
+  }
+  .readiness-ready-label{
+    font-size:11.5px;
+    color:#C4C9D4;
+    margin-top:3px;
+  }
+  .readiness-msg-wrap{
+    flex:1;
+    min-width:0;
+  }
+  .readiness-msg{
+    font-size:14.5px;
+    font-weight:700;
+    color:#fff;
+    margin-bottom:6px;
+    line-height:1.4;
+  }
+  .readiness-msg2{
+    font-size:12.5px;
+    color:#B7BCC7;
+    line-height:1.5;
+  }
+
+  .readiness-divider{
+    border-top:1px solid rgba(255,255,255,0.12);
+    padding-top:14px;
+    margin-bottom:16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .predicted-label{
+    font-size:12px;
+    color:#B7BCC7;
+    margin-bottom:5px;
+  }
+  .predicted-score{
+    font-size:22px;
+    font-weight:800;
+    color:#fff;
+  }
+  .predicted-score span{
+    font-size:14px;
+    font-weight:600;
+    color:#B7BCC7;
+  }
+  .improving-pill{
+    background:rgba(18,183,106,0.18);
+    color:#3EE088;
+    font-size:11.5px;
+    font-weight:700;
+    padding:7px 12px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+
+  .areas-row{
+    display:flex;
+    gap:16px;
+  }
+  .areas-col{flex:1;}
+  .areas-title{
+    font-size:11.5px;
+    font-weight:800;
+    letter-spacing:0.3px;
+    margin-bottom:10px;
+  }
+  .areas-strong{color:#3EE088;}
+  .areas-weak{color:#FF6B6B;}
+  .area-item{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:12.5px;
+    color:#E4E7EC;
+    margin-bottom:9px;
+  }
+  .area-item:last-child{margin-bottom:0;}
+  .area-dot{
+    width:15px;height:15px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:8.5px;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .dot-good{background:var(--green);}
+  .dot-bad{background:var(--red);}
+
+  /* Continue study card */
+  .continue-card{
+    background:linear-gradient(120deg,#FFF3E9 0%, #FFEBDD 100%);
+    border-radius:18px;
+    padding:18px 16px;
+    margin-bottom:16px;
+  }
+  .continue-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:14.5px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:16px;
+  }
+  .continue-body{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .continue-icon{
+    width:44px;height:44px;
+    border-radius:50%;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+    flex-shrink:0;
+  }
+  .continue-subject{
+    font-size:12px;
+    color:var(--gray-text);
+    margin-bottom:2px;
+  }
+  .continue-chapter{
+    font-size:16px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:8px;
+  }
+  .continue-progress-track{
+    height:6px;
+    background:rgba(255,255,255,0.7);
+    border-radius:4px;
+    overflow:hidden;
+    margin-bottom:6px;
+  }
+  .continue-progress-fill{
+    height:100%;
+    background:var(--orange);
+    width:72%;
+    border-radius:4px;
+  }
+  .continue-pct{
+    font-size:11.5px;
+    color:var(--gray-text);
+  }
+  .continue-meta-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:16px;
+    flex-wrap:nowrap;
+  }
+  .continue-meta-label{
+    font-size:11px;
+    color:var(--gray-text);
+    margin-bottom:4px;
+  }
+  .continue-meta-value{
+    font-size:13px;
+    font-weight:700;
+    color:#101828;
+  }
+  .continue-meta-value.with-icon{
+    display:flex;align-items:center;gap:5px;
+  }
+  .continue-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:var(--orange);
+    color:#fff;
+    border:none;
+    border-radius:14px;
+    padding:14px;
+    font-size:14px;
+    font-weight:700;
+    width:100%;
+    cursor:pointer;
+  }
+
+  /* Mini cards row */
+  .mini-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .mini-card{
+    border-radius:16px;
+    padding:14px;
+    border:1px solid var(--border);
+  }
+  .mini-green{background:var(--green-bg);border-color:#CDEEDD;}
+  .mini-red{background:var(--red-bg);border-color:#F8D9D5;}
+  .mini-purple{background:var(--purple-bg);border-color:#DED2FA;}
+  .mini-blue{background:#EEF1FE;border-color:#D6DEFB;}
+  .mini-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    font-weight:700;
+    color:#101828;
+    margin-bottom:12px;
+  }
+  .mini-icon{
+    width:30px;height:30px;
+    border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+    flex-shrink:0;
+    background:#fff;
+  }
+  .mini-num{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:2px;
+  }
+  .mini-num.green{color:var(--green);}
+  .mini-num.red{color:var(--red);}
+  .mini-num.purple{color:var(--purple);}
+  .mini-sub{
+    font-size:11px;
+    color:var(--gray-text);
+    margin-bottom:10px;
+  }
+  .mini-review{
+    font-size:12.5px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    cursor:pointer;
+  }
+  .mini-review.green{color:var(--green);}
+  .mini-review.red{color:var(--red);}
+  .mini-review.purple{color:var(--purple);}
+
+  .mission-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .mission-item:last-child{margin-bottom:0;}
+  .mission-check{
+    width:16px;height:16px;
+    border-radius:50%;
+    background:var(--green);
+    color:#fff;
+    font-size:9px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .mission-check.empty{
+    background:#fff;
+    border:2px solid #D0D5DD;
+  }
+  .mission-body{flex:1;min-width:0;}
+  .mission-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:11.5px;
+    font-weight:700;
+    color:#101828;
+    margin-bottom:4px;
+  }
+  .mission-track{
+    height:4px;
+    background:#E4E7EC;
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .mission-fill{
+    height:100%;
+    border-radius:3px;
+  }
+  .fill-green{background:var(--green);}
+  .fill-gray{background:#D0D5DD;}
+
+  /* Section title */
+  .section-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .section-title{
+    font-size:18px;
+    font-weight:800;
+    color:#101828;
+  }
+  .view-all{
+    font-size:13px;
+    font-weight:700;
+    color:var(--blue);
+    display:flex;
+    align-items:center;
+    gap:3px;
+    cursor:pointer;
+  }
+
+  /* Subjects grid */
+  .subjects-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .subject-card{
+    border:1.5px solid var(--border);
+    border-radius:16px;
+    padding:14px;
+    text-align:center;
+  }
+  .subject-card.highlight{border-color:#B9CBFB;}
+  .subject-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    text-align:left;
+    margin-bottom:12px;
+  }
+  .subject-icon{
+    width:34px;height:34px;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .icon-blue{background:#2E5CE6;}
+  .icon-green{background:#12B76A;}
+  .icon-purple{background:#7C3AED;}
+  .icon-orange{background:#F1621B;}
+  .subject-name{
+    font-size:12.5px;
+    font-weight:700;
+    color:#101828;
+    line-height:1.25;
+  }
+  .subject-ring{
+    position:relative;
+    width:70px;height:70px;
+    margin:0 auto 12px;
+  }
+  .subject-ring svg{transform:rotate(-90deg);}
+  .subject-ring-value{
+    position:absolute;
+    inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;
+    font-weight:800;
+    color:#101828;
+  }
+  .subject-stats{
+    font-size:10.5px;
+    color:var(--gray-text);
+    line-height:1.6;
+    margin-bottom:12px;
+  }
+  .subject-continue{
+    display:block;
+    padding:9px;
+    border-radius:10px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .cont-blue{background:#E7EDFD;color:#2E5CE6;}
+  .cont-green{background:#DFF7EA;color:#12B76A;}
+  .cont-purple{background:#EFE6FC;color:#7C3AED;}
+  .cont-orange{background:#FFE9D9;color:#F1621B;}
+
+  /* Coach + activity row */
+  .bottom-row{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .coach-card{
+    background:#F7F8FA;
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+    display:flex;
+    gap:12px;
+  }
+  .coach-avatar{
+    width:52px;height:52px;
+    border-radius:50%;
+    background:#101828;
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;
+    flex-shrink:0;
+  }
+  .coach-name{
+    font-size:13.5px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:6px;
+  }
+  .coach-msg{
+    font-size:12.5px;
+    color:var(--gray-text);
+    line-height:1.5;
+    margin-bottom:12px;
+  }
+  .coach-bottom{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .coach-readiness{
+    font-size:11px;
+    color:var(--gray-text);
+  }
+  .coach-readiness b{
+    font-size:15px;
+    color:var(--green);
+    display:block;
+  }
+  .coach-btn{
+    background:var(--orange-bg);
+    color:var(--orange);
+    border:none;
+    border-radius:10px;
+    padding:9px 14px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  .activity-card{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+  }
+  .activity-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .activity-title{
+    font-size:14.5px;
+    font-weight:800;
+    color:#101828;
+  }
+  .activity-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .activity-item:last-child{border-bottom:none;padding-bottom:0;}
+  .activity-icon{
+    width:26px;height:26px;
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .ai-green{background:var(--green);}
+  .ai-orange{background:var(--orange);}
+  .ai-purple{background:var(--purple);}
+  .activity-text{
+    flex:1;
+    font-size:13px;
+    font-weight:600;
+    color:#101828;
+    min-width:0;
+  }
+  .activity-time{
+    font-size:11px;
+    color:var(--gray-text);
+    white-space:nowrap;
+  }
+  .activity-chevron{
+    font-size:14px;
+    color:#98A2B3;
+  }
+
+  /* Bottom nav */
+  .bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    max-width:480px;
+    margin:0 auto;
+    background:#fff;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    padding:10px 6px 14px;
+  }
+  .nav-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    font-size:11px;
+    font-weight:600;
+    color:#98A2B3;
+    cursor:pointer;
+  }
+  .nav-item.active{color:var(--orange);}
+  .nav-icon{font-size:19px;}
+  .nav-center{
+    width:52px;height:52px;
+    border-radius:50%;
+    background:var(--orange);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:20px;
+    margin-top:-28px;
+    box-shadow:0 8px 16px rgba(241,98,27,0.35);
+  }
+
+  /* Side drawer */
+  .drawer-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(16,24,40,0.45);
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.25s ease;
+  }
+  .drawer-overlay.open{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .side-drawer{
+    position:fixed;
+    top:0;
+    bottom:0;
+    left:0;
+    width:280px;
+    max-width:82%;
+    background:#fff;
+    z-index:101;
+    transform:translateX(-100%);
+    transition:transform 0.28s ease;
+    display:flex;
+    flex-direction:column;
+    box-shadow:8px 0 24px rgba(16,24,40,0.12);
+  }
+  .side-drawer.open{
+    transform:translateX(0);
+  }
+  .drawer-profile{
+    background:linear-gradient(135deg,#F1621B 0%, #FF8A3D 100%);
+    padding:28px 20px 22px;
+    color:#fff;
+    position:relative;
+  }
+  .drawer-close{
+    position:absolute;
+    top:18px;right:18px;
+    font-size:20px;
+    color:#fff;
+    cursor:pointer;
+    opacity:0.9;
+  }
+  .drawer-avatar{
+    width:56px;height:56px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.22);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;
+    margin-bottom:12px;
+  }
+  .drawer-name{
+    font-size:16.5px;
+    font-weight:800;
+    margin-bottom:3px;
+  }
+  .drawer-sub{
+    font-size:12px;
+    color:rgba(255,255,255,0.9);
+  }
+  .drawer-streak{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    background:rgba(255,255,255,0.2);
+    border-radius:20px;
+    padding:4px 10px;
+    font-size:11px;
+    font-weight:700;
+    margin-top:10px;
+  }
+
+  .drawer-menu{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 10px;
+  }
+  .drawer-section-label{
+    font-size:10.5px;
+    font-weight:800;
+    letter-spacing:0.6px;
+    color:#98A2B3;
+    padding:14px 12px 8px;
+  }
+  .drawer-item{
+    display:flex;
+    align-items:center;
+    gap:13px;
+    padding:12px 12px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:600;
+    color:#344054;
+    cursor:pointer;
+  }
+  .drawer-item:hover{
+    background:#F7F8FA;
+  }
+  .drawer-item.active{
+    background:var(--orange-bg);
+    color:var(--orange);
+    font-weight:700;
+  }
+  .drawer-item .d-icon{
+    width:22px;
+    text-align:center;
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .drawer-item .d-badge{
+    margin-left:auto;
+    background:var(--red);
+    color:#fff;
+    font-size:9.5px;
+    font-weight:800;
+    padding:2px 7px;
+    border-radius:20px;
+  }
+  .drawer-divider{
+    height:1px;
+    background:var(--border);
+    margin:10px 12px;
+  }
+
+  .drawer-footer{
+    padding:14px 12px 18px;
+    border-top:1px solid var(--border);
+  }
+  .drawer-logout{
+    display:flex;
+    align-items:center;
+    gap:13px;
+    padding:12px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--red);
+    cursor:pointer;
+  }
+  .drawer-logout:hover{background:var(--red-bg);}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="menu-icon" onclick="openDrawer()">☰</div>
+      <div>
+        <div class="greeting-title">Good Evening, Abhi 👋</div>
+        <div class="greeting-sub">BPSC TRE 4.0 • Computer Science</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="bell-wrap">🔔<span class="bell-badge">3</span></div>
+      <div class="avatar">🧑‍💼</div>
+      <span class="chevron-down">▾</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-block">
+        <div class="stat-icon">📅</div>
+        <div>
+          <div class="stat-label">Exam in</div>
+          <div class="stat-value">84</div>
+          <div class="stat-sub">Days Remaining</div>
+        </div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-block goal-block">
+        <div class="stat-icon">🎯</div>
+        <div style="width:100%;">
+          <div class="stat-label">Today's Goal</div>
+          <div class="stat-value" style="font-size:14px;">120 <span>MCQs</span></div>
+          <div class="stat-value" style="font-size:14px;">20 <span>Flashcards</span></div>
+        </div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-block">
+        <div class="stat-icon">🔥</div>
+        <div>
+          <div class="stat-label">Study Streak</div>
+          <div class="stat-value">14</div>
+          <div class="stat-sub">Days</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:-10px; margin-bottom:16px;">
+      <div class="goal-progress-track"><div class="goal-progress-fill"></div></div>
+      <div class="goal-pct"><b>72%</b> Completed</div>
+    </div>
+
+    <!-- Exam Readiness -->
+    <div class="readiness-card">
+      <div class="readiness-title">EXAM READINESS</div>
+      <div class="readiness-top">
+        <div class="readiness-ring">
+          <svg width="118" height="118" viewBox="0 0 118 118">
+            <circle cx="59" cy="59" r="50" stroke="#2A2E38" stroke-width="11" fill="none"/>
+            <circle cx="59" cy="59" r="50" stroke="#F1621B" stroke-width="11" fill="none"
+              stroke-dasharray="314" stroke-dashoffset="88" stroke-linecap="round"/>
+          </svg>
+          <div class="readiness-ring-value">
+            <div class="readiness-pct">72%</div>
+            <div class="readiness-ready-label">Ready</div>
+          </div>
+        </div>
+        <div class="readiness-msg-wrap">
+          <div class="readiness-msg">You're doing great! 💪</div>
+          <div class="readiness-msg2">Keep consistent and focus on weak areas.</div>
+        </div>
+      </div>
+
+      <div class="readiness-divider">
+        <div>
+          <div class="predicted-label">Predicted Score</div>
+          <div class="predicted-score">82<span> / 100</span></div>
+        </div>
+        <div class="improving-pill">↗ Improving</div>
+      </div>
+
+      <div class="areas-row">
+        <div class="areas-col">
+          <div class="areas-title areas-strong">Strong Areas</div>
+          <div class="area-item"><span class="area-dot dot-good">✓</span>DBMS</div>
+          <div class="area-item"><span class="area-dot dot-good">✓</span>Operating System</div>
+          <div class="area-item"><span class="area-dot dot-good">✓</span>Computer Networks</div>
+        </div>
+        <div class="areas-col">
+          <div class="areas-title areas-weak">Weak Areas</div>
+          <div class="area-item"><span class="area-dot dot-bad">✕</span>COA</div>
+          <div class="area-item"><span class="area-dot dot-bad">✕</span>Digital Electronics</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Continue Today's Study -->
+    <div class="continue-card">
+      <div class="continue-header">🎯 Continue Today's Study</div>
+      <div class="continue-body">
+        <div class="continue-icon">🦊</div>
+        <div style="flex:1;">
+          <div class="continue-subject">Computer Networks</div>
+          <div class="continue-chapter">Routing Algorithms</div>
+          <div class="continue-progress-track"><div class="continue-progress-fill"></div></div>
+          <div class="continue-pct">72% Completed</div>
+        </div>
+      </div>
+      <div class="continue-meta-row">
+        <div>
+          <div class="continue-meta-label">Remaining</div>
+          <div class="continue-meta-value">18 MCQs • 12 Flashcards</div>
+        </div>
+        <div>
+          <div class="continue-meta-label">Est. Time</div>
+          <div class="continue-meta-value with-icon">🕐 14 min</div>
+        </div>
+      </div>
+      <div class="continue-btn" onclick="window.location.href='computer-networks-course.html'">Continue Study →</div>
+    </div>
+
+    <!-- Mini grid -->
+    <div class="mini-grid">
+      <div class="mini-card mini-green">
+        <div class="mini-top"><span class="mini-icon">💻</span>Today's Revision</div>
+        <div class="mini-num green">45</div>
+        <div class="mini-sub">Flashcards Due</div>
+        <div class="mini-review green">Review Now →</div>
+      </div>
+      <div class="mini-card mini-red">
+        <div class="mini-top"><span class="mini-icon">❌</span>Incorrect Qs</div>
+        <div class="mini-num red">12</div>
+        <div class="mini-sub">Questions</div>
+        <div class="mini-review red">Review Now →</div>
+      </div>
+      <div class="mini-card mini-purple">
+        <div class="mini-top"><span class="mini-icon">🔖</span>Forgotten Topics</div>
+        <div class="mini-num purple">6</div>
+        <div class="mini-sub">Topics</div>
+        <div class="mini-review purple">Review Now →</div>
+      </div>
+      <div class="mini-card mini-blue">
+        <div class="mini-top"><span class="mini-icon">🎯</span>Daily Mission</div>
+        <div class="mission-item">
+          <span class="mission-check">✓</span>
+          <div class="mission-body">
+            <div class="mission-row"><span>MCQs</span><span>65%</span></div>
+            <div class="mission-track"><div class="mission-fill fill-green" style="width:65%;"></div></div>
+          </div>
+        </div>
+        <div class="mission-item">
+          <span class="mission-check">✓</span>
+          <div class="mission-body">
+            <div class="mission-row"><span>Flashcards</span><span>75%</span></div>
+            <div class="mission-track"><div class="mission-fill fill-green" style="width:75%;"></div></div>
+          </div>
+        </div>
+        <div class="mission-item">
+          <span class="mission-check empty"></span>
+          <div class="mission-body">
+            <div class="mission-row"><span>Mock Test</span><span>0%</span></div>
+            <div class="mission-track"><div class="mission-fill fill-gray" style="width:0%;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Subjects -->
+    <div class="section-header">
+      <div class="section-title">Your Subjects</div>
+      <div class="view-all" onclick="window.location.href='subjects.html'" style="cursor:pointer;">View All ›</div>
+    </div>
+    <div class="subjects-grid">
+
+      <div class="subject-card highlight" onclick="window.location.href='computer-networks-course.html'" style="cursor:pointer;">
+        <div class="subject-top">
+          <div class="subject-icon icon-blue">🔗</div>
+          <div class="subject-name">Computer Networks</div>
+        </div>
+        <div class="subject-ring">
+          <svg width="70" height="70" viewBox="0 0 70 70">
+            <circle cx="35" cy="35" r="29" stroke="#E7EDFD" stroke-width="7" fill="none"/>
+            <circle cx="35" cy="35" r="29" stroke="#2E5CE6" stroke-width="7" fill="none"
+              stroke-dasharray="182" stroke-dashoffset="51" stroke-linecap="round"/>
+          </svg>
+          <div class="subject-ring-value">72%</div>
+        </div>
+        <div class="subject-stats">
+          12 / 16 Chapters<br>120 / 200 MCQs<br>15 / 18 Flashcards
+        </div>
+        <div class="subject-continue cont-blue" onclick="event.stopPropagation(); window.location.href='computer-networks-course.html'">Continue →</div>
+      </div>
+
+      <div class="subject-card">
+        <div class="subject-top">
+          <div class="subject-icon icon-green">⚙️</div>
+          <div class="subject-name">Operating Systems</div>
+        </div>
+        <div class="subject-ring">
+          <svg width="70" height="70" viewBox="0 0 70 70">
+            <circle cx="35" cy="35" r="29" stroke="#DFF7EA" stroke-width="7" fill="none"/>
+            <circle cx="35" cy="35" r="29" stroke="#12B76A" stroke-width="7" fill="none"
+              stroke-dasharray="182" stroke-dashoffset="58" stroke-linecap="round"/>
+          </svg>
+          <div class="subject-ring-value">68%</div>
+        </div>
+        <div class="subject-stats">
+          10 / 14 Chapters<br>98 / 150 MCQs<br>12 / 16 Flashcards
+        </div>
+        <div class="subject-continue cont-green">Continue →</div>
+      </div>
+
+      <div class="subject-card">
+        <div class="subject-top">
+          <div class="subject-icon icon-purple">📊</div>
+          <div class="subject-name">DBMS</div>
+        </div>
+        <div class="subject-ring">
+          <svg width="70" height="70" viewBox="0 0 70 70">
+            <circle cx="35" cy="35" r="29" stroke="#EFE6FC" stroke-width="7" fill="none"/>
+            <circle cx="35" cy="35" r="29" stroke="#7C3AED" stroke-width="7" fill="none"
+              stroke-dasharray="182" stroke-dashoffset="36" stroke-linecap="round"/>
+          </svg>
+          <div class="subject-ring-value">80%</div>
+        </div>
+        <div class="subject-stats">
+          9 / 12 Chapters<br>140 / 175 MCQs<br>18 / 20 Flashcards
+        </div>
+        <div class="subject-continue cont-purple">Continue →</div>
+      </div>
+
+      <div class="subject-card">
+        <div class="subject-top">
+          <div class="subject-icon icon-orange">💾</div>
+          <div class="subject-name">Digital Electronics</div>
+        </div>
+        <div class="subject-ring">
+          <svg width="70" height="70" viewBox="0 0 70 70">
+            <circle cx="35" cy="35" r="29" stroke="#FFE9D9" stroke-width="7" fill="none"/>
+            <circle cx="35" cy="35" r="29" stroke="#F1621B" stroke-width="7" fill="none"
+              stroke-dasharray="182" stroke-dashoffset="100" stroke-linecap="round"/>
+          </svg>
+          <div class="subject-ring-value">45%</div>
+        </div>
+        <div class="subject-stats">
+          6 / 14 Chapters<br>65 / 150 MCQs<br>8 / 15 Flashcards
+        </div>
+        <div class="subject-continue cont-orange">Continue →</div>
+      </div>
+
+    </div>
+
+    <!-- Coach + Activity -->
+    <div class="bottom-row">
+      <div class="coach-card">
+        <div class="coach-avatar">🤖</div>
+        <div style="flex:1;">
+          <div class="coach-name">AI Study Coach – NEXA</div>
+          <div class="coach-msg">Focus on COA today. You are making more errors in this subject.</div>
+          <div class="coach-bottom">
+            <div class="coach-readiness">Expected Readiness<b>↗ 74%</b></div>
+            <button class="coach-btn">Start Study Plan →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="activity-card">
+        <div class="activity-header">
+          <div class="activity-title">Recent Activity</div>
+          <div class="view-all">View All ›</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon ai-green">✓</div>
+          <div class="activity-text">Solved 20 MCQs in OS</div>
+          <div class="activity-time">2h ago</div>
+          <div class="activity-chevron">›</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon ai-orange">▤</div>
+          <div class="activity-text">Reviewed 15 Flashcards</div>
+          <div class="activity-time">4h ago</div>
+          <div class="activity-chevron">›</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon ai-purple">📄</div>
+          <div class="activity-text">Attempted Mock Test – 013</div>
+          <div class="activity-time">Yesterday</div>
+          <div class="activity-chevron">›</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon ai-purple">📄</div>
+          <div class="activity-text">Viewed Notes – DBMS</div>
+          <div class="activity-time">Yesterday</div>
+          <div class="activity-chevron">›</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <span class="nav-icon">🏠</span>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="window.location.href='subjects.html'">
+      <span class="nav-icon">📚</span>
+      Subjects
+    </div>
+    <div class="nav-center">🎯</div>
+    <div class="nav-item">
+      <span class="nav-icon">📇</span>
+      Flashcards
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">⋯</span>
+      More
+    </div>
+  </div>
+
+</div>
+
+<!-- Side Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="side-drawer" id="sideDrawer">
+
+  <div class="drawer-profile">
+    <div class="drawer-close" onclick="closeDrawer()">✕</div>
+    <div class="drawer-avatar">🧑‍💼</div>
+    <div class="drawer-name">Abhi Kumar</div>
+    <div class="drawer-sub">BPSC TRE 4.0 • Computer Science</div>
+    <div class="drawer-streak">🔥 14 Day Streak</div>
+  </div>
+
+  <div class="drawer-menu">
+    <div class="drawer-item active">
+      <span class="d-icon">🏠</span>Dashboard
+    </div>
+    <div class="drawer-item" onclick="window.location.href='subjects.html'">
+      <span class="d-icon">📚</span>Subjects
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">🎯</span>Practice
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">📇</span>Flashcards
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">📝</span>Mock Tests
+    </div>
+
+    <div class="drawer-divider"></div>
+    <div class="drawer-section-label">TRACK PROGRESS</div>
+
+    <div class="drawer-item">
+      <span class="d-icon">📊</span>Analytics
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">🗓️</span>Study Planner
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">🏆</span>Leaderboard
+    </div>
+
+    <div class="drawer-divider"></div>
+    <div class="drawer-section-label">MORE</div>
+
+    <div class="drawer-item">
+      <span class="d-icon">📄</span>Notes
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">🔔</span>Notifications<span class="d-badge">3</span>
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">⚙️</span>Settings
+    </div>
+    <div class="drawer-item">
+      <span class="d-icon">❓</span>Help & Support
+    </div>
+  </div>
+
+  <div class="drawer-footer">
+    <div class="drawer-logout">
+      <span class="d-icon">↪</span>Log Out
+    </div>
+  </div>
+
+</div>
+
+<script>
+function openDrawer(){
+  document.getElementById('sideDrawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+function closeDrawer(){
+  document.getElementById('sideDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+</script>
+
+</body>
+</html>

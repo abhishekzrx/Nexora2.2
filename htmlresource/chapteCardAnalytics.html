@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computer Networks</title>
+<style>
+  :root{
+    --orange:#F1621B;
+    --orange-light:#FF8A3D;
+    --orange-bg:#FFF1E6;
+    --orange-soft:#FDECE3;
+    --green:#12B76A;
+    --gray-text:#667085;
+    --dark:#101828;
+    --border:#EDEEF1;
+    --page-bg:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--page-bg);
+    color:var(--dark);
+  }
+  .phone{
+    max-width:480px;
+    margin:0 auto;
+    background:#fff;
+    min-height:100vh;
+    padding-bottom:90px;
+    position:relative;
+  }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 18px 14px;
+  }
+  .back-btn{
+    font-size:20px;
+    color:#101828;
+    cursor:pointer;
+  }
+  .header-title{
+    font-size:19px;
+    font-weight:700;
+    color:#101828;
+  }
+  .header-icons{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    font-size:18px;
+    color:#101828;
+  }
+
+  .content{padding:0 18px;}
+
+  /* Hero card */
+  .hero-card{
+    background:linear-gradient(135deg,#F1621B 0%, #FF7A2E 100%);
+    border-radius:20px;
+    padding:22px 20px;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:16px;
+  }
+  .hero-left{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+  }
+  .hero-icon{
+    width:58px;height:58px;
+    border-radius:16px;
+    background:rgba(255,255,255,0.18);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;
+    flex-shrink:0;
+  }
+  .hero-name{
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:8px;
+  }
+  .badge-medium{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:rgba(255,255,255,0.22);
+    border-radius:20px;
+    padding:5px 12px;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.5px;
+  }
+  .badge-medium .dot{
+    width:6px;height:6px;
+    border-radius:50%;
+    background:#fff;
+  }
+
+  .progress-ring{
+    position:relative;
+    width:96px;
+    height:96px;
+    flex-shrink:0;
+  }
+  .progress-ring svg{transform:rotate(-90deg);}
+  .progress-ring-value{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    font-weight:800;
+    color:#fff;
+  }
+  .progress-label{
+    text-align:center;
+    font-size:12.5px;
+    font-weight:600;
+    color:#fff;
+    margin-top:6px;
+    white-space:nowrap;
+  }
+
+  .hero-desc{
+    font-size:13.5px;
+    line-height:1.5;
+    color:rgba(255,255,255,0.92);
+    margin-bottom:18px;
+  }
+
+  .hero-stats{
+    display:flex;
+    gap:26px;
+  }
+  .hero-stat{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .hero-stat-icon{
+    font-size:16px;
+  }
+  .hero-stat-num{
+    font-size:15px;
+    font-weight:800;
+    line-height:1.1;
+  }
+  .hero-stat-label{
+    font-size:11px;
+    color:rgba(255,255,255,0.85);
+  }
+
+  /* Tabs */
+  .tabs-card{
+    display:flex;
+    justify-content:space-between;
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px 10px 12px;
+    margin-top:16px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.03);
+  }
+  .tab{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:7px;
+    flex:1;
+    cursor:pointer;
+  }
+  .tab-icon{
+    font-size:19px;
+    color:#98A2B3;
+  }
+  .tab-label{
+    font-size:11.5px;
+    font-weight:600;
+    color:#98A2B3;
+  }
+  .tab.active .tab-icon,
+  .tab.active .tab-label{
+    color:var(--orange);
+    font-weight:700;
+  }
+  .tab.active{position:relative;}
+  .tab-underline{
+    height:2.5px;
+    width:34px;
+    background:var(--orange);
+    border-radius:2px;
+    margin-top:2px;
+  }
+
+  /* Chapters section header */
+  .chapters-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:24px;
+    margin-bottom:14px;
+  }
+  .chapters-title{
+    font-size:19px;
+    font-weight:800;
+    color:#101828;
+  }
+  .chapters-actions{
+    display:flex;
+    gap:8px;
+  }
+  .sort-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:9px 13px;
+    font-size:13px;
+    font-weight:600;
+    color:#344054;
+    cursor:pointer;
+  }
+  .view-btn{
+    width:38px;height:38px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;
+    color:#98A2B3;
+    cursor:pointer;
+  }
+  .view-btn.active{
+    border-color:var(--orange);
+    color:var(--orange);
+    background:var(--orange-bg);
+  }
+
+  /* Chapter list */
+  .chapter-list{
+    display:flex;
+    flex-direction:column;
+  }
+  .chapter-item{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .chapter-item:last-child{border-bottom:none;}
+  .chapter-num{
+    width:42px;height:42px;
+    border-radius:50%;
+    background:var(--orange-soft);
+    color:var(--orange);
+    font-size:14px;
+    font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .chapter-body{flex:1;min-width:0;}
+  .chapter-title{
+    font-size:15px;
+    font-weight:700;
+    color:#101828;
+    margin-bottom:2px;
+  }
+  .chapter-sub{
+    font-size:12.5px;
+    color:var(--gray-text);
+    margin-bottom:10px;
+  }
+  .chapter-progress-track{
+    height:5px;
+    background:#EEF0F2;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .chapter-progress-fill{
+    height:100%;
+    background:var(--orange);
+    border-radius:4px;
+  }
+  .chapter-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:8px;
+    flex-shrink:0;
+  }
+  .chapter-meta{
+    font-size:11.5px;
+    color:var(--gray-text);
+    white-space:nowrap;
+  }
+  .chapter-status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .chapter-pct{
+    font-size:13.5px;
+    font-weight:800;
+  }
+  .pct-complete{color:var(--green);}
+  .pct-progress{color:var(--orange);}
+  .pct-none{color:#98A2B3;}
+  .status-check{
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--green);
+    color:#fff;
+    font-size:11px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .status-ring{
+    width:20px;height:20px;
+    border-radius:50%;
+    border:2.5px solid var(--orange);
+    position:relative;
+  }
+  .status-ring.empty{border-color:#D0D5DD;}
+  .chevron{
+    font-size:16px;
+    color:#98A2B3;
+    margin-left:2px;
+  }
+  .chapter-row-inner{
+    display:flex;
+    align-items:center;
+    width:100%;
+    gap:10px;
+  }
+
+  /* Banner */
+  .banner{
+    background:var(--orange-bg);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+  .banner-left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex:1;
+    min-width:200px;
+  }
+  .banner-icon{
+    width:42px;height:42px;
+    border-radius:50%;
+    background:#fff;
+    color:var(--orange);
+    font-size:18px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .banner-title{
+    font-size:14.5px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:2px;
+  }
+  .banner-sub{
+    font-size:12px;
+    color:var(--gray-text);
+  }
+  .banner-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--orange);
+    color:#fff;
+    border:none;
+    border-radius:12px;
+    padding:13px 18px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  /* Bottom nav */
+  .bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    max-width:480px;
+    margin:0 auto;
+    background:#fff;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    padding:10px 6px 14px;
+  }
+  .nav-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    font-size:11px;
+    font-weight:600;
+    color:#98A2B3;
+    cursor:pointer;
+  }
+  .nav-item.active{color:var(--orange);}
+  .nav-icon{font-size:19px;}
+  .nav-center{
+    width:54px;height:54px;
+    border-radius:50%;
+    background:#101828;
+    border:3px solid var(--orange);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:20px;
+    margin-top:-30px;
+  }
+
+  /* Tab content */
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+
+  /* Analytics section */
+  .analytics-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .metric-card{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    text-align:center;
+  }
+  .metric-value{
+    font-size:26px;
+    font-weight:800;
+    color:var(--orange);
+    margin-bottom:4px;
+  }
+  .metric-label{
+    font-size:12px;
+    color:var(--gray-text);
+    font-weight:600;
+  }
+  .metric-subtitle{
+    font-size:11px;
+    color:#98A2B3;
+    margin-top:4px;
+  }
+
+  /* Streak card */
+  .streak-card{
+    background:linear-gradient(135deg, #12B76A 0%, #0FAA56 100%);
+    border-radius:12px;
+    padding:16px;
+    color:#fff;
+    grid-column:1/2;
+  }
+  .streak-icon{
+    font-size:28px;
+    margin-bottom:8px;
+  }
+  .streak-value{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:2px;
+  }
+  .streak-label{
+    font-size:11px;
+    color:rgba(255,255,255,0.9);
+  }
+
+  /* Chart container */
+  .chart-section{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .chart-title{
+    font-size:14px;
+    font-weight:700;
+    color:#101828;
+    margin-bottom:14px;
+  }
+  .mini-chart{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-around;
+    gap:6px;
+    height:100px;
+    margin-bottom:10px;
+  }
+  .chart-bar{
+    flex:1;
+    background:var(--orange);
+    border-radius:4px 4px 0 0;
+    position:relative;
+    min-height:8px;
+  }
+  .chart-label{
+    position:absolute;
+    bottom:-20px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:10px;
+    color:var(--gray-text);
+    white-space:nowrap;
+  }
+  .chart-container{
+    position:relative;
+    padding-bottom:30px;
+  }
+
+  /* Performance breakdown */
+  .breakdown-section{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .breakdown-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 0;
+    border-bottom:1px solid var(--orange-bg);
+  }
+  .breakdown-item:last-child{border-bottom:none;}
+  .breakdown-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:1;
+  }
+  .breakdown-label{
+    font-size:13px;
+    color:#101828;
+    font-weight:600;
+  }
+  .breakdown-meta{
+    font-size:11px;
+    color:var(--gray-text);
+  }
+  .breakdown-bar-container{
+    flex:1;
+    height:6px;
+    background:#EEF0F2;
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .breakdown-bar{
+    height:100%;
+    background:var(--orange);
+    border-radius:3px;
+  }
+  .breakdown-right{
+    text-align:right;
+    min-width:40px;
+  }
+  .breakdown-value{
+    font-size:13px;
+    font-weight:700;
+    color:var(--orange);
+  }
+
+  /* Weak topics */
+  .weak-topics{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .weak-topic-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px;
+    background:var(--orange-soft);
+    border-radius:8px;
+    margin-bottom:10px;
+  }
+  .weak-topic-item:last-child{margin-bottom:0;}
+  .weak-topic-name{
+    font-size:13px;
+    font-weight:600;
+    color:#101828;
+    flex:1;
+  }
+  .weak-topic-accuracy{
+    font-size:12px;
+    font-weight:700;
+    color:var(--orange);
+  }
+
+  /* Study stats */
+  .study-stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .stat-box{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+  }
+  .stat-box-value{
+    font-size:20px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:4px;
+  }
+  .stat-box-label{
+    font-size:11px;
+    color:var(--gray-text);
+    font-weight:600;
+  }
+
+  /* Time spent bar */
+  .time-bar{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .time-label{
+    font-size:12px;
+    color:var(--gray-text);
+    margin-bottom:8px;
+  }
+  .time-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .time-row:last-child{margin-bottom:0;}
+  .time-name{
+    width:60px;
+    font-size:12px;
+    font-weight:600;
+    color:#101828;
+  }
+  .time-progress{
+    flex:1;
+    height:8px;
+    background:#EEF0F2;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .time-fill{
+    height:100%;
+    background:var(--orange);
+    border-radius:4px;
+  }
+  .time-hours{
+    font-size:12px;
+    font-weight:600;
+    color:#101828;
+    min-width:45px;
+    text-align:right;
+  }
+
+  /* Achievement badges */
+  .achievements{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+    overflow-x:auto;
+    padding:6px 0;
+  }
+  .achievement-badge{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:12px 14px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    min-width:80px;
+    text-align:center;
+    flex-shrink:0;
+  }
+  .achievement-icon{
+    font-size:24px;
+  }
+  .achievement-name{
+    font-size:10px;
+    font-weight:600;
+    color:#101828;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="back-btn">&#8592;</div>
+    <div class="header-title">Computer Networks</div>
+    <div class="header-icons">
+      <span>🔖</span>
+      <span>⋮</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Hero card -->
+    <div class="hero-card">
+      <div class="hero-top">
+        <div class="hero-left">
+          <div class="hero-icon">🕸️</div>
+          <div>
+            <div class="hero-name">Computer Networks</div>
+            <div class="badge-medium"><span class="dot"></span>MEDIUM</div>
+          </div>
+        </div>
+        <div>
+          <div class="progress-ring">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="42" stroke="rgba(255,255,255,0.3)" stroke-width="8" fill="none"/>
+              <circle cx="48" cy="48" r="42" stroke="#fff" stroke-width="8" fill="none"
+                stroke-dasharray="264" stroke-dashoffset="74" stroke-linecap="round"/>
+            </svg>
+            <div class="progress-ring-value">72%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-desc">
+        Learn the fundamentals of computer networks, protocols, architectures and real-world systems.
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-icon">📄</span>
+          <div>
+            <div class="hero-stat-num">10</div>
+            <div class="hero-stat-label">Chapters</div>
+          </div>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-icon">❓</span>
+          <div>
+            <div class="hero-stat-num">200</div>
+            <div class="hero-stat-label">MCQs</div>
+          </div>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-icon">📖</span>
+          <div>
+            <div class="hero-stat-num">80</div>
+            <div class="hero-stat-label">Flashcards</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-label" style="position:absolute; right:34px; top:150px; color:#fff;">Overall Progress</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-card">
+      <div class="tab active" data-tab="chapters">
+        <span class="tab-icon">📖</span>
+        <span class="tab-label">Chapters</span>
+        <span class="tab-underline"></span>
+      </div>
+      <div class="tab" data-tab="mcqs">
+        <span class="tab-icon">❓</span>
+        <span class="tab-label">MCQs</span>
+      </div>
+      <div class="tab" data-tab="flashcards">
+        <span class="tab-icon">🗂️</span>
+        <span class="tab-label">Flashcards</span>
+      </div>
+      <div class="tab" data-tab="notes">
+        <span class="tab-icon">📝</span>
+        <span class="tab-label">Notes</span>
+      </div>
+      <div class="tab" data-tab="analytics">
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Analytics</span>
+      </div>
+    </div>
+
+    <!-- Tab Contents -->
+    <div id="chapters" class="tab-content active">
+
+    <!-- Chapters header -->
+    <div class="chapters-header">
+      <div class="chapters-title">All Chapters (10)</div>
+      <div class="chapters-actions">
+        <div class="sort-btn">⇅ Sort</div>
+        <div class="view-btn active">☰</div>
+        <div class="view-btn">⊞</div>
+      </div>
+    </div>
+
+    <!-- Chapter list -->
+    <div class="chapter-list">
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">01</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Introduction to Computer Networks</div>
+            <div class="chapter-sub">Basics, components and real-world examples</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:100%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-complete">100%</span>
+              <span class="status-check">✓</span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">02</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Network Models</div>
+            <div class="chapter-sub">OSI Model and TCP/IP Model</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:75%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-progress">75%</span>
+              <span class="status-ring"></span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">03</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Physical Layer</div>
+            <div class="chapter-sub">Transmission media, signals and encoding</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:60%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-progress">60%</span>
+              <span class="status-ring"></span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">04</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Data Link Layer</div>
+            <div class="chapter-sub">Framing, error detection, flow control</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:40%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-progress">40%</span>
+              <span class="status-ring"></span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">05</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Network Layer</div>
+            <div class="chapter-sub">IP addressing, routing, and subnetting</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:20%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-progress">20%</span>
+              <span class="status-ring"></span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chapter-item">
+        <div class="chapter-row-inner">
+          <div class="chapter-num">06</div>
+          <div class="chapter-body">
+            <div class="chapter-title">Transport Layer</div>
+            <div class="chapter-sub">TCP, UDP, ports and congestion control</div>
+            <div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:0%;"></div></div>
+          </div>
+          <div class="chapter-right">
+            <div class="chapter-meta">20 MCQs • 8 Flashcards</div>
+            <div class="chapter-status">
+              <span class="chapter-pct pct-none">0%</span>
+              <span class="status-ring empty"></span>
+              <span class="chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Banner -->
+    <div class="banner">
+      <div class="banner-left">
+        <div class="banner-icon">🎯</div>
+        <div>
+          <div class="banner-title">Keep going! You're doing great.</div>
+          <div class="banner-sub">Complete the next chapter to improve your score.</div>
+        </div>
+      </div>
+      <div class="banner-btn">Continue Learning →</div>
+    </div>
+
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="analytics" class="tab-content">
+
+      <!-- Key Metrics -->
+      <div class="analytics-grid">
+        <div class="metric-card">
+          <div class="metric-value">84%</div>
+          <div class="metric-label">Accuracy</div>
+          <div class="metric-subtitle">Last 30 days</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">52</div>
+          <div class="metric-label">Topics Mastered</div>
+          <div class="metric-subtitle">Out of 70</div>
+        </div>
+        <div class="streak-card">
+          <div class="streak-icon">🔥</div>
+          <div class="streak-value">12</div>
+          <div class="streak-label">Day Streak</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">18h</div>
+          <div class="metric-label">Total Study Time</div>
+          <div class="metric-subtitle">This month</div>
+        </div>
+      </div>
+
+      <!-- Progress Trend Chart -->
+      <div class="chart-section">
+        <div class="chart-title">Accuracy Trend (Last 7 days)</div>
+        <div class="chart-container">
+          <div class="mini-chart">
+            <div class="chart-bar" style="height: 65%;"><span class="chart-label">Mon</span></div>
+            <div class="chart-bar" style="height: 72%;"><span class="chart-label">Tue</span></div>
+            <div class="chart-bar" style="height: 78%;"><span class="chart-label">Wed</span></div>
+            <div class="chart-bar" style="height: 82%;"><span class="chart-label">Thu</span></div>
+            <div class="chart-bar" style="height: 88%;"><span class="chart-label">Fri</span></div>
+            <div class="chart-bar" style="height: 85%;"><span class="chart-label">Sat</span></div>
+            <div class="chart-bar" style="height: 84%;"><span class="chart-label">Sun</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chapter-wise Performance -->
+      <div class="breakdown-section">
+        <div class="chart-title">Chapter-wise Accuracy</div>
+        <div class="breakdown-item">
+          <div class="breakdown-left">
+            <div>
+              <div class="breakdown-label">Intro to Networks</div>
+              <div class="breakdown-meta">20 questions</div>
+            </div>
+          </div>
+          <div class="breakdown-bar-container">
+            <div class="breakdown-bar" style="width: 100%;"></div>
+          </div>
+          <div class="breakdown-right">
+            <div class="breakdown-value">100%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-left">
+            <div>
+              <div class="breakdown-label">Network Models</div>
+              <div class="breakdown-meta">18 questions</div>
+            </div>
+          </div>
+          <div class="breakdown-bar-container">
+            <div class="breakdown-bar" style="width: 85%;"></div>
+          </div>
+          <div class="breakdown-right">
+            <div class="breakdown-value">85%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-left">
+            <div>
+              <div class="breakdown-label">Physical Layer</div>
+              <div class="breakdown-meta">15 questions</div>
+            </div>
+          </div>
+          <div class="breakdown-bar-container">
+            <div class="breakdown-bar" style="width: 72%;"></div>
+          </div>
+          <div class="breakdown-right">
+            <div class="breakdown-value">72%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-left">
+            <div>
+              <div class="breakdown-label">Data Link Layer</div>
+              <div class="breakdown-meta">12 questions</div>
+            </div>
+          </div>
+          <div class="breakdown-bar-container">
+            <div class="breakdown-bar" style="width: 58%;"></div>
+          </div>
+          <div class="breakdown-right">
+            <div class="breakdown-value">58%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-left">
+            <div>
+              <div class="breakdown-label">Network Layer</div>
+              <div class="breakdown-meta">10 questions</div>
+            </div>
+          </div>
+          <div class="breakdown-bar-container">
+            <div class="breakdown-bar" style="width: 42%;"></div>
+          </div>
+          <div class="breakdown-right">
+            <div class="breakdown-value">42%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Areas to Improve -->
+      <div class="weak-topics">
+        <div class="chart-title">🎯 Focus Areas</div>
+        <div class="weak-topic-item">
+          <div class="weak-topic-name">Routing Protocols</div>
+          <div class="weak-topic-accuracy">38%</div>
+        </div>
+        <div class="weak-topic-item">
+          <div class="weak-topic-name">Subnetting & CIDR</div>
+          <div class="weak-topic-accuracy">45%</div>
+        </div>
+        <div class="weak-topic-item">
+          <div class="weak-topic-name">TCP Congestion Control</div>
+          <div class="weak-topic-accuracy">52%</div>
+        </div>
+      </div>
+
+      <!-- Study Statistics -->
+      <div class="study-stats">
+        <div class="stat-box">
+          <div class="stat-box-value">47</div>
+          <div class="stat-box-label">Questions Answered</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-value">2h 15m</div>
+          <div class="stat-box-label">Avg. Daily Study</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-value">8</div>
+          <div class="stat-box-label">Tests Completed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-value">1.2x</div>
+          <div class="stat-box-label">Improvement Rate</div>
+        </div>
+      </div>
+
+      <!-- Time Spent Breakdown -->
+      <div class="time-bar">
+        <div class="chart-title">Time Spent by Topic (This Week)</div>
+        <div class="time-row">
+          <div class="time-name">MCQs</div>
+          <div class="time-progress"><div class="time-fill" style="width: 65%;"></div></div>
+          <div class="time-hours">6.5h</div>
+        </div>
+        <div class="time-row">
+          <div class="time-name">Notes</div>
+          <div class="time-progress"><div class="time-fill" style="width: 45%;"></div></div>
+          <div class="time-hours">4.5h</div>
+        </div>
+        <div class="time-row">
+          <div class="time-name">Flash</div>
+          <div class="time-progress"><div class="time-fill" style="width: 35%;"></div></div>
+          <div class="time-hours">3.5h</div>
+        </div>
+      </div>
+
+      <!-- Achievements -->
+      <div>
+        <div class="chart-title" style="margin-bottom: 12px;">Achievements Unlocked</div>
+        <div class="achievements">
+          <div class="achievement-badge">
+            <div class="achievement-icon">🌟</div>
+            <div class="achievement-name">Accuracy</div>
+          </div>
+          <div class="achievement-badge">
+            <div class="achievement-icon">🔥</div>
+            <div class="achievement-name">7-Day Streak</div>
+          </div>
+          <div class="achievement-badge">
+            <div class="achievement-icon">💯</div>
+            <div class="achievement-name">Perfect Chapter</div>
+          </div>
+          <div class="achievement-badge">
+            <div class="achievement-icon">🚀</div>
+            <div class="achievement-name">Fast Learner</div>
+          </div>
+          <div class="achievement-badge">
+            <div class="achievement-icon">🎯</div>
+            <div class="achievement-name">50 Questions</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item">
+      <span class="nav-icon">🏠</span>
+      Home
+    </div>
+    <div class="nav-item active">
+      <span class="nav-icon">▦</span>
+      Subjects
+    </div>
+    <div class="nav-center">📖</div>
+    <div class="nav-item">
+      <span class="nav-icon">📝</span>
+      Practice
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">👤</span>
+      Profile
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+      
+      // Remove active from all tabs
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.remove('active');
+      });
+      
+      // Remove active from all content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // Add active to clicked tab
+      this.classList.add('active');
+      
+      // Add active to corresponding content
+      document.getElementById(tabName).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

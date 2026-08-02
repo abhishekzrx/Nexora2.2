@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subjects - Nexora</title>
+<style>
+  :root{
+    --orange:#F1621B;
+    --orange-light:#FF8A3D;
+    --orange-bg:#FFF1E6;
+    --blue:#2E5CE6;
+    --blue-bg:#EEF2FF;
+    --green:#12B76A;
+    --green-bg:#E9F9F1;
+    --purple:#7C3AED;
+    --purple-bg:#F1EDFC;
+    --teal:#0E9494;
+    --teal-bg:#E6F7F7;
+    --gray-text:#667085;
+    --dark:#101828;
+    --border:#EDEEF1;
+    --page-bg:#F7F8FA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--page-bg);
+    color:var(--dark);
+  }
+  .phone{
+    max-width:480px;
+    margin:0 auto;
+    background:var(--page-bg);
+    min-height:100vh;
+    padding-bottom:90px;
+    position:relative;
+  }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 18px 14px;
+  }
+  .header-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .menu-icon{
+    font-size:20px;
+    color:#101828;
+    cursor:pointer;
+  }
+  .header-title{
+    font-size:22px;
+    font-weight:800;
+    color:#101828;
+  }
+  .header-right{
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .header-icon{
+    font-size:19px;
+    color:#101828;
+    position:relative;
+  }
+  .bell-badge{
+    position:absolute;
+    top:-6px;right:-8px;
+    background:var(--orange);
+    color:#fff;
+    font-size:9.5px;
+    font-weight:800;
+    width:16px;height:16px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .avatar{
+    width:36px;height:36px;
+    border-radius:50%;
+    background:var(--orange-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    overflow:hidden;
+  }
+
+  .content{padding:0 16px;}
+
+  /* Hero card */
+  .hero-card{
+    background:linear-gradient(120deg,#0B0F1A 0%, #14181F 55%, #4A2410 100%);
+    border-radius:20px;
+    padding:22px 18px;
+    margin-bottom:18px;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+  }
+  .active-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:rgba(255,255,255,0.12);
+    border-radius:20px;
+    padding:5px 12px;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    margin-bottom:14px;
+  }
+  .active-pill .live-dot{
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--green);
+  }
+  .hero-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:14px;
+  }
+  .hero-text{flex:1; min-width:0;}
+  .hero-title{
+    font-size:20px;
+    font-weight:800;
+    color:#fff;
+    margin-bottom:8px;
+    line-height:1.3;
+  }
+  .hero-sub{
+    font-size:12.5px;
+    color:#B7BCC7;
+    line-height:1.5;
+    margin-bottom:18px;
+  }
+  .hero-ring{
+    position:relative;
+    width:96px;
+    height:96px;
+    flex-shrink:0;
+  }
+  .hero-ring svg{transform:rotate(-90deg);}
+  .hero-ring-value{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:800;
+    color:#fff;
+  }
+  .hero-ring-label{
+    text-align:center;
+    font-size:11.5px;
+    color:#B7BCC7;
+    margin-top:8px;
+    white-space:nowrap;
+  }
+
+  .hero-stats{
+    display:flex;
+    gap:26px;
+  }
+  .hero-stat{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .hero-stat-icon{font-size:17px;}
+  .hero-stat-num{
+    font-size:16px;
+    font-weight:800;
+    color:#fff;
+    line-height:1.1;
+  }
+  .hero-stat-label{
+    font-size:10.5px;
+    color:#B7BCC7;
+  }
+
+  /* Search + filter row */
+  .search-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .search-box{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:13px 14px;
+  }
+  .search-box input{
+    border:none;
+    outline:none;
+    font-size:14px;
+    color:#101828;
+    flex:1;
+    font-family:inherit;
+    background:transparent;
+  }
+  .search-box input::placeholder{color:#98A2B3;}
+  .search-icon{color:#98A2B3;font-size:16px;}
+  .filter-btn, .sort-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:13px 16px;
+    font-size:13.5px;
+    font-weight:700;
+    color:#101828;
+    white-space:nowrap;
+    cursor:pointer;
+    flex:1;
+    justify-content:center;
+  }
+
+  /* Subjects grid */
+  .subjects-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .subj-card{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+    cursor:pointer;
+    transition:transform 0.15s ease;
+  }
+  .subj-card:active{transform:scale(0.98);}
+  .subj-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .subj-icon{
+    width:44px;height:44px;
+    border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .icon-orange{background:var(--orange);}
+  .icon-blue{background:var(--blue);}
+  .icon-green{background:var(--green);}
+  .icon-red{background:#E8491D;}
+  .icon-purple{background:var(--purple);}
+  .icon-teal{background:var(--teal);}
+
+  .difficulty-pill{
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:0.3px;
+    padding:5px 10px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .pill-orange{background:var(--orange-bg);color:var(--orange);}
+  .pill-blue{background:var(--blue-bg);color:var(--blue);}
+  .pill-green{background:var(--green-bg);color:var(--green);}
+  .pill-red{background:#FDECE7;color:#E8491D;}
+  .pill-purple{background:var(--purple-bg);color:var(--purple);}
+  .pill-teal{background:var(--teal-bg);color:var(--teal);}
+
+  .subj-name{
+    font-size:16px;
+    font-weight:800;
+    color:#101828;
+    line-height:1.3;
+    margin-bottom:8px;
+  }
+  .subj-meta{
+    font-size:11.5px;
+    color:var(--gray-text);
+    margin-bottom:14px;
+  }
+  .subj-bottom{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .subj-pct{
+    font-size:14px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  .pct-orange{color:var(--orange);}
+  .pct-blue{color:var(--blue);}
+  .pct-green{color:var(--green);}
+  .pct-red{color:#E8491D;}
+  .pct-purple{color:var(--purple);}
+  .pct-teal{color:var(--teal);}
+
+  .subj-track{
+    flex:1;
+    height:6px;
+    background:#EEF0F2;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .subj-fill{
+    height:100%;
+    border-radius:4px;
+  }
+  .fill-orange{background:var(--orange);}
+  .fill-blue{background:var(--blue);}
+  .fill-green{background:var(--green);}
+  .fill-red{background:#E8491D;}
+  .fill-purple{background:var(--purple);}
+  .fill-teal{background:var(--teal);}
+
+  .subj-arrow{
+    width:34px;height:34px;
+    border-radius:50%;
+    background:#fff;
+    border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+    flex-shrink:0;
+    box-shadow:0 2px 6px rgba(16,24,40,0.06);
+  }
+  .arrow-orange{color:var(--orange);}
+  .arrow-blue{color:var(--blue);}
+  .arrow-green{color:var(--green);}
+  .arrow-red{color:#E8491D;}
+  .arrow-purple{color:var(--purple);}
+  .arrow-teal{color:var(--teal);}
+
+  /* Motivation banner */
+  .motivation-banner{
+    background:var(--orange-bg);
+    border-radius:18px;
+    padding:16px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .motivation-icon{
+    width:46px;height:46px;
+    border-radius:50%;
+    background:var(--orange);
+    color:#fff;
+    font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .motivation-text{flex:1; min-width:180px;}
+  .motivation-title{
+    font-size:14.5px;
+    font-weight:800;
+    color:#101828;
+    margin-bottom:3px;
+  }
+  .motivation-sub{
+    font-size:12px;
+    color:var(--gray-text);
+    line-height:1.4;
+  }
+  .analytics-btn{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background:#fff;
+    color:var(--orange);
+    border:none;
+    border-radius:12px;
+    padding:12px 16px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  /* Bottom nav */
+  .bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    max-width:480px;
+    margin:0 auto;
+    background:#fff;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    padding:10px 6px 14px;
+  }
+  .nav-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    font-size:11px;
+    font-weight:600;
+    color:#98A2B3;
+    cursor:pointer;
+  }
+  .nav-item.active{color:var(--orange);}
+  .nav-icon{font-size:19px;}
+  .nav-center{
+    width:52px;height:52px;
+    border-radius:50%;
+    background:#101828;
+    border:3px solid var(--orange);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:20px;
+    margin-top:-28px;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="menu-icon" onclick="openDrawer && openDrawer()">☰</div>
+      <div class="header-title">Subjects</div>
+    </div>
+    <div class="header-right">
+      <div class="header-icon">🔍</div>
+      <div class="header-icon">🔔<span class="bell-badge">3</span></div>
+      <div class="avatar">🧑‍💼</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Hero card -->
+    <div class="hero-card">
+      <div class="active-pill"><span class="live-dot"></span>BPSC TRE 4.0 ACTIVE</div>
+      <div class="hero-top">
+        <div class="hero-text">
+          <div class="hero-title">Computer Science Prep Hub 🚀</div>
+          <div class="hero-sub">Your all-in-one platform to learn, practice and master Computer Science.</div>
+        </div>
+        <div>
+          <div class="hero-ring">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="42" stroke="rgba(255,255,255,0.18)" stroke-width="8" fill="none"/>
+              <circle cx="48" cy="48" r="42" stroke="#F1621B" stroke-width="8" fill="none"
+                stroke-dasharray="264" stroke-dashoffset="74" stroke-linecap="round"/>
+            </svg>
+            <div class="hero-ring-value">72%</div>
+          </div>
+          <div class="hero-ring-label">Overall Progress</div>
+        </div>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-icon">📖</span>
+          <div>
+            <div class="hero-stat-num">5</div>
+            <div class="hero-stat-label">Subjects</div>
+          </div>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-icon">📄</span>
+          <div>
+            <div class="hero-stat-num">2</div>
+            <div class="hero-stat-label">Chapters</div>
+          </div>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-icon">🎯</span>
+          <div>
+            <div class="hero-stat-num">200</div>
+            <div class="hero-stat-label">MCQs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-row">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search subjects...">
+      </div>
+    </div>
+    <div class="search-row">
+      <div class="filter-btn">▽ Filter</div>
+      <div class="sort-btn">⇅ Sort</div>
+    </div>
+
+    <!-- Subjects grid -->
+    <div class="subjects-grid">
+
+      <div class="subj-card" onclick="window.location.href='computer-networks-course.html'">
+        <div class="subj-top">
+          <div class="subj-icon icon-orange">🔗</div>
+          <div class="difficulty-pill pill-orange">MEDIUM</div>
+        </div>
+        <div class="subj-name">Computer Networks</div>
+        <div class="subj-meta">10 Chapters • 200 MCQs • 80 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-orange">72%</span>
+          <div class="subj-track"><div class="subj-fill fill-orange" style="width:72%;"></div></div>
+          <div class="subj-arrow arrow-orange">→</div>
+        </div>
+      </div>
+
+      <div class="subj-card">
+        <div class="subj-top">
+          <div class="subj-icon icon-blue">🖥️</div>
+          <div class="difficulty-pill pill-blue">MEDIUM</div>
+        </div>
+        <div class="subj-name">Operating Systems</div>
+        <div class="subj-meta">10 Chapters • 0 MCQs • 0 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-blue">45%</span>
+          <div class="subj-track"><div class="subj-fill fill-blue" style="width:45%;"></div></div>
+          <div class="subj-arrow arrow-blue">→</div>
+        </div>
+      </div>
+
+      <div class="subj-card">
+        <div class="subj-top">
+          <div class="subj-icon icon-green">🗄️</div>
+          <div class="difficulty-pill pill-green">MEDIUM</div>
+        </div>
+        <div class="subj-name">Database Management System</div>
+        <div class="subj-meta">10 Chapters • 0 MCQs • 0 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-green">30%</span>
+          <div class="subj-track"><div class="subj-fill fill-green" style="width:30%;"></div></div>
+          <div class="subj-arrow arrow-green">→</div>
+        </div>
+      </div>
+
+      <div class="subj-card">
+        <div class="subj-top">
+          <div class="subj-icon icon-red">🔲</div>
+          <div class="difficulty-pill pill-red">MEDIUM</div>
+        </div>
+        <div class="subj-name">Digital Electronics</div>
+        <div class="subj-meta">10 Chapters • 0 MCQs • 0 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-red">15%</span>
+          <div class="subj-track"><div class="subj-fill fill-red" style="width:15%;"></div></div>
+          <div class="subj-arrow arrow-red">→</div>
+        </div>
+      </div>
+
+      <div class="subj-card">
+        <div class="subj-top">
+          <div class="subj-icon icon-purple">{ }</div>
+          <div class="difficulty-pill pill-purple">MEDIUM</div>
+        </div>
+        <div class="subj-name">Data Structures &amp; Algorithms</div>
+        <div class="subj-meta">10 Chapters • 0 MCQs • 0 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-purple">20%</span>
+          <div class="subj-track"><div class="subj-fill fill-purple" style="width:20%;"></div></div>
+          <div class="subj-arrow arrow-purple">→</div>
+        </div>
+      </div>
+
+      <div class="subj-card">
+        <div class="subj-top">
+          <div class="subj-icon icon-teal">🔲</div>
+          <div class="difficulty-pill pill-teal">MEDIUM</div>
+        </div>
+        <div class="subj-name">Computer Organization &amp; Architecture</div>
+        <div class="subj-meta">10 Chapters • 0 MCQs • 0 Flashcards</div>
+        <div class="subj-bottom">
+          <span class="subj-pct pct-teal">10%</span>
+          <div class="subj-track"><div class="subj-fill fill-teal" style="width:10%;"></div></div>
+          <div class="subj-arrow arrow-teal">→</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Motivation banner -->
+    <div class="motivation-banner">
+      <div class="motivation-icon">⭐</div>
+      <div class="motivation-text">
+        <div class="motivation-title">Keep learning, keep growing!</div>
+        <div class="motivation-sub">You're on the right path. Consistency today, excellence tomorrow.</div>
+      </div>
+      <button class="analytics-btn">📊 View Analytics</button>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="window.location.href='nexora-dashboard.html'">
+      <span class="nav-icon">🏠</span>
+      Home
+    </div>
+    <div class="nav-item active">
+      <span class="nav-icon">▦</span>
+      Subjects
+    </div>
+    <div class="nav-center">📖</div>
+    <div class="nav-item">
+      <span class="nav-icon">📝</span>
+      Practice
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">👤</span>
+      Profile
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
