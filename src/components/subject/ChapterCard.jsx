@@ -4,6 +4,8 @@
  * progress bar, meta counts, completion status, and chevron.
  * Clicking navigates to the MCQ Response page for that chapter.
  */
+import AppIcon from '../ui/AppIcon'
+
 function ChapterCard({ chapter, onClick }) {
   const statusClass = chapter.complete
     ? 'pct-complete'
@@ -27,11 +29,15 @@ function ChapterCard({ chapter, onClick }) {
           <div className="chapter-status">
             <span className={`chapter-pct ${statusClass}`}>{chapter.pct}</span>
             {chapter.complete ? (
-              <span className="status-check">✓</span>
+              <span className="status-check">
+                <AppIcon name="check" size={11} />
+              </span>
             ) : (
               <span className={`status-ring${chapter.progress === 0 ? ' empty' : ''}`} />
             )}
-            <span className="chevron">›</span>
+            <span className="chevron">
+              <AppIcon name="chevronRight" size={16} />
+            </span>
           </div>
         </div>
       </div>

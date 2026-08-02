@@ -2,8 +2,11 @@
  * BottomNav
  * Shared bottom navigation bar with optional center action button.
  * Items: array of { icon, label, active, center }
+ * icon: semantic icon name from the icon registry.
  */
-function BottomNav({ items = [], onNavigate, centerIcon = '🎯', centerDark = false }) {
+import AppIcon from '../ui/AppIcon'
+
+function BottomNav({ items = [], onNavigate, centerIcon = 'practice', centerDark = false }) {
   return (
     <nav className="bottom-nav" aria-label="Primary">
       {items.map((item) => {
@@ -16,7 +19,7 @@ function BottomNav({ items = [], onNavigate, centerIcon = '🎯', centerDark = f
               aria-label={item.label || 'Center action'}
               onClick={() => onNavigate?.(item)}
             >
-              {item.icon || centerIcon}
+              <AppIcon name={item.icon || centerIcon} size={22} />
             </button>
           )
         }
@@ -30,7 +33,7 @@ function BottomNav({ items = [], onNavigate, centerIcon = '🎯', centerDark = f
             aria-current={item.active ? 'page' : undefined}
           >
             <span className="nav-icon" aria-hidden="true">
-              {item.icon}
+              <AppIcon name={item.icon} size={19} />
             </span>
             {item.label}
           </button>

@@ -7,12 +7,13 @@
 import '../styles/testResults.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
 import ProgressRing from '../components/ui/ProgressRing'
+import AppIcon from '../components/ui/AppIcon'
 
 const statItems = [
-  { icon: '✓', iconClass: 'icon-correct', value: '15', label: 'Correct' },
-  { icon: '✕', iconClass: 'icon-incorrect', value: '3', label: 'Incorrect' },
-  { icon: '–', iconClass: 'icon-unattempted', value: '2', label: 'Unattempted' },
-  { icon: '☰', iconClass: 'icon-total', value: '20', label: 'Total Questions' },
+  { icon: 'check', iconClass: 'icon-correct', value: '15', label: 'Correct' },
+  { icon: 'cross', iconClass: 'icon-incorrect', value: '3', label: 'Incorrect' },
+  { icon: 'remove', iconClass: 'icon-unattempted', value: '2', label: 'Unattempted' },
+  { icon: 'viewList', iconClass: 'icon-total', value: '20', label: 'Total Questions' },
 ]
 
 const strengths = [
@@ -42,14 +43,17 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
         <header className="header">
           <div className="header-left">
             <button type="button" className="back-btn" onClick={onBack} aria-label="Go back">
-              ←
+              <AppIcon name="back" size={20} />
             </button>
             <div className="header-title">
               <h1>Test Submitted! 🎉</h1>
               <p>Computer Networks • 20 Questions</p>
             </div>
           </div>
-          <button type="button" className="test-details-btn">📄 Test Details</button>
+          <button type="button" className="test-details-btn">
+            <AppIcon name="testDetails" size={15} />
+            Test Details
+          </button>
         </header>
 
         <main className="content">
@@ -57,7 +61,7 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
           <div className="top-row">
             <div className="card trophy-card anim" style={{ animationDelay: '0.05s' }}>
               <div className="trophy-circle">
-                🏆
+                <AppIcon name="trophy" size={52} />
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-60px', '--ty': '-70px', '--rot': '-140deg', animationDelay: '0.15s' }}>🎉</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '65px', '--ty': '-60px', '--rot': '160deg', animationDelay: '0.25s' }}>✨</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-70px', '--ty': '40px', '--rot': '90deg', animationDelay: '0.35s' }}>🎊</span>
@@ -73,7 +77,9 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <div className="stat-grid">
                 {statItems.map((item) => (
                   <div className="stat-item" key={item.label}>
-                    <div className={`stat-icon ${item.iconClass}`}>{item.icon}</div>
+                    <div className={`stat-icon ${item.iconClass}`}>
+                      <AppIcon name={item.icon} size={16} />
+                    </div>
                     <div className="stat-num">{item.value}</div>
                     <div className="stat-label">{item.label}</div>
                   </div>
@@ -83,7 +89,10 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <div className="performance-box">
                 <div className="performance-top">
                   <div className="performance-label">Your Performance</div>
-                  <div className="above-pill">⏱ Above 70%</div>
+                  <div className="above-pill">
+                    <AppIcon name="clock" size={12} />
+                    Above 70%
+                  </div>
                 </div>
                 <div className="performance-value">Good 😌</div>
                 <div className="performance-sub">You scored better than <b>68%</b> of learners</div>
@@ -99,7 +108,10 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <ProgressRing size={96} radius={42} strokeWidth={9} progress={75} trackColor="#EAECF0" fillColor="#12B76A">
                 <div className="ring-value">75%</div>
               </ProgressRing>
-              <div className="overview-delta delta-up">↑ 12%</div>
+              <div className="overview-delta delta-up">
+                <AppIcon name="trendingUp" size={14} />
+                12%
+              </div>
               <div className="overview-compare">vs Last Attempt (63%)</div>
             </div>
 
@@ -108,24 +120,37 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <ProgressRing size={96} radius={42} strokeWidth={9} progress={75} trackColor="#EDE6FC" fillColor="#7C3AED">
                 <div className="ring-value">15<span>/20</span></div>
               </ProgressRing>
-              <div className="overview-delta delta-up">↑ 3</div>
+              <div className="overview-delta delta-up">
+                <AppIcon name="trendingUp" size={14} />
+                3
+              </div>
               <div className="overview-compare">vs Last Attempt (12/20)</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.26s' }}>
               <h3>Time Taken</h3>
-              <div className="clock-icon-wrap">🕐</div>
+              <div className="clock-icon-wrap">
+                <AppIcon name="clock" size={32} />
+              </div>
               <div className="time-value">00:29:45</div>
-              <div className="overview-delta delta-down">↓ 02:15</div>
+              <div className="overview-delta delta-down">
+                <AppIcon name="trendingDown" size={14} />
+                02:15
+              </div>
               <div className="overview-compare">vs Last Attempt (00:27:30)</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.3s' }}>
               <h3>Rank</h3>
-              <div className="medal-icon-wrap">🏅</div>
+              <div className="medal-icon-wrap">
+                <AppIcon name="medal" size={40} />
+              </div>
               <div className="rank-value">#28</div>
               <div className="rank-sub">of 120 Learners</div>
-              <div className="overview-delta delta-up">↑ 15</div>
+              <div className="overview-delta delta-up">
+                <AppIcon name="trendingUp" size={14} />
+                15
+              </div>
               <div className="overview-compare">vs Last Attempt (#43)</div>
             </div>
           </div>
@@ -136,12 +161,18 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <h4>Your Strengths 💪</h4>
               {strengths.map((item) => (
                 <div className="list-row" key={item.label}>
-                  <div className="list-left"><span className="dot dot-green">✓</span>{item.label}</div>
+                  <div className="list-left">
+                    <span className="dot dot-green">
+                      <AppIcon name="check" size={10} />
+                    </span>
+                    {item.label}
+                  </div>
                   <span className="list-score">{item.score}</span>
                 </div>
               ))}
               <div className="tip-banner tip-green">
-                ⭐ Keep it up! You're doing great in these topics.
+                <AppIcon name="star" size={14} />
+                Keep it up! You're doing great in these topics.
               </div>
             </div>
 
@@ -149,12 +180,18 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <h4>Topics to Improve 🎯</h4>
               {improvements.map((item) => (
                 <div className="list-row" key={item.label}>
-                  <div className="list-left"><span className="dot dot-red">✕</span>{item.label}</div>
+                  <div className="list-left">
+                    <span className="dot dot-red">
+                      <AppIcon name="cross" size={10} />
+                    </span>
+                    {item.label}
+                  </div>
                   <span className="list-score">{item.score}</span>
                 </div>
               ))}
               <div className="tip-banner tip-red">
-                📈 Focus on these topics to boost your score in the next attempt.
+                <AppIcon name="trendingUp" size={14} />
+                Focus on these topics to boost your score in the next attempt.
               </div>
             </div>
           </div>
@@ -183,7 +220,9 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                 <div className="improve-title">You are improving! 🎉</div>
                 <div className="improve-text">Your score has improved by 30% from your first attempt.</div>
               </div>
-              <div className="improve-arrow">↗</div>
+              <div className="improve-arrow">
+                <AppIcon name="trendingUp" size={30} />
+              </div>
             </div>
           </div>
 
@@ -200,9 +239,18 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
 
         {/* Bottom bar */}
         <div className="bottom-bar anim" style={{ animationDelay: '0.54s' }}>
-          <button type="button" className="btn" onClick={onReviewAnswers}>📄 Review Answers</button>
-          <button type="button" className="btn" onClick={onPracticeAgain}>🔄 Practice Again</button>
-          <button type="button" className="btn btn-primary" onClick={onBackToSubjects}>→ Back to Subjects</button>
+          <button type="button" className="btn" onClick={onReviewAnswers}>
+            <AppIcon name="reviewAnswers" size={15} />
+            Review Answers
+          </button>
+          <button type="button" className="btn" onClick={onPracticeAgain}>
+            <AppIcon name="practiceAgain" size={15} />
+            Practice Again
+          </button>
+          <button type="button" className="btn btn-primary" onClick={onBackToSubjects}>
+            <AppIcon name="backToSubjects" size={15} />
+            Back to Subjects
+          </button>
         </div>
       </PhoneFrame>
     </div>

@@ -4,6 +4,7 @@
  * progress ring, description, and stat counts.
  */
 import ProgressRing from '../ui/ProgressRing'
+import AppIcon from '../ui/AppIcon'
 
 function SubjectHero({ subject }) {
   return (
@@ -11,7 +12,7 @@ function SubjectHero({ subject }) {
       <div className="hero-top">
         <div className="hero-left">
           <div className="hero-icon" aria-hidden="true">
-            {subject.icon}
+            <AppIcon name={subject.icon} size={26} />
           </div>
           <div>
             <div className="hero-name">{subject.title}</div>
@@ -40,21 +41,27 @@ function SubjectHero({ subject }) {
 
       <div className="hero-stats">
         <div className="hero-stat">
-          <span className="hero-stat-icon" aria-hidden="true">📄</span>
+          <span className="hero-stat-icon" aria-hidden="true">
+            <AppIcon name="chapters" size={16} />
+          </span>
           <div>
             <div className="hero-stat-num">{subject.counts.chapters}</div>
             <div className="hero-stat-label">Chapters</div>
           </div>
         </div>
         <div className="hero-stat">
-          <span className="hero-stat-icon" aria-hidden="true">❓</span>
+          <span className="hero-stat-icon" aria-hidden="true">
+            <AppIcon name="mcqs" size={16} />
+          </span>
           <div>
             <div className="hero-stat-num">{subject.counts.mcqs}</div>
             <div className="hero-stat-label">MCQs</div>
           </div>
         </div>
         <div className="hero-stat">
-          <span className="hero-stat-icon" aria-hidden="true">📖</span>
+          <span className="hero-stat-icon" aria-hidden="true">
+            <AppIcon name="flashcardsTab" size={16} />
+          </span>
           <div>
             <div className="hero-stat-num">{subject.counts.flashcards}</div>
             <div className="hero-stat-label">Flashcards</div>

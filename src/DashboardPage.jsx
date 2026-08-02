@@ -1,5 +1,7 @@
 ﻿import { useEffect, useState } from 'react'
 import './Dashboard.css'
+import AppIcon from './components/ui/AppIcon'
+import MobileLayout from './components/layout/MobileLayout'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -7,7 +9,7 @@ const weakAreas = ['COA', 'Digital Electronics']
 const miniCards = [
   {
     theme: 'mini-green',
-    icon: '💻',
+    icon: 'computer',
     title: "Today's Revision",
     value: '45',
     tone: 'green',
@@ -16,7 +18,7 @@ const miniCards = [
   },
   {
     theme: 'mini-red',
-    icon: '❌',
+    icon: 'cross',
     title: 'Incorrect Qs',
     value: '12',
     tone: 'red',
@@ -25,7 +27,7 @@ const miniCards = [
   },
   {
     theme: 'mini-purple',
-    icon: '🔖',
+    icon: 'bookmark',
     title: 'Forgotten Topics',
     value: '6',
     tone: 'purple',
@@ -44,7 +46,7 @@ const subjectCards = [
   {
     subjectKey: 'computer-networks',
     title: 'Computer Networks',
-    icon: '🔗',
+    icon: 'computerNetworks',
     iconClass: 'icon-blue',
     ringTrack: '#E7EDFD',
     ringColor: '#2E5CE6',
@@ -57,7 +59,7 @@ const subjectCards = [
   {
     subjectKey: 'operating-systems',
     title: 'Operating Systems',
-    icon: '⚙️',
+    icon: 'operatingSystems',
     iconClass: 'icon-green',
     ringTrack: '#DFF7EA',
     ringColor: '#12B76A',
@@ -69,7 +71,7 @@ const subjectCards = [
   {
     subjectKey: 'dbms',
     title: 'DBMS',
-    icon: '📊',
+    icon: 'dbms',
     iconClass: 'icon-purple',
     ringTrack: '#EFE6FC',
     ringColor: '#7C3AED',
@@ -81,7 +83,7 @@ const subjectCards = [
   {
     subjectKey: 'digital-electronics',
     title: 'Digital Electronics',
-    icon: '💾',
+    icon: 'digitalElectronics',
     iconClass: 'icon-orange',
     ringTrack: '#FFE9D9',
     ringColor: '#F1621B',
@@ -93,38 +95,31 @@ const subjectCards = [
 ]
 
 const activityItems = [
-  { icon: '✓', iconClass: 'ai-green', text: 'Solved 20 MCQs in OS', time: '2h ago' },
-  { icon: '▤', iconClass: 'ai-orange', text: 'Reviewed 15 Flashcards', time: '4h ago' },
-  { icon: '📄', iconClass: 'ai-purple', text: 'Attempted Mock Test – 013', time: 'Yesterday' },
-  { icon: '📄', iconClass: 'ai-purple', text: 'Viewed Notes – DBMS', time: 'Yesterday' },
+  { icon: 'check', iconClass: 'ai-green', text: 'Solved 20 MCQs in OS', time: '2h ago' },
+  { icon: 'flashcards', iconClass: 'ai-orange', text: 'Reviewed 15 Flashcards', time: '4h ago' },
+  { icon: 'document', iconClass: 'ai-purple', text: 'Attempted Mock Test – 013', time: 'Yesterday' },
+  { icon: 'document', iconClass: 'ai-purple', text: 'Viewed Notes – DBMS', time: 'Yesterday' },
 ]
 
 const drawerPrimaryItems = [
-  { icon: '🏠', label: 'Dashboard', active: true },
-  { icon: '📚', label: 'Subjects' },
-  { icon: '🎯', label: 'Practice' },
-  { icon: '📇', label: 'Flashcards' },
-  { icon: '📝', label: 'Mock Tests' },
+  { icon: 'home', label: 'Dashboard', active: true },
+  { icon: 'subjects', label: 'Subjects' },
+  { icon: 'practice', label: 'Practice' },
+  { icon: 'flashcards', label: 'Flashcards' },
+  { icon: 'mockTests', label: 'Mock Tests' },
 ]
 
 const drawerProgressItems = [
-  { icon: '📊', label: 'Analytics' },
-  { icon: '🗓️', label: 'Study Planner' },
-  { icon: '🏆', label: 'Leaderboard' },
+  { icon: 'analytics', label: 'Analytics' },
+  { icon: 'studyPlanner', label: 'Study Planner' },
+  { icon: 'leaderboard', label: 'Leaderboard' },
 ]
 
 const drawerMoreItems = [
-  { icon: '📄', label: 'Notes' },
-  { icon: '🔔', label: 'Notifications', badge: '3' },
-  { icon: '⚙️', label: 'Settings' },
-  { icon: '❓', label: 'Help & Support' },
-]
-
-const navItems = [
-  { icon: '🏠', label: 'Dashboard', active: true },
-  { icon: '📚', label: 'Subjects' },
-  { icon: '📇', label: 'Flashcards' },
-  { icon: '⋯', label: 'More' },
+  { icon: 'notes', label: 'Notes' },
+  { icon: 'notifications', label: 'Notifications', badge: '3' },
+  { icon: 'settings', label: 'Settings' },
+  { icon: 'help', label: 'Help & Support' },
 ]
 
 function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillColor, children }) {
@@ -178,7 +173,7 @@ function DrawerItem({ icon, label, badge, active, onClick }) {
       onClick={onClick}
     >
       <span className="d-icon" aria-hidden="true">
-        {icon}
+        <AppIcon name={icon} size={18} />
       </span>
       {label}
       {badge ? <span className="d-badge">{badge}</span> : null}
@@ -189,7 +184,9 @@ function DrawerItem({ icon, label, badge, active, onClick }) {
 function MiniMissionItem({ label, value, width, done }) {
   return (
     <div className="mission-item">
-      <span className={`mission-check${done ? '' : ' empty'}`}>{done ? '✓' : ''}</span>
+      <span className={`mission-check${done ? '' : ' empty'}`}>
+        {done ? <AppIcon name="check" size={10} /> : null}
+      </span>
       <div className="mission-body">
         <div className="mission-row">
           <span>{label}</span>
@@ -211,7 +208,7 @@ function MiniCard({ theme, icon, title, value, tone, sub, action, children }) {
     <div className={`mini-card ${theme}`}>
       <div className="mini-top">
         <span className="mini-icon" aria-hidden="true">
-          {icon}
+          <AppIcon name={icon} size={15} />
         </span>
         {title}
       </div>
@@ -231,7 +228,9 @@ function SubjectCard({ subject, onSelect }) {
       onClick={() => onSelect(subject.subjectKey)}
     >
       <div className="subject-top">
-        <div className={`subject-icon ${subject.iconClass}`}>{subject.icon}</div>
+        <div className={`subject-icon ${subject.iconClass}`}>
+          <AppIcon name={subject.icon} size={16} />
+        </div>
         <div className="subject-name">{subject.title}</div>
       </div>
       <ProgressRing
@@ -253,7 +252,9 @@ function SubjectCard({ subject, onSelect }) {
 function ActivityItem({ icon, iconClass, text, time }) {
   return (
     <div className="activity-item">
-      <div className={`activity-icon ${iconClass}`}>{icon}</div>
+      <div className={`activity-icon ${iconClass}`}>
+        <AppIcon name={icon} size={12} />
+      </div>
       <div className="activity-text">{text}</div>
       <div className="activity-time">{time}</div>
       <div className="activity-chevron">›</div>
@@ -287,12 +288,17 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
             onClick={() => setDrawerOpen(false)}
             aria-label="Close menu"
           >
-            ✕
+            <AppIcon name="close" size={18} />
           </button>
-          <div className="drawer-avatar">🧑‍💼</div>
+          <div className="drawer-avatar" aria-hidden="true">
+            <AppIcon name="profile" size={26} />
+          </div>
           <div className="drawer-name">Abhi Kumar</div>
           <div className="drawer-sub">BPSC TRE 4.0 • Computer Science</div>
-          <div className="drawer-streak">🔥 14 Day Streak</div>
+          <div className="drawer-streak">
+            <AppIcon name="streak" size={14} />
+            14 Day Streak
+          </div>
         </div>
 
         <div className="drawer-menu">
@@ -345,14 +351,21 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
             onClick={() => setDrawerOpen(false)}
           >
             <span className="d-icon" aria-hidden="true">
-              ↪
+              <AppIcon name="logout" size={18} />
             </span>
             Log Out
           </button>
         </div>
       </aside>
 
-      <div className="phone">
+      <MobileLayout
+        activeTab="Home"
+        onNavigate={(item) => {
+          if (item.label === 'Subjects') {
+            onNavigateSubjects()
+          }
+        }}
+      >
         <header className="header">
           <div className="header-left">
             <button
@@ -361,7 +374,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
             >
-              ☰
+              <AppIcon name="menu" size={20} />
             </button>
             <div>
               <div className="greeting-title">Good Evening, Abhi 👋</div>
@@ -371,13 +384,14 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
 
           <div className="header-right">
             <div className="bell-wrap" aria-hidden="true">
-              🔔<span className="bell-badge">3</span>
+              <AppIcon name="notifications" size={19} />
+              <span className="bell-badge">3</span>
             </div>
             <div className="avatar" aria-hidden="true">
-              🧑‍💼
+              <AppIcon name="profile" size={20} />
             </div>
             <span className="chevron-down" aria-hidden="true">
-              ▾
+              <AppIcon name="chevronDown" size={12} />
             </span>
           </div>
         </header>
@@ -386,7 +400,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
           <div className="stats-bar">
             <div className="stat-block">
               <div className="stat-icon" aria-hidden="true">
-                📅
+                <AppIcon name="calendar" size={19} />
               </div>
               <div>
                 <div className="stat-label">Exam in</div>
@@ -399,7 +413,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
 
             <div className="stat-block goal-block">
               <div className="stat-icon" aria-hidden="true">
-                🎯
+                <AppIcon name="goal" size={19} />
               </div>
               <div className="goal-copy">
                 <div className="stat-label">Today's Goal</div>
@@ -416,7 +430,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
 
             <div className="stat-block">
               <div className="stat-icon" aria-hidden="true">
-                🔥
+                <AppIcon name="streak" size={19} />
               </div>
               <div>
                 <div className="stat-label">Study Streak</div>
@@ -464,7 +478,10 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
                   82<span> / 100</span>
                 </div>
               </div>
-              <div className="improving-pill">↗ Improving</div>
+              <div className="improving-pill">
+                <AppIcon name="trendingUp" size={14} />
+                Improving
+              </div>
             </div>
 
             <div className="areas-row">
@@ -472,7 +489,9 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
                 <div className="areas-title areas-strong">Strong Areas</div>
                 {strongAreas.map((area) => (
                   <div className="area-item" key={area}>
-                    <span className="area-dot dot-good">✓</span>
+                    <span className="area-dot dot-good">
+                      <AppIcon name="check" size={9} />
+                    </span>
                     {area}
                   </div>
                 ))}
@@ -482,7 +501,9 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
                 <div className="areas-title areas-weak">Weak Areas</div>
                 {weakAreas.map((area) => (
                   <div className="area-item" key={area}>
-                    <span className="area-dot dot-bad">✕</span>
+                    <span className="area-dot dot-bad">
+                      <AppIcon name="cross" size={9} />
+                    </span>
                     {area}
                   </div>
                 ))}
@@ -491,10 +512,13 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
           </section>
 
           <section className="continue-card">
-            <div className="continue-header">🎯 Continue Today's Study</div>
+            <div className="continue-header">
+              <AppIcon name="practice" size={16} />
+              Continue Today's Study
+            </div>
             <div className="continue-body">
               <div className="continue-icon" aria-hidden="true">
-                🦊
+                <AppIcon name="computerNetworks" size={20} />
               </div>
               <div className="continue-copy">
                 <div className="continue-subject">Computer Networks</div>
@@ -512,7 +536,9 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
               </div>
               <div>
                 <div className="continue-meta-label">Est. Time</div>
-                <div className="continue-meta-value with-icon">🕐 14 min</div>
+                <div className="continue-meta-value with-icon">
+                  <AppIcon name="clock" size={14} /> 14 min
+                </div>
               </div>
             </div>
             <button type="button" className="continue-btn">
@@ -534,7 +560,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
               />
             ))}
 
-            <MiniCard theme="mini-blue" icon="🎯" title="Daily Mission">
+            <MiniCard theme="mini-blue" icon="target" title="Daily Mission">
               {missionItems.map((item) => (
                 <MiniMissionItem
                   key={item.label}
@@ -558,7 +584,7 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
           <section className="bottom-row">
             <div className="coach-card">
               <div className="coach-avatar" aria-hidden="true">
-                🤖
+                <AppIcon name="aiCoach" size={26} />
               </div>
               <div className="coach-copy">
                 <div className="coach-name">AI Study Coach – NEXA</div>
@@ -568,7 +594,10 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
                 <div className="coach-bottom">
                   <div className="coach-readiness">
                     Expected Readiness
-                    <b>↗ 74%</b>
+                    <b>
+                      <AppIcon name="trendingUp" size={14} />
+                      74%
+                    </b>
                   </div>
                   <button type="button" className="coach-btn">
                     Start Study Plan →
@@ -585,33 +614,9 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
             </div>
           </section>
         </main>
-
-        <nav className="bottom-nav" aria-label="Primary">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className={`nav-item${item.active ? ' active' : ''}`}
-              onClick={() => {
-                if (item.label === 'Subjects') {
-                  onNavigateSubjects()
-                  return
-                }
-                setDrawerOpen(false)
-              }}
-              aria-current={item.active ? 'page' : undefined}
-            >
-              <span className="nav-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      </MobileLayout>
     </div>
   )
 }
 
 export default DashboardPage
-

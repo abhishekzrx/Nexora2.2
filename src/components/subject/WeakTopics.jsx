@@ -2,7 +2,7 @@
  * WeakTopics
  * Reusable list of focus/weak topics with accuracy values.
  */
-function WeakTopics({ title = '🎯 Focus Areas', items = [] }) {
+function WeakTopics({ title = 'Focus Areas', items = [] }) {
   return (
     <div className="weak-topics">
       <div className="chart-title">{title}</div>

@@ -20,21 +20,22 @@ import StudyStats from '../components/subject/StudyStats'
 import TimeSpent from '../components/subject/TimeSpent'
 import Achievements from '../components/subject/Achievements'
 import AccuracyChart from '../components/subject/AccuracyChart'
+import AppIcon from '../components/ui/AppIcon'
 
 const tabItems = [
-  { key: 'chapters', icon: '📖', label: 'Chapters' },
-  { key: 'mcqs', icon: '❓', label: 'MCQs' },
-  { key: 'flashcards', icon: '🗂️', label: 'Flashcards' },
-  { key: 'notes', icon: '📝', label: 'Notes' },
-  { key: 'analytics', icon: '📊', label: 'Analytics' },
+  { key: 'chapters', icon: 'chapters', label: 'Chapters' },
+  { key: 'mcqs', icon: 'mcqs', label: 'MCQs' },
+  { key: 'flashcards', icon: 'flashcardsTab', label: 'Flashcards' },
+  { key: 'notes', icon: 'notesTab', label: 'Notes' },
+  { key: 'analytics', icon: 'analyticsTab', label: 'Analytics' },
 ]
 
 const bottomNav = [
-  { icon: '🏠', label: 'Home' },
-  { icon: '▦', label: 'Subjects', active: true },
-  { icon: '📖', label: 'center', center: true },
-  { icon: '📝', label: 'Practice' },
-  { icon: '👤', label: 'Profile' },
+  { icon: 'home', label: 'Home' },
+  { icon: 'subjects', label: 'Subjects', active: true },
+  { icon: 'centerBook', label: 'center', center: true },
+  { icon: 'practice', label: 'Practice' },
+  { icon: 'profile', label: 'Profile' },
 ]
 
 function SubjectDetailPage({
@@ -60,9 +61,16 @@ function SubjectDetailPage({
           <div className="chapters-header">
             <div className="chapters-title">All Chapters ({subject.chapters.length})</div>
             <div className="chapters-actions">
-              <button type="button" className="sort-btn">⇅ Sort</button>
-              <button type="button" className="view-btn active">☰</button>
-              <button type="button" className="view-btn">⊞</button>
+              <button type="button" className="sort-btn">
+                <AppIcon name="sort" size={14} />
+                Sort
+              </button>
+              <button type="button" className="view-btn active">
+                <AppIcon name="viewList" size={16} />
+              </button>
+              <button type="button" className="view-btn">
+                <AppIcon name="viewGrid" size={16} />
+              </button>
             </div>
           </div>
           <div className="chapter-list">
@@ -72,7 +80,9 @@ function SubjectDetailPage({
           </div>
           <div className="banner">
             <div className="banner-left">
-              <div className="banner-icon">🎯</div>
+              <div className="banner-icon">
+                <AppIcon name="target" size={18} />
+              </div>
               <div>
                 <div className="banner-title">Keep going! You're doing great.</div>
                 <div className="banner-sub">Complete the next chapter to improve your score.</div>
@@ -143,8 +153,12 @@ function SubjectDetailPage({
           onBackClick={onBackToSubjects}
           right={
             <div className="header-icons">
-              <span>🔖</span>
-              <span>⋮</span>
+              <span>
+                <AppIcon name="bookmark" size={18} />
+              </span>
+              <span>
+                <AppIcon name="moreVert" size={18} />
+              </span>
             </div>
           }
         />

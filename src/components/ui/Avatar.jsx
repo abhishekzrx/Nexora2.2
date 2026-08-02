@@ -1,15 +1,17 @@
 /**
  * Avatar
- * Circular user avatar with emoji content.
+ * Circular user avatar rendered with a Material UI profile icon.
  */
-function Avatar({ emoji = '🧑‍💼', size = 36, className = '' }) {
+import AppIcon from './AppIcon'
+
+function Avatar({ size = 36, className = '' }) {
   return (
     <div
       className={`avatar${className ? ` ${className}` : ''}`}
-      style={size !== 36 ? { width: size, height: size, fontSize: size / 2 } : undefined}
+      style={size !== 36 ? { width: size, height: size } : undefined}
       aria-hidden="true"
     >
-      {emoji}
+      <AppIcon name="profile" size={Math.round(size * 0.56)} />
     </div>
   )
 }

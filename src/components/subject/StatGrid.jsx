@@ -2,6 +2,8 @@
  * StatGrid
  * Reusable 2-column grid of metric cards with optional streak card.
  */
+import AppIcon from '../ui/AppIcon'
+
 function StatGrid({ metrics = [], streakIndex = -1 }) {
   return (
     <div className="analytics-grid">
@@ -9,7 +11,9 @@ function StatGrid({ metrics = [], streakIndex = -1 }) {
         if (index === streakIndex) {
           return (
             <div key={metric.label} className="streak-card">
-              <div className="streak-icon">{metric.subtitle}</div>
+              <div className="streak-icon">
+                <AppIcon name="streak" size={14} />
+              </div>
               <div className="streak-value">{metric.value}</div>
               <div className="streak-label">{metric.label}</div>
             </div>

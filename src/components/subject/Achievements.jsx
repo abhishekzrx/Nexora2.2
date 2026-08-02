@@ -2,6 +2,8 @@
  * Achievements
  * Reusable horizontal scroll of achievement badges.
  */
+import AppIcon from '../ui/AppIcon'
+
 function Achievements({ items = [] }) {
   return (
     <div>
@@ -9,7 +11,9 @@ function Achievements({ items = [] }) {
       <div className="achievements">
         {items.map((badge) => (
           <div className="achievement-badge" key={badge.name}>
-            <div className="achievement-icon">{badge.icon}</div>
+            <div className="achievement-icon">
+              <AppIcon name={badge.icon} size={24} />
+            </div>
             <div className="achievement-name">{badge.name}</div>
           </div>
         ))}

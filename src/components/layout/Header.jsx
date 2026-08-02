@@ -7,6 +7,7 @@
  */
 import Avatar from '../ui/Avatar'
 import BellIcon from '../ui/BellIcon'
+import AppIcon from '../ui/AppIcon'
 
 function Header({
   variant = 'title',
@@ -27,7 +28,7 @@ function Header({
       return (
         <>
           <button type="button" className="back-btn" onClick={onBackClick} aria-label="Go back">
-            ←
+            <AppIcon name="back" size={20} />
           </button>
           <div className="header-title-sm">{title}</div>
         </>
@@ -38,7 +39,7 @@ function Header({
       return (
         <>
           <button type="button" className="menu-icon" onClick={onMenuClick} aria-label="Open menu">
-            ☰
+            <AppIcon name="menu" size={20} />
           </button>
           <div>
             <div className="greeting-title">{greeting}</div>
@@ -51,7 +52,7 @@ function Header({
     return (
       <>
         <button type="button" className="menu-icon" onClick={onMenuClick} aria-label="Open menu">
-          ☰
+          <AppIcon name="menu" size={20} />
         </button>
         <div className="header-title">{title}</div>
       </>
@@ -65,12 +66,16 @@ function Header({
       <>
         {showSearch ? (
           <button type="button" className="header-icon" aria-label="Search">
-            🔍
+            <AppIcon name="search" size={19} />
           </button>
         ) : null}
         {showBell ? <BellIcon count={notificationCount} /> : null}
         {showAvatar ? <Avatar /> : null}
-        {showChevron ? <span className="chevron-down">▾</span> : null}
+        {showChevron ? (
+          <span className="chevron-down" aria-hidden="true">
+            <AppIcon name="chevronDown" size={12} />
+          </span>
+        ) : null}
       </>
     )
   }

@@ -119,6 +119,12 @@
   flex-shrink: 0;
 }
 
+.mcq-shell .pause-btn.timer-active {
+  background: var(--orange-bg);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
 .mcq-shell .content {
   padding: 0 16px;
 }
@@ -404,6 +410,25 @@
   height: 100%;
   background: var(--orange);
   border-radius: 4px;
+}
+
+/* Stable question area: fixed height so the surrounding
+   layout (nav buttons, actions) never shifts between questions. */
+.mcq-shell .question-scroll {
+  height: 420px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: #D0D5DD transparent;
+}
+
+.mcq-shell .question-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mcq-shell .question-scroll::-webkit-scrollbar-thumb {
+  background: #D0D5DD;
+  border-radius: 3px;
 }
 
 .mcq-shell .question-text {

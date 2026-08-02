@@ -2,6 +2,8 @@
  * Tabs
  * Reusable tab navigation with icon + label + underline indicator.
  */
+import AppIcon from '../ui/AppIcon'
+
 function Tabs({ items = [], activeKey, onChange }) {
   return (
     <div className="tabs-card">
@@ -15,7 +17,7 @@ function Tabs({ items = [], activeKey, onChange }) {
             onClick={() => onChange?.(item.key)}
           >
             <span className="tab-icon" aria-hidden="true">
-              {item.icon}
+              <AppIcon name={item.icon} size={19} />
             </span>
             <span className="tab-label">{item.label}</span>
             {isActive ? <span className="tab-underline" /> : null}

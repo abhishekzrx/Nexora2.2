@@ -8,6 +8,8 @@
  * - sections: array of { label, items: [{ icon, label, badge, active }] }
  * - onItemClick: function(item)
  */
+import AppIcon from '../ui/AppIcon'
+
 function SideDrawer({ open = false, onClose, profile, sections = [], onItemClick }) {
   return (
     <>
@@ -19,14 +21,19 @@ function SideDrawer({ open = false, onClose, profile, sections = [], onItemClick
       <aside className={`side-drawer${open ? ' open' : ''}`}>
         <div className="drawer-profile">
           <button type="button" className="drawer-close" onClick={onClose} aria-label="Close menu">
-            ✕
+            <AppIcon name="close" size={18} />
           </button>
           <div className="drawer-avatar" aria-hidden="true">
-            {profile?.avatar || '🧑‍💼'}
+            <AppIcon name="profile" size={26} />
           </div>
           <div className="drawer-name">{profile?.name || 'User'}</div>
           <div className="drawer-sub">{profile?.sub}</div>
-          {profile?.streak ? <div className="drawer-streak">🔥 {profile.streak}</div> : null}
+          {profile?.streak ? (
+            <div className="drawer-streak">
+              <AppIcon name="streak" size={14} />
+              {profile.streak}
+            </div>
+          ) : null}
         </div>
 
         <div className="drawer-menu">
@@ -42,7 +49,7 @@ function SideDrawer({ open = false, onClose, profile, sections = [], onItemClick
                   onClick={() => onItemClick?.(item)}
                 >
                   <span className="d-icon" aria-hidden="true">
-                    {item.icon}
+                    <AppIcon name={item.icon} size={18} />
                   </span>
                   {item.label}
                   {item.badge ? <span className="d-badge">{item.badge}</span> : null}
@@ -55,7 +62,7 @@ function SideDrawer({ open = false, onClose, profile, sections = [], onItemClick
         <div className="drawer-footer">
           <button type="button" className="drawer-logout" onClick={() => onItemClick?.({ label: 'Log Out' })}>
             <span className="d-icon" aria-hidden="true">
-              ↪
+              <AppIcon name="logout" size={18} />
             </span>
             Log Out
           </button>

@@ -1,17 +1,19 @@
 ﻿import { useState } from 'react'
 import './Subjects.css'
+import AppIcon from './components/ui/AppIcon'
+import MobileLayout from './components/layout/MobileLayout'
 
 const heroStats = [
-  { icon: '📖', value: '5', label: 'Subjects' },
-  { icon: '📄', value: '2', label: 'Chapters' },
-  { icon: '🎯', value: '200', label: 'MCQs' },
+  { icon: 'chapters', value: '5', label: 'Subjects' },
+  { icon: 'document', value: '2', label: 'Chapters' },
+  { icon: 'target', value: '200', label: 'MCQs' },
 ]
 
 const subjects = [
   {
     subjectKey: 'computer-networks',
     title: 'Computer Networks',
-    icon: '🔗',
+    icon: 'computerNetworks',
     iconClass: 'icon-orange',
     pillClass: 'pill-orange',
     pillLabel: 'MEDIUM',
@@ -24,7 +26,7 @@ const subjects = [
   {
     subjectKey: 'operating-systems',
     title: 'Operating Systems',
-    icon: '🖥️',
+    icon: 'operatingSystems',
     iconClass: 'icon-blue',
     pillClass: 'pill-blue',
     pillLabel: 'MEDIUM',
@@ -37,7 +39,7 @@ const subjects = [
   {
     subjectKey: 'dbms',
     title: 'Database Management System',
-    icon: '🗄️',
+    icon: 'dbms',
     iconClass: 'icon-green',
     pillClass: 'pill-green',
     pillLabel: 'MEDIUM',
@@ -50,7 +52,7 @@ const subjects = [
   {
     subjectKey: 'digital-electronics',
     title: 'Digital Electronics',
-    icon: '🔲',
+    icon: 'digitalElectronics',
     iconClass: 'icon-red',
     pillClass: 'pill-red',
     pillLabel: 'MEDIUM',
@@ -63,7 +65,7 @@ const subjects = [
   {
     subjectKey: 'data-structures',
     title: 'Data Structures & Algorithms',
-    icon: '{ }',
+    icon: 'dataStructures',
     iconClass: 'icon-purple',
     pillClass: 'pill-purple',
     pillLabel: 'MEDIUM',
@@ -76,7 +78,7 @@ const subjects = [
   {
     subjectKey: 'computer-organization',
     title: 'Computer Organization & Architecture',
-    icon: '🔲',
+    icon: 'computerOrganization',
     iconClass: 'icon-teal',
     pillClass: 'pill-teal',
     pillLabel: 'MEDIUM',
@@ -86,14 +88,6 @@ const subjects = [
     percentClass: 'pct-teal',
     arrowClass: 'arrow-teal',
   },
-]
-
-const bottomNavItems = [
-  { icon: '🏠', label: 'Home' },
-  { icon: '▦', label: 'Subjects', active: true },
-  { icon: '📘', label: 'center', center: true },
-  { icon: '📝', label: 'Practice' },
-  { icon: '👤', label: 'Profile' },
 ]
 
 function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillColor }) {
@@ -131,7 +125,9 @@ function SubjectCard({ subject, onSelect }) {
   return (
     <button type="button" className="subj-card" onClick={() => onSelect(subject.subjectKey)}>
       <div className="subj-top">
-        <div className={`subj-icon ${subject.iconClass}`}>{subject.icon}</div>
+        <div className={`subj-icon ${subject.iconClass}`}>
+          <AppIcon name={subject.icon} size={20} />
+        </div>
         <div className={`difficulty-pill ${subject.pillClass}`}>{subject.pillLabel}</div>
       </div>
       <div className="subj-name">{subject.title}</div>
@@ -144,7 +140,9 @@ function SubjectCard({ subject, onSelect }) {
             style={{ width: `${subject.progress}%` }}
           />
         </div>
-        <div className={`subj-arrow ${subject.arrowClass}`}>→</div>
+        <div className={`subj-arrow ${subject.arrowClass}`}>
+          <AppIcon name="arrowForward" size={15} />
+        </div>
       </div>
     </button>
   )
@@ -158,22 +156,33 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
 
   return (
     <div className="subjects-shell">
-      <div className="phone subjects-phone">
+      <MobileLayout
+        className="subjects-phone"
+        activeTab="Subjects"
+        onNavigate={(item) => {
+          if (item.label === 'Home') {
+            onNavigateHome()
+          }
+        }}
+      >
         <header className="header subjects-header">
           <div className="header-left">
             <button type="button" className="menu-icon" aria-label="Open menu">
-              ☰
+              <AppIcon name="menu" size={20} />
             </button>
             <div className="header-title">Subjects</div>
           </div>
           <div className="header-right">
             <button type="button" className="header-icon" aria-label="Search">
-              🔍
+              <AppIcon name="search" size={19} />
             </button>
             <button type="button" className="header-icon header-notify" aria-label="Notifications">
-              🔔<span className="bell-badge">3</span>
+              <AppIcon name="notifications" size={19} />
+              <span className="bell-badge">3</span>
             </button>
-            <div className="avatar">🧑‍💼</div>
+            <div className="avatar" aria-hidden="true">
+              <AppIcon name="profile" size={20} />
+            </div>
           </div>
         </header>
 
@@ -198,7 +207,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
                   progress={72}
                   trackColor="rgba(255,255,255,0.18)"
                   fillColor="#F1621B"
-                />
+                />               
                 <div className="hero-ring-value">72%</div>
                 <div className="hero-ring-label">Overall Progress</div>
               </div>
@@ -208,7 +217,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
               {heroStats.map((stat) => (
                 <div className="hero-stat" key={stat.label}>
                   <span className="hero-stat-icon" aria-hidden="true">
-                    {stat.icon}
+                    <AppIcon name={stat.icon} size={17} />
                   </span>
                   <div>
                     <div className="hero-stat-num">{stat.value}</div>
@@ -223,7 +232,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
             <div className="search-row">
               <label className="search-box">
                 <span className="search-icon" aria-hidden="true">
-                  🔍
+                  <AppIcon name="search" size={16} />
                 </span>
                 <input
                   type="text"
@@ -235,10 +244,12 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
             </div>
             <div className="search-row split-row">
               <button type="button" className="filter-btn">
-                ▽ Filter
+                <AppIcon name="filter" size={14} />
+                Filter
               </button>
               <button type="button" className="sort-btn">
-                ⇅ Sort
+                <AppIcon name="sort" size={14} />
+                Sort
               </button>
             </div>
           </section>
@@ -250,7 +261,9 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
           </section>
 
           <section className="motivation-banner">
-            <div className="motivation-icon">⭐</div>
+            <div className="motivation-icon">
+              <AppIcon name="star" size={20} />
+            </div>
             <div className="motivation-text">
               <div className="motivation-title">Keep learning, keep growing!</div>
               <div className="motivation-sub">
@@ -258,45 +271,14 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
               </div>
             </div>
             <button type="button" className="analytics-btn">
-              📊 View Analytics
+              <AppIcon name="analytics" size={16} />
+              View Analytics
             </button>
           </section>
         </main>
-
-        <nav className="bottom-nav subjects-bottom-nav" aria-label="Primary">
-          {bottomNavItems.map((item) => {
-            if (item.center) {
-              return (
-                <button key={item.label} type="button" className="nav-center" aria-label="Practice">
-                  {item.icon}
-                </button>
-              )
-            }
-
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`nav-item${item.active ? ' active' : ''}`}
-                onClick={() => {
-                  if (item.label === 'Home') {
-                    onNavigateHome()
-                  }
-                }}
-                aria-current={item.active ? 'page' : undefined}
-              >
-                <span className="nav-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                {item.label}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
+      </MobileLayout>
     </div>
   )
 }
 
 export default SubjectsPage
-

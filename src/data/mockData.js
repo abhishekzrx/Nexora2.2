@@ -8,14 +8,13 @@ export const userProfile = {
   name: 'Abhi Kumar',
   sub: 'BPSC TRE 4.0 • Computer Science',
   streak: '14 Day Streak',
-  avatar: '🧑‍💼',
 }
 
 export const subjectCatalog = {
   'computer-networks': {
     subjectKey: 'computer-networks',
     title: 'Computer Networks',
-    icon: '🕸️',
+    icon: 'computerNetworks',
     badge: 'MEDIUM',
     progress: 72,
     desc: 'Learn the fundamentals of computer networks, protocols, architectures and real-world systems.',
@@ -36,7 +35,7 @@ export const subjectCatalog = {
   'operating-systems': {
     subjectKey: 'operating-systems',
     title: 'Operating Systems',
-    icon: '🖥️',
+    icon: 'operatingSystems',
     badge: 'MEDIUM',
     progress: 68,
     desc: 'Master processes, memory, filesystems and the core ideas that power modern operating systems.',
@@ -57,7 +56,7 @@ export const subjectCatalog = {
   dbms: {
     subjectKey: 'dbms',
     title: 'DBMS',
-    icon: '📊',
+    icon: 'dbms',
     badge: 'MEDIUM',
     progress: 80,
     desc: 'Review relational models, SQL, transactions and normalization with structured practice.',
@@ -78,7 +77,7 @@ export const subjectCatalog = {
   'digital-electronics': {
     subjectKey: 'digital-electronics',
     title: 'Digital Electronics',
-    icon: '🔲',
+    icon: 'digitalElectronics',
     badge: 'MEDIUM',
     progress: 45,
     desc: 'Build confidence with number systems, logic gates, combinational and sequential circuits.',
@@ -99,7 +98,7 @@ export const subjectCatalog = {
   'data-structures': {
     subjectKey: 'data-structures',
     title: 'Data Structures & Algorithms',
-    icon: '{ }',
+    icon: 'dataStructures',
     badge: 'MEDIUM',
     progress: 52,
     desc: 'Practice arrays, linked lists, trees, graphs and algorithms with step-by-step mastery.',
@@ -120,7 +119,7 @@ export const subjectCatalog = {
   'computer-organization': {
     subjectKey: 'computer-organization',
     title: 'Computer Organization & Architecture',
-    icon: '🔲',
+    icon: 'computerOrganization',
     badge: 'MEDIUM',
     progress: 42,
     desc: 'Understand how hardware, memory, instruction sets and pipelines shape computer systems.',

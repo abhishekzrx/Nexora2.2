@@ -16,7 +16,7 @@ export function deriveAnalytics(subject) {
     metrics: [
       { value: `${avg}%`, label: 'Accuracy', subtitle: 'Last 30 days' },
       { value: String(Math.max(1, subject.chapters.filter((ch) => ch.progress >= 80).length * 8)), label: 'Topics Mastered', subtitle: `Out of ${subject.chapters.length * 8}` },
-      { value: String(7 + Math.round(subject.progress / 15)), label: 'Day Streak', subtitle: '🔥' },
+      { value: String(7 + Math.round(subject.progress / 15)), label: 'Day Streak', subtitle: 'Days active' },
       { value: `${Math.max(8, Math.round(subject.progress / 4))}h`, label: 'Total Study Time', subtitle: 'This month' },
     ],
     trend: [avg - 10, avg - 4, avg, avg + 4, avg + 8, avg + 5, avg + 3].map(clamp),
@@ -41,11 +41,11 @@ export function deriveAnalytics(subject) {
       { name: 'Flash', width: 35, hours: `${(subject.progress / 18).toFixed(1)}h` },
     ],
     achievements: [
-      { icon: '🌟', name: subject.badge },
-      { icon: '🔥', name: '7-Day Streak' },
-      { icon: '💯', name: 'Perfect Chapter' },
-      { icon: '🚀', name: 'Fast Learner' },
-      { icon: '🎯', name: '50 Questions' },
+      { icon: 'star', name: subject.badge },
+      { icon: 'streak', name: '7-Day Streak' },
+      { icon: 'hundred', name: 'Perfect Chapter' },
+      { icon: 'rocket', name: 'Fast Learner' },
+      { icon: 'target', name: '50 Questions' },
     ],
     mcqMetrics: [
       { value: String(subject.counts.mcqs - 80), label: 'Attempted', subtitle: 'Total MCQs' },
