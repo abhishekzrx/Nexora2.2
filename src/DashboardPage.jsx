@@ -120,6 +120,7 @@ const drawerMoreItems = [
   { icon: 'notifications', label: 'Notifications', badge: '3' },
   { icon: 'settings', label: 'Settings' },
   { icon: 'help', label: 'Help & Support' },
+  { icon: 'adminDashboard', label: 'Admin' },
 ]
 
 function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillColor, children }) {
@@ -262,7 +263,11 @@ function ActivityItem({ icon, iconClass, text, time }) {
   )
 }
 
-function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = () => {} }) {
+function DashboardPage({
+  onNavigateSubjects = () => {},
+  onOpenSubjectDetail = () => {},
+  onNavigateAdmin = () => {},
+}) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
@@ -339,7 +344,13 @@ function DashboardPage({ onNavigateSubjects = () => {}, onOpenSubjectDetail = ()
               icon={item.icon}
               label={item.label}
               badge={item.badge}
-              onClick={() => setDrawerOpen(false)}
+              onClick={() => {
+                if (item.label === 'Admin') {
+                  onNavigateAdmin()
+                  return
+                }
+                setDrawerOpen(false)
+              }}
             />
           ))}
         </div>

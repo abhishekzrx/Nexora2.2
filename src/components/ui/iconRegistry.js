@@ -67,6 +67,17 @@ import MemoryRounded from '@mui/icons-material/MemoryRounded'
 import WorkspacePremiumRounded from '@mui/icons-material/WorkspacePremiumRounded'
 import SchoolRounded from '@mui/icons-material/SchoolRounded'
 import ComputerRounded from '@mui/icons-material/ComputerRounded'
+import AddRounded from '@mui/icons-material/AddRounded'
+import EditRounded from '@mui/icons-material/EditRounded'
+import DeleteRounded from '@mui/icons-material/DeleteRounded'
+import DragIndicatorRounded from '@mui/icons-material/DragIndicatorRounded'
+import WarningRounded from '@mui/icons-material/WarningRounded'
+import FolderRounded from '@mui/icons-material/FolderRounded'
+import BoltRounded from '@mui/icons-material/BoltRounded'
+import ScienceRounded from '@mui/icons-material/ScienceRounded'
+import BiotechRounded from '@mui/icons-material/BiotechRounded'
+import FileUploadRounded from '@mui/icons-material/FileUploadRounded'
+import SpaceDashboardRounded from '@mui/icons-material/SpaceDashboardRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
@@ -149,6 +160,19 @@ export const iconRegistry = {
   digitalElectronics: { component: DeveloperBoardRounded, optical: 0 },
   dataStructures: { component: CodeRounded, optical: 1 },
   computerOrganization: { component: MemoryRounded, optical: 0 },
+
+  // ── Admin ──────────────────────────────────────────────────
+  adminDashboard: { component: SpaceDashboardRounded, optical: 0 },
+  add: { component: AddRounded, optical: 1 },
+  edit: { component: EditRounded, optical: 0 },
+  delete: { component: DeleteRounded, optical: 1 },
+  dragHandle: { component: DragIndicatorRounded, optical: 1 },
+  warning: { component: WarningRounded, optical: 0 },
+  folder: { component: FolderRounded, optical: 0 },
+  upload: { component: FileUploadRounded, optical: 1 },
+  physics: { component: BoltRounded, optical: 0 },
+  chemistry: { component: ScienceRounded, optical: 0 },
+  biology: { component: BiotechRounded, optical: 0 },
 }
 
 export default iconRegistry

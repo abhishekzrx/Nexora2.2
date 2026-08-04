@@ -4,6 +4,7 @@ import SubjectsPage from './SubjectsPage'
 import SubjectDetailPage from './pages/SubjectDetailPage'
 import MCQPracticePage from './pages/MCQPracticePage'
 import TestResultsPage from './pages/TestResultsPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   const [screen, setScreen] = useState({ name: 'dashboard', subjectKey: 'computer-networks' })
@@ -14,6 +15,13 @@ function App() {
   const openMCQPractice = (subjectKey) => setScreen({ name: 'mcq', subjectKey })
   const openMCQResponse = (subjectKey, chapter) => setScreen({ name: 'mcq', subjectKey, chapter })
   const openTestResults = () => setScreen((current) => ({ ...current, name: 'results' }))
+  const openAdmin = () => setScreen((current) => ({ ...current, name: 'admin' }))
+
+  if (screen.name === 'admin') {
+    return (
+      <AdminPage onBackHome={openDashboard} />
+    )
+  }
 
   if (screen.name === 'subjects') {
     return (
@@ -63,6 +71,7 @@ function App() {
     <DashboardPage
       onNavigateSubjects={openSubjects}
       onOpenSubjectDetail={openSubjectDetail}
+      onNavigateAdmin={openAdmin}
     />
   )
 }
