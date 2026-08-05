@@ -1,7 +1,8 @@
-﻿import { useState } from 'react'
+﻿import { useRef, useState } from 'react'
 import './Subjects.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
+import SideDrawer from './components/layout/SideDrawer'
 
 const heroStats = [
   { icon: 'chapters', value: '5', label: 'Subjects' },
@@ -90,6 +91,37 @@ const subjects = [
   },
 ]
 
+const drawerSections = [
+  {
+    label: 'MAIN',
+    items: [
+      { icon: 'home', label: 'Dashboard' },
+      { icon: 'subjects', label: 'Subjects', active: true },
+      { icon: 'practice', label: 'Practice', disabled: true },
+      { icon: 'flashcards', label: 'Flashcards', disabled: true },
+      { icon: 'mockTests', label: 'Mock Tests', disabled: true },
+    ],
+  },
+  {
+    label: 'TRACK PROGRESS',
+    items: [
+      { icon: 'analytics', label: 'Analytics', disabled: true },
+      { icon: 'studyPlanner', label: 'Study Planner', disabled: true },
+      { icon: 'leaderboard', label: 'Leaderboard', disabled: true },
+    ],
+  },
+  {
+    label: 'MORE',
+    items: [
+      { icon: 'notes', label: 'Notes', disabled: true },
+      { icon: 'notifications', label: 'Notifications', badge: '3', disabled: true },
+      { icon: 'settings', label: 'Settings', disabled: true },
+      { icon: 'help', label: 'Help & Support', disabled: true },
+      { icon: 'adminDashboard', label: 'Admin' },
+    ],
+  },
+]
+
 function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillColor }) {
   const circumference = 2 * Math.PI * radius
   const dashOffset = circumference - (progress / 100) * circumference
@@ -148,35 +180,57 @@ function SubjectCard({ subject, onSelect }) {
   )
 }
 
-function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {} }) {
+function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigateAdmin = () => {} }) {
   const [search, setSearch] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const searchInputRef = useRef(null)
   const filteredSubjects = subjects.filter((subject) =>
     subject.title.toLowerCase().includes(search.toLowerCase()),
   )
 
   return (
     <div className="subjects-shell">
+      <SideDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        profile={{ name: 'Abhi Kumar', sub: 'BPSC TRE 4.0 • Computer Science', streak: '14 Day Streak' }}
+        sections={drawerSections}
+        onItemClick={(item) => {
+          setDrawerOpen(false)
+          if (item.label === 'Dashboard') onNavigateHome()
+          else if (item.label === 'Admin') onNavigateAdmin()
+        }}
+      />
+
       <MobileLayout
         className="subjects-phone"
         activeTab="Subjects"
+        disabledItems={['Practice', 'Profile']}
         onNavigate={(item) => {
-          if (item.label === 'Home') {
+          if (item.center) {
+            onOpenSubjectDetail('computer-networks')
+          } else if (item.label === 'Home') {
             onNavigateHome()
           }
         }}
       >
         <header className="header subjects-header">
           <div className="header-left">
-            <button type="button" className="menu-icon" aria-label="Open menu">
+            <button type="button" className="menu-icon" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
               <AppIcon name="menu" size={20} />
             </button>
             <div className="header-title">Subjects</div>
           </div>
           <div className="header-right">
-            <button type="button" className="header-icon" aria-label="Search">
+            <button
+              type="button"
+              className="header-icon"
+              aria-label="Search"
+              onClick={() => searchInputRef.current?.focus()}
+            >
               <AppIcon name="search" size={19} />
             </button>
-            <button type="button" className="header-icon header-notify" aria-label="Notifications">
+            <button type="button" className="header-icon header-notify" aria-label="Notifications" disabled>
               <AppIcon name="notifications" size={19} />
               <span className="bell-badge">3</span>
             </button>
@@ -235,6 +289,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
                   <AppIcon name="search" size={16} />
                 </span>
                 <input
+                  ref={searchInputRef}
                   type="text"
                   placeholder="Search subjects..."
                   value={search}
@@ -243,11 +298,11 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
               </label>
             </div>
             <div className="search-row split-row">
-              <button type="button" className="filter-btn">
+              <button type="button" className="filter-btn" disabled>
                 <AppIcon name="filter" size={14} />
                 Filter
               </button>
-              <button type="button" className="sort-btn">
+              <button type="button" className="sort-btn" disabled>
                 <AppIcon name="sort" size={14} />
                 Sort
               </button>
@@ -270,7 +325,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
                 You're on the right path. Consistency today, excellence tomorrow.
               </div>
             </div>
-            <button type="button" className="analytics-btn">
+            <button type="button" className="analytics-btn" disabled>
               <AppIcon name="analytics" size={16} />
               View Analytics
             </button>

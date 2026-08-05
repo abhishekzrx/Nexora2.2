@@ -44,9 +44,7 @@ function AdminContentManager({ onOpenModal, onNavigate }) {
 
       {activeTab === 'subjects' ? <AdminSubjectsTab onOpenModal={onOpenModal} /> : null}
       {activeTab === 'chapters' ? <AdminChaptersTab onOpenModal={onOpenModal} /> : null}
-      {activeTab === 'mcqs' ? (
-        <AdminMcqsTab onOpenModal={onOpenModal} onNavigate={onNavigate} />
-      ) : null}
+      {activeTab === 'mcqs' ? <AdminMcqsTab onOpenModal={onOpenModal} /> : null}
       {activeTab === 'flashcards' ? <AdminFlashcardsTab onOpenModal={onOpenModal} /> : null}
       {activeTab === 'analytics' ? <AdminAnalyticsTab /> : null}
     </>

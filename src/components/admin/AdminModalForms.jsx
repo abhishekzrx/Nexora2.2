@@ -1,12 +1,16 @@
 /**
  * AdminModalForms
- * Reusable form bodies for admin modals.
+ * Reusable controlled form bodies for admin modals.
+ * Each form receives `value` (the item being edited) and `onChange`
+ * so the parent can collect real data and perform actual CRUD.
  */
 import AppIcon from '../ui/AppIcon'
 import { AdminFormField } from './AdminModal'
+import { useAdminStore } from '../../data/adminStore'
 
-export function SubjectForm({ mode }) {
-  const isEdit = mode === 'edit'
+export function SubjectForm({ value, onChange }) {
+  const isEdit = Boolean(value)
+  const data = value || {}
   return (
     <>
       <AdminFormField label="Subject Name" required htmlFor="subjectName">
@@ -15,7 +19,8 @@ export function SubjectForm({ mode }) {
           type="text"
           className="admin-form-input"
           placeholder="e.g., Physics"
-          defaultValue={isEdit ? 'Computer Networks' : undefined}
+          value={data.name || ''}
+          onChange={(e) => onChange?.({ ...data, name: e.target.value })}
           required
         />
       </AdminFormField>
@@ -25,7 +30,8 @@ export function SubjectForm({ mode }) {
           type="text"
           className="admin-form-input"
           placeholder="e.g., ⚛️"
-          defaultValue={isEdit ? '🕸️' : undefined}
+          value={data.icon || ''}
+          onChange={(e) => onChange?.({ ...data, icon: e.target.value })}
           required
         />
       </AdminFormField>
@@ -34,31 +40,32 @@ export function SubjectForm({ mode }) {
           id="subjectDesc"
           className="admin-form-textarea"
           placeholder="Enter subject description..."
-          defaultValue={isEdit ? 'Comprehensive guide to network protocols, architectures and systems' : undefined}
+          value={data.desc || ''}
+          onChange={(e) => onChange?.({ ...data, desc: e.target.value })}
         />
-      </AdminFormField>
-      <AdminFormField label="Status" htmlFor="subjectStatus">
-        <select id="subjectStatus" className="admin-form-select" defaultValue="Active">
-          <option>Active</option>
-          <option>Draft</option>
-          <option>Inactive</option>
-        </select>
       </AdminFormField>
     </>
   )
 }
 
-export function ChapterForm({ mode }) {
-  const isEdit = mode === 'edit'
+export function ChapterForm({ value, onChange }) {
+  const isEdit = Boolean(value)
+  const data = value || {}
+  const { subjects } = useAdminStore()
   return (
     <>
       <AdminFormField label="Select Subject" required htmlFor="chapterSubject">
-        <select id="chapterSubject" className="admin-form-select" defaultValue={isEdit ? 'Computer Networks' : ''} required>
+        <select
+          id="chapterSubject"
+          className="admin-form-select"
+          value={data.subject || ''}
+          onChange={(e) => onChange?.({ ...data, subject: e.target.value })}
+          required
+        >
           {!isEdit ? <option value="">-- Select Subject --</option> : null}
-          <option>Computer Networks</option>
-          <option>Physics</option>
-          <option>Chemistry</option>
-          <option>Biology</option>
+          {subjects.map((subject) => (
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
+          ))}
         </select>
       </AdminFormField>
       <AdminFormField label="Chapter Name" required htmlFor="chapterName">
@@ -67,7 +74,8 @@ export function ChapterForm({ mode }) {
           type="text"
           className="admin-form-input"
           placeholder="e.g., Introduction to Networks"
-          defaultValue={isEdit ? 'Introduction to Networks' : undefined}
+          value={data.name || ''}
+          onChange={(e) => onChange?.({ ...data, name: e.target.value })}
           required
         />
       </AdminFormField>
@@ -76,7 +84,8 @@ export function ChapterForm({ mode }) {
           id="chapterDesc"
           className="admin-form-textarea"
           placeholder="Detailed description of chapter content..."
-          defaultValue={isEdit ? 'Network basics and fundamentals' : undefined}
+          value={data.desc || ''}
+          onChange={(e) => onChange?.({ ...data, desc: e.target.value })}
           required
         />
       </AdminFormField>
@@ -87,48 +96,99 @@ export function ChapterForm({ mode }) {
           className="admin-form-input"
           placeholder="e.g., 1"
           min="1"
-          defaultValue={isEdit ? '1' : undefined}
+          value={data.number || ''}
+          onChange={(e) => onChange?.({ ...data, number: e.target.value })}
         />
-      </AdminFormField>
-      <AdminFormField label="Status" htmlFor="chapterStatus">
-        <select id="chapterStatus" className="admin-form-select" defaultValue="Active">
-          <option>Draft</option>
-          <option>Active</option>
-          <option>Archive</option>
-        </select>
       </AdminFormField>
     </>
   )
 }
 
-export function McqForm() {
+export function McqForm({ value, onChange }) {
+  const data = value || {}
+  const { subjects, chapters } = useAdminStore()
+  const options = data.options || ['', '', '', '']
+  const correctIndex = data.correct !== undefined ? data.correct : 0
+  const difficulty = data.difficultyText || 'Easy'
+
   return (
     <>
+      <AdminFormField label="Select Subject" required htmlFor="mcqSubject">
+        <select
+          id="mcqSubject"
+          className="admin-form-select"
+          value={data.subject || ''}
+          onChange={(e) => onChange?.({ ...data, subject: e.target.value })}
+          required
+        >
+          <option value="">-- Select Subject --</option>
+          {subjects.map((subject) => (
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
+          ))}
+        </select>
+      </AdminFormField>
+      <AdminFormField label="Select Chapter" required htmlFor="mcqChapter">
+        <select
+          id="mcqChapter"
+          className="admin-form-select"
+          value={data.chapter || ''}
+          onChange={(e) => onChange?.({ ...data, chapter: e.target.value })}
+          required
+        >
+          <option value="">-- Select Chapter --</option>
+          {chapters
+            .filter((c) => !data.subject || c.subject === data.subject)
+            .map((chapter) => (
+              <option key={chapter.id} value={chapter.name}>{chapter.name}</option>
+            ))}
+        </select>
+      </AdminFormField>
       <AdminFormField label="Question" required htmlFor="mcqQuestion">
-        <textarea id="mcqQuestion" className="admin-form-textarea" defaultValue="What is a subnet mask?" required />
+        <textarea
+          id="mcqQuestion"
+          className="admin-form-textarea"
+          value={data.question || ''}
+          onChange={(e) => onChange?.({ ...data, question: e.target.value })}
+          required
+        />
       </AdminFormField>
-      <AdminFormField label="Option A" required htmlFor="mcqOptionA">
-        <input id="mcqOptionA" type="text" className="admin-form-input" defaultValue="A network security protocol" required />
-      </AdminFormField>
-      <AdminFormField label="Option B" required htmlFor="mcqOptionB">
-        <input id="mcqOptionB" type="text" className="admin-form-input" defaultValue="A 32-bit identifier for IP addresses" required />
-      </AdminFormField>
-      <AdminFormField label="Option C" required htmlFor="mcqOptionC">
-        <input id="mcqOptionC" type="text" className="admin-form-input" defaultValue="Used to divide IP networks" required />
-      </AdminFormField>
-      <AdminFormField label="Option D" required htmlFor="mcqOptionD">
-        <input id="mcqOptionD" type="text" className="admin-form-input" defaultValue="A routing algorithm" required />
-      </AdminFormField>
+      {['A', 'B', 'C', 'D'].map((letter, index) => (
+        <AdminFormField key={letter} label={`Option ${letter}`} required htmlFor={`mcqOption${letter}`}>
+          <input
+            id={`mcqOption${letter}`}
+            type="text"
+            className="admin-form-input"
+            value={options[index] || ''}
+            onChange={(e) => {
+              const next = [...options]
+              next[index] = e.target.value
+              onChange?.({ ...data, options: next })
+            }}
+            required
+          />
+        </AdminFormField>
+      ))}
       <AdminFormField label="Correct Answer" required htmlFor="mcqCorrect">
-        <select id="mcqCorrect" className="admin-form-select" defaultValue="B" required>
-          <option>A</option>
-          <option>B</option>
-          <option>C</option>
-          <option>D</option>
+        <select
+          id="mcqCorrect"
+          className="admin-form-select"
+          value={correctIndex}
+          onChange={(e) => onChange?.({ ...data, correct: Number(e.target.value) })}
+          required
+        >
+          <option value={0}>A</option>
+          <option value={1}>B</option>
+          <option value={2}>C</option>
+          <option value={3}>D</option>
         </select>
       </AdminFormField>
       <AdminFormField label="Difficulty Level" htmlFor="mcqDifficulty">
-        <select id="mcqDifficulty" className="admin-form-select" defaultValue="Easy">
+        <select
+          id="mcqDifficulty"
+          className="admin-form-select"
+          value={difficulty}
+          onChange={(e) => onChange?.({ ...data, difficulty: e.target.value })}
+        >
           <option>Easy</option>
           <option>Medium</option>
           <option>Hard</option>
@@ -138,24 +198,40 @@ export function McqForm() {
   )
 }
 
-export function FlashcardForm({ mode }) {
-  const isEdit = mode === 'edit'
+export function FlashcardForm({ value, onChange }) {
+  const isEdit = Boolean(value)
+  const data = value || {}
+  const { subjects, chapters } = useAdminStore()
   return (
     <>
       <AdminFormField label="Select Subject" required htmlFor="flashcardSubject">
-        <select id="flashcardSubject" className="admin-form-select" defaultValue={isEdit ? 'Computer Networks' : ''} required>
+        <select
+          id="flashcardSubject"
+          className="admin-form-select"
+          value={data.subject || ''}
+          onChange={(e) => onChange?.({ ...data, subject: e.target.value })}
+          required
+        >
           {!isEdit ? <option value="">-- Select Subject --</option> : null}
-          <option>Computer Networks</option>
-          <option>Physics</option>
-          <option>Chemistry</option>
-          <option>Biology</option>
+          {subjects.map((subject) => (
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
+          ))}
         </select>
       </AdminFormField>
       <AdminFormField label="Select Chapter" required htmlFor="flashcardChapter">
-        <select id="flashcardChapter" className="admin-form-select" defaultValue={isEdit ? 'Intro to Networks' : ''} required>
+        <select
+          id="flashcardChapter"
+          className="admin-form-select"
+          value={data.chapter || ''}
+          onChange={(e) => onChange?.({ ...data, chapter: e.target.value })}
+          required
+        >
           {!isEdit ? <option value="">-- Select Chapter --</option> : null}
-          <option>Intro to Networks</option>
-          <option>OSI Model</option>
+          {chapters
+            .filter((c) => !data.subject || c.subject === data.subject)
+            .map((chapter) => (
+              <option key={chapter.id} value={chapter.name}>{chapter.name}</option>
+            ))}
         </select>
       </AdminFormField>
       <AdminFormField label="Front (Question)" required htmlFor="flashcardFront">
@@ -163,7 +239,8 @@ export function FlashcardForm({ mode }) {
           id="flashcardFront"
           className="admin-form-textarea"
           placeholder="What is bandwidth?"
-          defaultValue={isEdit ? 'What is bandwidth?' : undefined}
+          value={data.front || ''}
+          onChange={(e) => onChange?.({ ...data, front: e.target.value })}
           required
         />
       </AdminFormField>
@@ -172,79 +249,144 @@ export function FlashcardForm({ mode }) {
           id="flashcardBack"
           className="admin-form-textarea"
           placeholder="The maximum rate of data transfer..."
-          defaultValue={isEdit ? 'The maximum rate of data transfer across a network path' : undefined}
+          value={data.back || ''}
+          onChange={(e) => onChange?.({ ...data, back: e.target.value })}
           required
         />
       </AdminFormField>
-      <AdminFormField label="Status" htmlFor="flashcardStatus">
-        <select id="flashcardStatus" className="admin-form-select" defaultValue="Active">
-          <option>Active</option>
-          <option>Review</option>
-          <option>Inactive</option>
-        </select>
-      </AdminFormField>
     </>
   )
 }
 
-export function BulkDeleteMcqsForm() {
+export function BulkDeleteMcqsForm({ value, onChange }) {
+  const data = value || {}
+  const { subjects, chapters } = useAdminStore()
   return (
     <>
+      <AdminFormField label="Filter by Subject" htmlFor="bulkMcqSubject">
+        <select
+          id="bulkMcqSubject"
+          className="admin-form-select"
+          value={data.subject || ''}
+          onChange={(e) => onChange?.({ ...data, subject: e.target.value, chapter: '' })}
+        >
+          <option value="">-- All Subjects --</option>
+          {subjects.map((subject) => (
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
+          ))}
+        </select>
+      </AdminFormField>
       <AdminFormField label="Filter by Chapter" htmlFor="bulkMcqChapter">
-        <select id="bulkMcqChapter" className="admin-form-select" defaultValue="-- All Chapters --">
-          <option>-- All Chapters --</option>
-          <option>Intro to Networks</option>
-          <option>OSI Model</option>
-          <option>Thermodynamics</option>
-        </select>
-      </AdminFormField>
-      <AdminFormField label="Filter by Difficulty" htmlFor="bulkMcqDifficulty">
-        <select id="bulkMcqDifficulty" className="admin-form-select" defaultValue="-- All Difficulties --">
-          <option>-- All Difficulties --</option>
-          <option>Easy</option>
-          <option>Medium</option>
-          <option>Hard</option>
+        <select
+          id="bulkMcqChapter"
+          className="admin-form-select"
+          value={data.chapter || ''}
+          onChange={(e) => onChange?.({ ...data, chapter: e.target.value })}
+        >
+          <option value="">-- All Chapters --</option>
+          {chapters
+            .filter((c) => !data.subject || c.subject === data.subject)
+            .map((chapter) => (
+              <option key={chapter.id} value={chapter.name}>{chapter.name}</option>
+            ))}
         </select>
       </AdminFormField>
       <div className="admin-modal-warning">
         <AppIcon name="warning" size={16} />
-        <span>Warning: This will delete approximately <strong>45 MCQs</strong> matching your criteria. This action cannot be undone.</span>
+        <span>Warning: This will delete all MCQs matching your criteria. This action cannot be undone.</span>
       </div>
     </>
   )
 }
 
-export function BulkDeleteFlashcardsForm() {
+export function BulkDeleteFlashcardsForm({ value, onChange }) {
+  const data = value || {}
+  const { subjects, chapters } = useAdminStore()
   return (
     <>
-      <AdminFormField label="Filter by Chapter" htmlFor="bulkFlashcardChapter">
-        <select id="bulkFlashcardChapter" className="admin-form-select" defaultValue="-- All Chapters --">
-          <option>-- All Chapters --</option>
-          <option>Intro to Networks</option>
-          <option>OSI Model</option>
-          <option>Thermodynamics</option>
+      <AdminFormField label="Filter by Subject" htmlFor="bulkFlashcardSubject">
+        <select
+          id="bulkFlashcardSubject"
+          className="admin-form-select"
+          value={data.subject || ''}
+          onChange={(e) => onChange?.({ ...data, subject: e.target.value, chapter: '' })}
+        >
+          <option value="">-- All Subjects --</option>
+          {subjects.map((subject) => (
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
+          ))}
         </select>
       </AdminFormField>
-      <AdminFormField label="Filter by Status" htmlFor="bulkFlashcardStatus">
-        <select id="bulkFlashcardStatus" className="admin-form-select" defaultValue="-- All Status --">
-          <option>-- All Status --</option>
-          <option>Active</option>
-          <option>Review</option>
-          <option>Inactive</option>
+      <AdminFormField label="Filter by Chapter" htmlFor="bulkFlashcardChapter">
+        <select
+          id="bulkFlashcardChapter"
+          className="admin-form-select"
+          value={data.chapter || ''}
+          onChange={(e) => onChange?.({ ...data, chapter: e.target.value })}
+        >
+          <option value="">-- All Chapters --</option>
+          {chapters
+            .filter((c) => !data.subject || c.subject === data.subject)
+            .map((chapter) => (
+              <option key={chapter.id} value={chapter.name}>{chapter.name}</option>
+            ))}
         </select>
       </AdminFormField>
       <div className="admin-modal-warning">
         <AppIcon name="warning" size={16} />
-        <span>Warning: This will delete approximately <strong>32 Flashcards</strong> matching your criteria. This action cannot be undone.</span>
+        <span>Warning: This will delete all flashcards matching your criteria. This action cannot be undone.</span>
       </div>
     </>
   )
 }
 
-export function ConfirmDelete({ message }) {
+/**
+ * ImpactChip — displays a labelled count chip for delete confirmations.
+ */
+export function ImpactChip({ icon, label, count, tone = 'orange' }) {
+  return (
+    <div className={`admin-impact-chip tone-${tone}`}>
+      <AppIcon name={icon} size={13} />
+      <span className="admin-impact-chip-label">{label}</span>
+      <span className="admin-impact-chip-count">{count}</span>
+    </div>
+  )
+}
+
+/**
+ * DeleteImpactSummary — grid of ImpactChips showing exactly what will be removed.
+ */
+export function DeleteImpactSummary({ items }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div className="admin-delete-impact">
+      <div className="admin-delete-impact-title">
+        <AppIcon name="warning" size={13} />
+        This will permanently remove
+      </div>
+      <div className="admin-delete-impact-grid">
+        {items.map((item) => (
+          <ImpactChip
+            key={item.label}
+            icon={item.icon}
+            label={item.label}
+            count={item.count}
+            tone={item.tone || 'orange'}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function ConfirmDelete({ message, detail, impact }) {
   return (
     <div style={{ paddingBottom: 4 }}>
-      <div style={{ fontSize: 14, color: 'var(--dark-2)', lineHeight: 1.6 }}>{message}</div>
+      <div className="admin-confirm-delete-message">{message}</div>
+      {detail ? (
+        <div className="admin-confirm-delete-detail">{detail}</div>
+      ) : null}
+      {impact && impact.length > 0 ? <DeleteImpactSummary items={impact} /> : null}
     </div>
   )
 }

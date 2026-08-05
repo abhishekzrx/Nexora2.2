@@ -11,6 +11,25 @@ export const adminStats = [
   { icon: 'flashcardsTab', value: '856', label: 'Total Flashcards', change: '↑ 180 this month' },
 ]
 
+/**
+ * CMS Workspace Overview Hero data.
+ * Drives the premium hero section on the Admin Dashboard.
+ */
+export const workspaceStats = [
+  { icon: 'subjects', value: '8', label: 'Subjects', trend: '+2', up: true },
+  { icon: 'chapters', value: '62', label: 'Chapters', trend: '+12', up: true },
+  { icon: 'mcqs', value: '1.2K', label: 'MCQs', trend: '+340', up: true },
+  { icon: 'flashcardsTab', value: '856', label: 'Flashcards', trend: '+180', up: true },
+]
+
+export const workspaceHighlights = [
+  { icon: 'chapters', label: 'New Chapters Added', value: '+12', tone: 'green' },
+  { icon: 'mcqs', label: 'MCQs Added This Week', value: '+340', tone: 'orange' },
+  { icon: 'flashcardsTab', label: 'Flashcards Pending Review', value: '24', tone: 'purple' },
+  { icon: 'subjects', label: 'Active Subjects', value: '8', tone: 'blue' },
+  { icon: 'target', label: 'Content Coverage', value: '72%', tone: 'green', progress: 72 },
+]
+
 export const quickActions = [
   { icon: 'add', label: 'Add Subject', modal: 'addSubject' },
   { icon: 'add', label: 'Add Chapter', modal: 'addChapter' },

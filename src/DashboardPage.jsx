@@ -104,22 +104,22 @@ const activityItems = [
 const drawerPrimaryItems = [
   { icon: 'home', label: 'Dashboard', active: true },
   { icon: 'subjects', label: 'Subjects' },
-  { icon: 'practice', label: 'Practice' },
-  { icon: 'flashcards', label: 'Flashcards' },
-  { icon: 'mockTests', label: 'Mock Tests' },
+  { icon: 'practice', label: 'Practice', disabled: true },
+  { icon: 'flashcards', label: 'Flashcards', disabled: true },
+  { icon: 'mockTests', label: 'Mock Tests', disabled: true },
 ]
 
 const drawerProgressItems = [
-  { icon: 'analytics', label: 'Analytics' },
-  { icon: 'studyPlanner', label: 'Study Planner' },
-  { icon: 'leaderboard', label: 'Leaderboard' },
+  { icon: 'analytics', label: 'Analytics', disabled: true },
+  { icon: 'studyPlanner', label: 'Study Planner', disabled: true },
+  { icon: 'leaderboard', label: 'Leaderboard', disabled: true },
 ]
 
 const drawerMoreItems = [
-  { icon: 'notes', label: 'Notes' },
-  { icon: 'notifications', label: 'Notifications', badge: '3' },
-  { icon: 'settings', label: 'Settings' },
-  { icon: 'help', label: 'Help & Support' },
+  { icon: 'notes', label: 'Notes', disabled: true },
+  { icon: 'notifications', label: 'Notifications', badge: '3', disabled: true },
+  { icon: 'settings', label: 'Settings', disabled: true },
+  { icon: 'help', label: 'Help & Support', disabled: true },
   { icon: 'adminDashboard', label: 'Admin' },
 ]
 
@@ -166,12 +166,13 @@ function SectionHeader({ title, actionLabel = 'View All ›', onAction }) {
   )
 }
 
-function DrawerItem({ icon, label, badge, active, onClick }) {
+function DrawerItem({ icon, label, badge, active, disabled, onClick }) {
   return (
     <button
       type="button"
-      className={`drawer-item${active ? ' active' : ''}`}
+      className={`drawer-item${active ? ' active' : ''}${disabled ? ' disabled' : ''}`}
       onClick={onClick}
+      disabled={disabled}
     >
       <span className="d-icon" aria-hidden="true">
         <AppIcon name={icon} size={18} />
@@ -204,9 +205,15 @@ function MiniMissionItem({ label, value, width, done }) {
   )
 }
 
-function MiniCard({ theme, icon, title, value, tone, sub, action, children }) {
+function MiniCard({ theme, icon, title, value, tone, sub, action, onClick, children }) {
   return (
-    <div className={`mini-card ${theme}`}>
+    <div
+      className={`mini-card ${theme}${onClick ? ' clickable' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick() } : undefined}
+    >
       <div className="mini-top">
         <span className="mini-icon" aria-hidden="true">
           <AppIcon name={icon} size={15} />
@@ -313,6 +320,7 @@ function DashboardPage({
               icon={item.icon}
               label={item.label}
               active={item.active}
+              disabled={item.disabled}
               onClick={() => {
                 if (item.label === 'Subjects') {
                   onNavigateSubjects()
@@ -331,6 +339,7 @@ function DashboardPage({
               key={item.label}
               icon={item.icon}
               label={item.label}
+              disabled={item.disabled}
               onClick={() => setDrawerOpen(false)}
             />
           ))}
@@ -344,6 +353,7 @@ function DashboardPage({
               icon={item.icon}
               label={item.label}
               badge={item.badge}
+              disabled={item.disabled}
               onClick={() => {
                 if (item.label === 'Admin') {
                   onNavigateAdmin()
@@ -371,8 +381,9 @@ function DashboardPage({
 
       <MobileLayout
         activeTab="Home"
+        disabledItems={['Practice', 'Profile']}
         onNavigate={(item) => {
-          if (item.label === 'Subjects') {
+          if (item.center || item.label === 'Subjects') {
             onNavigateSubjects()
           }
         }}
@@ -552,7 +563,11 @@ function DashboardPage({
                 </div>
               </div>
             </div>
-            <button type="button" className="continue-btn">
+            <button
+              type="button"
+              className="continue-btn"
+              onClick={() => onOpenSubjectDetail('computer-networks')}
+            >
               Continue Study →
             </button>
           </section>
@@ -568,6 +583,7 @@ function DashboardPage({
                 tone={card.tone}
                 sub={card.sub}
                 action={card.action}
+                onClick={onNavigateSubjects}
               />
             ))}
 
@@ -610,7 +626,11 @@ function DashboardPage({
                       74%
                     </b>
                   </div>
-                  <button type="button" className="coach-btn">
+                  <button
+                    type="button"
+                    className="coach-btn"
+                    onClick={onNavigateSubjects}
+                  >
                     Start Study Plan →
                   </button>
                 </div>

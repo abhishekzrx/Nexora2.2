@@ -3,6 +3,10 @@
  * Reusable MCQ practice screen with question grid, timer,
  * options, and submit bar. Reproduces htmlresource/mcq-practice.html.
  *
+ * Supports two modes:
+ * - practice: normal timed test that saves the session on submit.
+ * - review: read-only replay of the last session (seeded from testSession).
+ *
  * Stability: only the question content (text, options, selected state,
  * progress value) re-renders when navigating. The header, summary bar,
  * sidebar, nav buttons, and submit bar stay mounted and fixed.
@@ -12,6 +16,7 @@ import '../styles/mcqPractice.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
 import { getSubject } from '../data/mockData'
 import AppIcon from '../components/ui/AppIcon'
+import { testSession } from '../utils/navigation'
 
 const questions = [
   {
@@ -63,6 +68,7 @@ const QuestionPanel = memo(function QuestionPanel({
   selectedOption,
   onSelectOption,
   onToggleMark,
+  reviewMode,
   scrollRef,
 }) {
   return (
@@ -72,11 +78,11 @@ const QuestionPanel = memo(function QuestionPanel({
           Question {questionNumber} of {totalQuestions}
         </div>
         <div className="qpanel-actions">
-          <button type="button" className="action-btn" onClick={onToggleMark}>
+          <button type="button" className="action-btn" onClick={onToggleMark} disabled={reviewMode}>
             <AppIcon name="bookmark" size={13} />
             Mark
           </button>
-          <button type="button" className="action-btn report">
+          <button type="button" className="action-btn report" disabled={reviewMode}>
             <AppIcon name="flag" size={13} />
             Report
           </button>
@@ -93,22 +99,33 @@ const QuestionPanel = memo(function QuestionPanel({
         <div className="question-text">{question.text}</div>
 
         <div className="options">
-          {question.options.map((option, optionIndex) => (
-            <button
-              key={option}
-              type="button"
-              className={`option${selectedOption === optionIndex ? ' selected' : ''}`}
-              onClick={() => onSelectOption(optionIndex)}
-            >
-              <div className="radio">
-                {selectedOption === optionIndex ? <div className="radio-dot" /> : null}
-              </div>
-              {String.fromCharCode(65 + optionIndex)}. {option}
-            </button>
-          ))}
+          {question.options.map((option, optionIndex) => {
+            const isSelected = selectedOption === optionIndex
+            const reviewClass = reviewMode
+              ? optionIndex === question.correct
+                ? ' review-correct'
+                : isSelected
+                  ? ' review-wrong'
+                  : ''
+              : ''
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`option${isSelected ? ' selected' : ''}${reviewClass}`}
+                onClick={() => onSelectOption(optionIndex)}
+                disabled={reviewMode}
+              >
+                <div className="radio">
+                  {isSelected ? <div className="radio-dot" /> : null}
+                </div>
+                {String.fromCharCode(65 + optionIndex)}. {option}
+              </button>
+            )
+          })}
         </div>
 
-        {selectedOption !== undefined ? (
+        {reviewMode || selectedOption !== undefined ? (
           <div className="explanation">
             <div className="explanation-title">
               <AppIcon name="lightbulb" size={16} />
@@ -235,7 +252,7 @@ const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, mar
   )
 })
 
-function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit }) {
+function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit, reviewMode = false }) {
   const subject = getSubject(subjectKey)
   const subjectTitle = subject.title
 
@@ -246,9 +263,17 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const totalQuestions = chapterMcqCount || 20
 
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [marked, setMarked] = useState(new Set())
-  const [visited, setVisited] = useState(new Set([0]))
+  const [answers, setAnswers] = useState(() =>
+    reviewMode ? { ...testSession.answers } : {},
+  )
+  const [marked, setMarked] = useState(() => {
+    if (reviewMode) return new Set(testSession.marked)
+    return new Set()
+  })
+  const [visited, setVisited] = useState(() => {
+    if (reviewMode) return new Set(testSession.visited)
+    return new Set([0])
+  })
   const [timerOn, setTimerOn] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(29 * 60 + 45)
 
@@ -276,10 +301,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [secondsLeft])
 
   const selectOption = useCallback((optionIndex) => {
+    if (reviewMode) return
     setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }))
-  }, [currentIndex])
+  }, [currentIndex, reviewMode])
 
   const toggleMark = useCallback(() => {
+    if (reviewMode) return
     setMarked((prev) => {
       const next = new Set(prev)
       if (next.has(currentIndex)) {
@@ -289,7 +316,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       }
       return next
     })
-  }, [currentIndex])
+  }, [currentIndex, reviewMode])
 
   const goTo = useCallback((index) => {
     setCurrentIndex(index)
@@ -303,8 +330,20 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [])
 
   const toggleTimer = useCallback(() => {
+    if (reviewMode) return
     setTimerOn((prev) => !prev)
-  }, [])
+  }, [reviewMode])
+
+  const handleSubmit = () => {
+    // Persist the session so "Review Answers" can restore this exact test.
+    testSession.subjectKey = subjectKey
+    testSession.chapter = chapter
+    testSession.answers = { ...answers }
+    testSession.marked = new Set(marked)
+    testSession.visited = new Set(visited)
+    testSession.mode = 'practice'
+    onSubmit?.()
+  }
 
   return (
     <div className="mcq-shell">
@@ -315,7 +354,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               <AppIcon name="back" size={20} />
             </button>
             <div className="header-title">
-              <h1>MCQ Practice</h1>
+              <h1>{reviewMode ? 'Review Answers' : 'MCQ Practice'}</h1>
               <p>{chapter ? `${subjectTitle} • Chapter ${chapter.num}` : subjectTitle}</p>
             </div>
           </div>
@@ -334,6 +373,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               className={`pause-btn${timerOn ? ' timer-active' : ''}`}
               onClick={toggleTimer}
               aria-label={timerOn ? 'Pause timer' : 'Start timer'}
+              disabled={reviewMode}
             >
               <AppIcon name={timerOn ? 'pause' : 'timer'} size={16} />
             </button>
@@ -364,6 +404,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               selectedOption={answers[currentIndex]}
               onSelectOption={selectOption}
               onToggleMark={toggleMark}
+              reviewMode={reviewMode}
               scrollRef={questionScrollRef}
             />
           </div>
@@ -393,16 +434,26 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         <div className="submit-bar">
           <div className="submit-left">
             <div className="submit-icon">
-              <AppIcon name="submit" size={20} />
+              <AppIcon name={reviewMode ? 'reviewAnswers' : 'submit'} size={20} />
             </div>
             <div>
-              <div className="submit-title">Answer 10 more questions to submit the test</div>
-              <div className="submit-sub">You can submit the test after answering at least 10 questions.</div>
+              <div className="submit-title">
+                {reviewMode ? 'Review complete' : 'Answer 10 more questions to submit the test'}
+              </div>
+              <div className="submit-sub">
+                {reviewMode
+                  ? 'You can go back to your results at any time.'
+                  : 'You can submit the test after answering at least 10 questions.'}
+              </div>
             </div>
           </div>
-          <button type="button" className="submit-btn" onClick={onSubmit}>
-            <AppIcon name="send" size={16} />
-            Submit Test
+          <button
+            type="button"
+            className="submit-btn"
+            onClick={reviewMode ? onBack : handleSubmit}
+          >
+            <AppIcon name={reviewMode ? 'back' : 'send'} size={16} />
+            {reviewMode ? 'Back to Results' : 'Submit Test'}
           </button>
         </div>
       </PhoneFrame>

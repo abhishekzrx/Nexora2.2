@@ -1,13 +1,14 @@
 /**
  * AdminChaptersTab
  * Chapters & Ordering tab: reorder list + chapters table.
+ * Store-driven: reads from adminStore, persists reorder, opens modals with target id.
  * All icons go through the global AppIcon system.
  */
 import { useState } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import { AdminBadge, AdminSearchBox, AdminTable, AdminIconBtn } from './AdminShared'
-import { chaptersData, allChapters } from '../../data/adminData'
+import { useAdminStore, saveChapterOrder } from '../../data/adminStore'
 
 function AdminReorderItem({ chapter, index, onDragStart, onDragEnd, onDragOver }) {
   return (
@@ -31,18 +32,19 @@ function AdminReorderItem({ chapter, index, onDragStart, onDragEnd, onDragOver }
 }
 
 function AdminChaptersTab({ onOpenModal }) {
+  const { subjects, chapters } = useAdminStore()
   const [reorderSubject, setReorderSubject] = useState('')
   const [reorderChapters, setReorderChapters] = useState([])
   const [draggingId, setDraggingId] = useState(null)
   const [search, setSearch] = useState('')
 
-  const filteredChapters = allChapters.filter((chapter) =>
+  const filteredChapters = chapters.filter((chapter) =>
     chapter.name.toLowerCase().includes(search.toLowerCase()),
   )
 
   const handleReorderSubjectChange = (value) => {
     setReorderSubject(value)
-    setReorderChapters(value ? chaptersData[value] || [] : [])
+    setReorderChapters(value ? chapters.filter((c) => c.subject === value) : [])
   }
 
   const handleDragStart = (id) => setDraggingId(id)
@@ -60,6 +62,12 @@ function AdminChaptersTab({ onOpenModal }) {
       next.splice(to, 0, moved)
       return next
     })
+  }
+
+  const handleSaveOrder = () => {
+    saveChapterOrder(reorderSubject, reorderChapters)
+    // eslint-disable-next-line no-alert
+    alert('✓ Chapter order saved successfully! The new sequence has been updated.')
   }
 
   return (
@@ -86,10 +94,9 @@ function AdminChaptersTab({ onOpenModal }) {
             onChange={(event) => handleReorderSubjectChange(event.target.value)}
           >
             <option value="">-- Select Subject --</option>
-            <option value="cn">Computer Networks</option>
-            <option value="ph">Physics</option>
-            <option value="ch">Chemistry</option>
-            <option value="bio">Biology</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.name}>{subject.name}</option>
+            ))}
           </select>
         </div>
 
@@ -114,7 +121,7 @@ function AdminChaptersTab({ onOpenModal }) {
             <button
               type="button"
               className="admin-save-order-btn"
-              onClick={() => alert('✓ Chapter order saved successfully! The new sequence has been updated.')}
+              onClick={handleSaveOrder}
             >
               <AppIcon name="check" size={14} />
               Save Chapter Order
@@ -154,14 +161,14 @@ function AdminChaptersTab({ onOpenModal }) {
                   <AdminIconBtn
                     icon="edit"
                     size={12}
-                    onClick={() => onOpenModal('editChapter')}
+                    onClick={() => onOpenModal('editChapter', row.id)}
                     ariaLabel={`Edit ${row.name}`}
                   />
                   <AdminIconBtn
                     icon="delete"
                     size={12}
                     danger
-                    onClick={() => onOpenModal('deleteChapter')}
+                    onClick={() => onOpenModal('deleteChapter', row.id)}
                     ariaLabel={`Delete ${row.name}`}
                   />
                 </>

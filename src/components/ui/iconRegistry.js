@@ -78,6 +78,9 @@ import ScienceRounded from '@mui/icons-material/ScienceRounded'
 import BiotechRounded from '@mui/icons-material/BiotechRounded'
 import FileUploadRounded from '@mui/icons-material/FileUploadRounded'
 import SpaceDashboardRounded from '@mui/icons-material/SpaceDashboardRounded'
+import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
+import LockRounded from '@mui/icons-material/LockRounded'
+import LockOpenRounded from '@mui/icons-material/LockOpenRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
@@ -173,6 +176,9 @@ export const iconRegistry = {
   physics: { component: BoltRounded, optical: 0 },
   chemistry: { component: ScienceRounded, optical: 0 },
   biology: { component: BiotechRounded, optical: 0 },
+  copy: { component: ContentCopyRounded, optical: 0 },
+  lock: { component: LockRounded, optical: 0 },
+  lockOpen: { component: LockOpenRounded, optical: 0 },
 }
 
 export default iconRegistry

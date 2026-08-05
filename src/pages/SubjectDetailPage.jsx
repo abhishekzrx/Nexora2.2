@@ -7,9 +7,8 @@ import { useEffect, useMemo, useState } from 'react'
 import '../styles/subjectDetail.css'
 import { getSubject } from '../data/mockData'
 import { deriveAnalytics } from '../utils/deriveAnalytics'
-import PhoneFrame from '../components/layout/PhoneFrame'
 import Header from '../components/layout/Header'
-import BottomNav from '../components/layout/BottomNav'
+import MobileLayout from '../components/layout/MobileLayout'
 import SubjectHero from '../components/subject/SubjectHero'
 import Tabs from '../components/subject/Tabs'
 import ChapterCard from '../components/subject/ChapterCard'
@@ -21,6 +20,7 @@ import TimeSpent from '../components/subject/TimeSpent'
 import Achievements from '../components/subject/Achievements'
 import AccuracyChart from '../components/subject/AccuracyChart'
 import AppIcon from '../components/ui/AppIcon'
+import { subjectTabs } from '../utils/navigation'
 
 const tabItems = [
   { key: 'chapters', icon: 'chapters', label: 'Chapters' },
@@ -28,14 +28,6 @@ const tabItems = [
   { key: 'flashcards', icon: 'flashcardsTab', label: 'Flashcards' },
   { key: 'notes', icon: 'notesTab', label: 'Notes' },
   { key: 'analytics', icon: 'analyticsTab', label: 'Analytics' },
-]
-
-const bottomNav = [
-  { icon: 'home', label: 'Home' },
-  { icon: 'subjects', label: 'Subjects', active: true },
-  { icon: 'centerBook', label: 'center', center: true },
-  { icon: 'practice', label: 'Practice' },
-  { icon: 'profile', label: 'Profile' },
 ]
 
 function SubjectDetailPage({
@@ -48,11 +40,13 @@ function SubjectDetailPage({
 }) {
   const subject = getSubject(subjectKey)
   const derived = useMemo(() => deriveAnalytics(subject), [subject])
-  const [activeTab, setActiveTab] = useState('chapters')
+  const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
 
+  // Persist the selected tab per subject so returning from MCQ practice
+  // (or any navigation) does not reset the user's context.
   useEffect(() => {
-    setActiveTab('chapters')
-  }, [subjectKey])
+    subjectTabs[subjectKey] = activeTab
+  }, [subjectKey, activeTab])
 
   const renderContent = () => {
     if (activeTab === 'chapters') {
@@ -61,14 +55,14 @@ function SubjectDetailPage({
           <div className="chapters-header">
             <div className="chapters-title">All Chapters ({subject.chapters.length})</div>
             <div className="chapters-actions">
-              <button type="button" className="sort-btn">
+              <button type="button" className="sort-btn" disabled>
                 <AppIcon name="sort" size={14} />
                 Sort
               </button>
-              <button type="button" className="view-btn active">
+              <button type="button" className="view-btn active" disabled>
                 <AppIcon name="viewList" size={16} />
               </button>
-              <button type="button" className="view-btn">
+              <button type="button" className="view-btn" disabled>
                 <AppIcon name="viewGrid" size={16} />
               </button>
             </div>
@@ -146,17 +140,29 @@ function SubjectDetailPage({
         '--accent-soft': subject.accentSoft,
       }}
     >
-      <PhoneFrame>
+      <MobileLayout
+        activeTab="Subjects"
+        disabledItems={['Practice', 'Profile']}
+        onNavigate={(item) => {
+          if (item.center) {
+            onStartMCQPractice(subjectKey)
+          } else if (item.label === 'Home') {
+            onNavigateHome()
+          } else if (item.label === 'Subjects') {
+            onNavigateSubjects()
+          }
+        }}
+      >
         <Header
           variant="back"
           title={subject.title}
           onBackClick={onBackToSubjects}
           right={
             <div className="header-icons">
-              <span>
+              <span className="disabled-icon">
                 <AppIcon name="bookmark" size={18} />
               </span>
-              <span>
+              <span className="disabled-icon">
                 <AppIcon name="moreVert" size={18} />
               </span>
             </div>
@@ -168,16 +174,7 @@ function SubjectDetailPage({
           <Tabs items={tabItems} activeKey={activeTab} onChange={setActiveTab} />
           <div className="tab-content-wrapper">{renderContent()}</div>
         </main>
-
-        <BottomNav
-          items={bottomNav}
-          centerDark
-          onNavigate={(item) => {
-            if (item.label === 'Home') onNavigateHome()
-            if (item.label === 'Subjects') onNavigateSubjects()
-          }}
-        />
-      </PhoneFrame>
+      </MobileLayout>
     </div>
   )
 }

@@ -1,77 +1,130 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import DashboardPage from './DashboardPage'
 import SubjectsPage from './SubjectsPage'
 import SubjectDetailPage from './pages/SubjectDetailPage'
 import MCQPracticePage from './pages/MCQPracticePage'
 import TestResultsPage from './pages/TestResultsPage'
 import AdminPage from './pages/AdminPage'
+import { navigate, parseHash, testSession } from './utils/navigation'
+
+/**
+ * Resolve the current hash into a route descriptor.
+ * Returns { name, subjectKey, chapter, mode } or null for unknown routes.
+ */
+function resolveRoute() {
+  const parts = parseHash()
+
+  if (parts.length === 0) return { name: 'dashboard' }
+
+  if (parts[0] === 'subjects') return { name: 'subjects' }
+
+  if (parts[0] === 'admin') return { name: 'admin' }
+
+  if (parts[0] === 'subject' && parts[1]) {
+    const subjectKey = parts[1]
+    const sub = parts[2]
+
+    if (sub === 'mcq') return { name: 'mcq', subjectKey }
+    if (sub === 'review') return { name: 'review', subjectKey }
+    if (sub === 'results') return { name: 'results', subjectKey }
+    return { name: 'subject', subjectKey }
+  }
+
+  return null
+}
 
 function App() {
-  const [screen, setScreen] = useState({ name: 'dashboard', subjectKey: 'computer-networks' })
+  const [route, setRoute] = useState(resolveRoute)
 
-  const openSubjects = () => setScreen((current) => ({ ...current, name: 'subjects' }))
-  const openSubjectDetail = (subjectKey) => setScreen({ name: 'subject', subjectKey })
-  const openDashboard = () => setScreen((current) => ({ ...current, name: 'dashboard' }))
-  const openMCQPractice = (subjectKey) => setScreen({ name: 'mcq', subjectKey })
-  const openMCQResponse = (subjectKey, chapter) => setScreen({ name: 'mcq', subjectKey, chapter })
-  const openTestResults = () => setScreen((current) => ({ ...current, name: 'results' }))
-  const openAdmin = () => setScreen((current) => ({ ...current, name: 'admin' }))
+  useEffect(() => {
+    const onHashChange = () => setRoute(resolveRoute())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
-  if (screen.name === 'admin') {
-    return (
-      <AdminPage onBackHome={openDashboard} />
-    )
+  // Unknown / malformed route → fall back to dashboard.
+  if (!route) {
+    navigate('')
+    return null
   }
 
-  if (screen.name === 'subjects') {
+  const { name, subjectKey } = route
+
+  if (name === 'admin') {
+    return <AdminPage onBackHome={() => navigate('')} />
+  }
+
+  if (name === 'subjects') {
     return (
       <SubjectsPage
-        onNavigateHome={openDashboard}
-        onOpenSubjectDetail={openSubjectDetail}
+        onNavigateHome={() => navigate('')}
+        onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
+        onNavigateAdmin={() => navigate('admin')}
       />
     )
   }
 
-  if (screen.name === 'subject') {
+  if (name === 'subject') {
     return (
       <SubjectDetailPage
-        subjectKey={screen.subjectKey}
-        onBackToSubjects={openSubjects}
-        onNavigateHome={openDashboard}
-        onNavigateSubjects={openSubjects}
-        onStartMCQPractice={openMCQPractice}
-        onChapterClick={(chapter) => openMCQResponse(screen.subjectKey, chapter)}
+        subjectKey={subjectKey}
+        onBackToSubjects={() => navigate('subjects')}
+        onNavigateHome={() => navigate('')}
+        onNavigateSubjects={() => navigate('subjects')}
+        onStartMCQPractice={(key) => navigate(`subject/${key}/mcq`)}
+        onChapterClick={(chapter) => {
+          testSession.subjectKey = subjectKey
+          testSession.chapter = chapter
+          testSession.mode = 'practice'
+          navigate(`subject/${subjectKey}/mcq`)
+        }}
       />
     )
   }
 
-  if (screen.name === 'mcq') {
+  if (name === 'mcq') {
     return (
       <MCQPracticePage
-        subjectKey={screen.subjectKey}
-        chapter={screen.chapter}
-        onBack={() => openSubjectDetail(screen.subjectKey)}
-        onSubmit={openTestResults}
+        subjectKey={subjectKey}
+        chapter={testSession.chapter}
+        onBack={() => navigate(`subject/${subjectKey}`)}
+        onSubmit={() => navigate(`subject/${subjectKey}/results`)}
       />
     )
   }
 
-  if (screen.name === 'results') {
+  if (name === 'review') {
+    return (
+      <MCQPracticePage
+        subjectKey={subjectKey}
+        chapter={testSession.chapter}
+        reviewMode
+        onBack={() => navigate(`subject/${subjectKey}/results`)}
+        onSubmit={() => navigate(`subject/${subjectKey}/results`)}
+      />
+    )
+  }
+
+  if (name === 'results') {
     return (
       <TestResultsPage
-        onBack={openDashboard}
-        onReviewAnswers={() => openMCQPractice(screen.subjectKey)}
-        onPracticeAgain={() => openMCQPractice(screen.subjectKey)}
-        onBackToSubjects={openSubjects}
+        subjectKey={subjectKey}
+        onBack={() => navigate(`subject/${subjectKey}`)}
+        onReviewAnswers={() => navigate(`subject/${subjectKey}/review`)}
+        onPracticeAgain={() => {
+          testSession.mode = 'practice'
+          navigate(`subject/${subjectKey}/mcq`)
+        }}
+        onBackToSubjects={() => navigate('subjects')}
       />
     )
   }
 
   return (
     <DashboardPage
-      onNavigateSubjects={openSubjects}
-      onOpenSubjectDetail={openSubjectDetail}
-      onNavigateAdmin={openAdmin}
+      onNavigateSubjects={() => navigate('subjects')}
+      onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
+      onNavigateAdmin={() => navigate('admin')}
     />
   )
 }

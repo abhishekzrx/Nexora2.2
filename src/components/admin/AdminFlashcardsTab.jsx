@@ -1,14 +1,23 @@
 /**
  * AdminFlashcardsTab
  * Flashcards management tab: toolbar, search, flashcard cards.
+ * Store-driven: reads from adminStore, opens modals with target id.
  * All icons go through the global AppIcon system.
  */
+import { useState } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import { AdminBadge, AdminSearchBox, AdminIconBtn, AdminToolbar } from './AdminShared'
-import { flashcardCards } from '../../data/adminData'
+import { useAdminStore } from '../../data/adminStore'
 
 function AdminFlashcardsTab({ onOpenModal }) {
+  const { flashcards } = useAdminStore()
+  const [search, setSearch] = useState('')
+
+  const filteredFlashcards = flashcards.filter((card) =>
+    `${card.front} ${card.back}`.toLowerCase().includes(search.toLowerCase()),
+  )
+
   return (
     <>
       <AdminToolbar>
@@ -22,23 +31,23 @@ function AdminFlashcardsTab({ onOpenModal }) {
         </Button>
       </AdminToolbar>
 
-      <AdminSearchBox placeholder="Search flashcards..." />
+      <AdminSearchBox placeholder="Search flashcards..." value={search} onChange={setSearch} />
 
       <div className="admin-flashcards-grid">
-        {flashcardCards.map((card, index) => (
-          <div className="admin-flashcard-card" key={`${card.front}-${index}`}>
+        {filteredFlashcards.map((card) => (
+          <div className="admin-flashcard-card" key={card.id}>
             <div className="admin-flashcard-actions">
               <AdminIconBtn
                 icon="edit"
                 size={13}
-                onClick={() => onOpenModal('editFlashcard')}
+                onClick={() => onOpenModal('editFlashcard', card.id)}
                 ariaLabel="Edit flashcard"
               />
               <AdminIconBtn
                 icon="delete"
                 size={13}
                 danger
-                onClick={() => onOpenModal('deleteFlashcard')}
+                onClick={() => onOpenModal('deleteFlashcard', card.id)}
                 ariaLabel="Delete flashcard"
               />
             </div>

@@ -354,9 +354,11 @@
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 18px 16px;
+  padding: 18px 16px 0;
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .mcq-shell .qpanel-top {
@@ -417,7 +419,9 @@
 .mcq-shell .question-scroll {
   height: 420px;
   overflow-y: auto;
-  margin-bottom: 18px;
+  margin-bottom: 0;
+  flex: 1;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: #D0D5DD transparent;
 }
@@ -487,6 +491,45 @@
   background: var(--orange);
 }
 
+/* Review mode — correct / wrong option highlighting */
+.mcq-shell .option.review-correct {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: #0B8A4E;
+}
+
+.mcq-shell .option.review-correct .radio {
+  border-color: var(--green);
+}
+
+.mcq-shell .option.review-correct .radio-dot {
+  background: var(--green);
+}
+
+.mcq-shell .option.review-wrong {
+  background: #FDECEC;
+  border-color: #E5484D;
+  color: #C02B30;
+}
+
+.mcq-shell .option.review-wrong .radio {
+  border-color: #E5484D;
+}
+
+.mcq-shell .option.review-wrong .radio-dot {
+  background: #E5484D;
+}
+
+.mcq-shell .option.review-correct.selected {
+  background: var(--green-bg);
+  border-color: var(--green);
+}
+
+.mcq-shell .option.review-wrong.selected {
+  background: #FDECEC;
+  border-color: #E5484D;
+}
+
 .mcq-shell .explanation {
   background: var(--blue-bg);
   border: 1px solid #DCE3FA;
@@ -515,8 +558,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 18px;
+  padding: 16px 0;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .mcq-shell .nav-btn {

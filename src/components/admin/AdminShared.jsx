@@ -33,24 +33,6 @@ export function AdminSearchBox({ placeholder, value = '', onChange }) {
 }
 
 /**
- * AdminStatCard — overview stat tile
- */
-export function AdminStatCard({ icon, value, label, change }) {
-  return (
-    <div className="admin-stat-card">
-      <div className="admin-stat-icon" aria-hidden="true">
-        <AppIcon name={icon} size={26} />
-      </div>
-      <div className="admin-stat-content">
-        <div className="admin-stat-value">{value}</div>
-        <div className="admin-stat-label">{label}</div>
-        {change ? <div className="admin-stat-change">{change}</div> : null}
-      </div>
-    </div>
-  )
-}
-
-/**
  * AdminSectionCard — white card with title
  */
 export function AdminSectionCard({ title, children }) {

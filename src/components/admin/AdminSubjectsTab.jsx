@@ -1,14 +1,17 @@
 /**
  * AdminSubjectsTab
  * Subject cards grid for the Content Manager.
+ * Store-driven: reads from adminStore and opens modals with the target id.
  * All icons go through the global AppIcon system.
  */
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import { AdminIconBtn } from './AdminShared'
-import { adminSubjects } from '../../data/adminData'
+import { useAdminStore } from '../../data/adminStore'
 
 function AdminSubjectsTab({ onOpenModal }) {
+  const { subjects } = useAdminStore()
+
   return (
     <>
       <div style={{ marginBottom: 20 }}>
@@ -19,7 +22,7 @@ function AdminSubjectsTab({ onOpenModal }) {
       </div>
 
       <div className="admin-subjects-grid">
-        {adminSubjects.map((subject) => (
+        {subjects.map((subject) => (
           <div className="admin-subject-card" key={subject.id}>
             <div className="admin-subject-header">
               <div className="admin-subject-icon" aria-hidden="true">
@@ -29,14 +32,14 @@ function AdminSubjectsTab({ onOpenModal }) {
                 <AdminIconBtn
                   icon="edit"
                   size={13}
-                  onClick={() => onOpenModal('editSubject')}
+                  onClick={() => onOpenModal('editSubject', subject.id)}
                   ariaLabel={`Edit ${subject.name}`}
                 />
                 <AdminIconBtn
                   icon="delete"
                   size={13}
                   danger
-                  onClick={() => onOpenModal('deleteSubject')}
+                  onClick={() => onOpenModal('deleteSubject', subject.id)}
                   ariaLabel={`Delete ${subject.name}`}
                 />
               </div>

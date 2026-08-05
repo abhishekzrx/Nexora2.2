@@ -8,6 +8,8 @@ import '../styles/testResults.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
 import ProgressRing from '../components/ui/ProgressRing'
 import AppIcon from '../components/ui/AppIcon'
+import { getSubject } from '../data/mockData'
+import { testSession } from '../utils/navigation'
 
 const statItems = [
   { icon: 'check', iconClass: 'icon-correct', value: '15', label: 'Correct' },
@@ -36,7 +38,10 @@ const trendData = [
   { label: 'Current', value: 75 },
 ]
 
-function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSubjects }) {
+function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSubjects, subjectKey }) {
+  const subject = getSubject(subjectKey || testSession.subjectKey)
+  const subjectTitle = subject?.title || 'Computer Networks'
+
   return (
     <div className="results-shell">
       <PhoneFrame>
@@ -47,10 +52,10 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
             </button>
             <div className="header-title">
               <h1>Test Submitted! 🎉</h1>
-              <p>Computer Networks • 20 Questions</p>
+              <p>{subjectTitle} • 20 Questions</p>
             </div>
           </div>
-          <button type="button" className="test-details-btn">
+          <button type="button" className="test-details-btn" disabled>
             <AppIcon name="testDetails" size={15} />
             Test Details
           </button>
