@@ -1,8 +1,15 @@
 /**
- * MOCK DATA
- * Centralized mock data for the Nexora UI.
- * This will be replaced by Supabase data later without UI changes.
+ * MOCK DATA — DERIVED FROM CONTENT REGISTRY
+ * This module no longer owns academic content.
+ * It derives everything from the centralized contentRegistry,
+ * which in turn subscribes to academicStore (the Admin SSOT).
+ *
+ * When Supabase integration begins, only contentRegistry's data
+ * source changes — no UI, component, navigation, or business-logic
+ * redesign is necessary.
  */
+import { getExaminations } from './academicStore'
+import { subjectKeyFor, slugify } from './contentRegistry'
 
 export const userProfile = {
   name: 'Abhi Kumar',
@@ -10,144 +17,148 @@ export const userProfile = {
   streak: '14 Day Streak',
 }
 
-export const subjectCatalog = {
-  'computer-networks': {
-    subjectKey: 'computer-networks',
-    title: 'Computer Networks',
-    icon: 'computerNetworks',
-    badge: 'MEDIUM',
-    progress: 72,
-    desc: 'Learn the fundamentals of computer networks, protocols, architectures and real-world systems.',
-    counts: { chapters: 10, mcqs: 200, flashcards: 80 },
-    accent: '#F1621B',
-    accentLight: '#FF7A2E',
-    accentBg: '#FFF1E6',
-    accentSoft: '#FDECE3',
-    chapters: [
-      { num: '01', title: 'Introduction to Computer Networks', sub: 'Basics, components and real-world examples', progress: 100, pct: '100%', complete: true, meta: '20 MCQs • 8 Flashcards' },
-      { num: '02', title: 'Network Models', sub: 'OSI Model and TCP/IP Model', progress: 75, pct: '75%', complete: false, meta: '20 MCQs • 8 Flashcards' },
-      { num: '03', title: 'Physical Layer', sub: 'Transmission media, signals and encoding', progress: 60, pct: '60%', complete: false, meta: '20 MCQs • 8 Flashcards' },
-      { num: '04', title: 'Data Link Layer', sub: 'Framing, error detection, flow control', progress: 40, pct: '40%', complete: false, meta: '20 MCQs • 8 Flashcards' },
-      { num: '05', title: 'Network Layer', sub: 'IP addressing, routing, and subnetting', progress: 20, pct: '20%', complete: false, meta: '20 MCQs • 8 Flashcards' },
-      { num: '06', title: 'Transport Layer', sub: 'TCP, UDP, ports and congestion control', progress: 0, pct: '0%', complete: false, meta: '20 MCQs • 8 Flashcards' },
-    ],
-  },
-  'operating-systems': {
-    subjectKey: 'operating-systems',
-    title: 'Operating Systems',
-    icon: 'operatingSystems',
-    badge: 'MEDIUM',
-    progress: 68,
-    desc: 'Master processes, memory, filesystems and the core ideas that power modern operating systems.',
-    counts: { chapters: 10, mcqs: 150, flashcards: 64 },
-    accent: '#12B76A',
-    accentLight: '#2ACB7A',
-    accentBg: '#E9F9F1',
-    accentSoft: '#DFF7EA',
-    chapters: [
-      { num: '01', title: 'OS Introduction', sub: 'Services, structures and system calls', progress: 92, pct: '92%', complete: true, meta: '18 MCQs • 6 Flashcards' },
-      { num: '02', title: 'Processes & Threads', sub: 'Life cycle, states and concurrency', progress: 80, pct: '80%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '03', title: 'CPU Scheduling', sub: 'Algorithms, queues and performance', progress: 65, pct: '65%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '04', title: 'Memory Management', sub: 'Paging, segmentation and virtual memory', progress: 48, pct: '48%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '05', title: 'File Systems', sub: 'Files, directories and storage', progress: 34, pct: '34%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '06', title: 'Deadlocks', sub: 'Prevention, avoidance and recovery', progress: 0, pct: '0%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-    ],
-  },
-  dbms: {
-    subjectKey: 'dbms',
-    title: 'DBMS',
-    icon: 'dbms',
-    badge: 'MEDIUM',
-    progress: 80,
-    desc: 'Review relational models, SQL, transactions and normalization with structured practice.',
-    counts: { chapters: 9, mcqs: 175, flashcards: 72 },
-    accent: '#7C3AED',
-    accentLight: '#9B5CFF',
-    accentBg: '#F1EDFC',
-    accentSoft: '#EFE6FC',
-    chapters: [
-      { num: '01', title: 'Intro to DBMS', sub: 'Database basics, users and architecture', progress: 90, pct: '90%', complete: true, meta: '16 MCQs • 6 Flashcards' },
-      { num: '02', title: 'ER Modeling', sub: 'Entities, relationships and constraints', progress: 74, pct: '74%', complete: false, meta: '16 MCQs • 6 Flashcards' },
-      { num: '03', title: 'Relational Model', sub: 'Tables, keys and integrity rules', progress: 66, pct: '66%', complete: false, meta: '16 MCQs • 6 Flashcards' },
-      { num: '04', title: 'SQL Basics', sub: 'Queries, filters and joins', progress: 51, pct: '51%', complete: false, meta: '16 MCQs • 6 Flashcards' },
-      { num: '05', title: 'Normalization', sub: '1NF, 2NF, 3NF and BCNF', progress: 43, pct: '43%', complete: false, meta: '16 MCQs • 6 Flashcards' },
-      { num: '06', title: 'Transactions', sub: 'ACID, schedules and recovery', progress: 0, pct: '0%', complete: false, meta: '16 MCQs • 6 Flashcards' },
-    ],
-  },
-  'digital-electronics': {
-    subjectKey: 'digital-electronics',
-    title: 'Digital Electronics',
-    icon: 'digitalElectronics',
-    badge: 'MEDIUM',
-    progress: 45,
-    desc: 'Build confidence with number systems, logic gates, combinational and sequential circuits.',
-    counts: { chapters: 8, mcqs: 150, flashcards: 58 },
-    accent: '#E8491D',
-    accentLight: '#FF6A3D',
-    accentBg: '#FDECE7',
-    accentSoft: '#FCE2DC',
-    chapters: [
-      { num: '01', title: 'Number Systems', sub: 'Binary, octal, decimal and hexadecimal', progress: 85, pct: '85%', complete: true, meta: '14 MCQs • 6 Flashcards' },
-      { num: '02', title: 'Logic Gates', sub: 'AND, OR, NOT and universal gates', progress: 68, pct: '68%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '03', title: 'Boolean Algebra', sub: 'Laws, theorems and simplification', progress: 56, pct: '56%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '04', title: 'K-Maps', sub: 'Minimization techniques', progress: 42, pct: '42%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '05', title: 'Flip Flops', sub: 'SR, JK, D and T types', progress: 21, pct: '21%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '06', title: 'Counters', sub: 'Synchronous and asynchronous counters', progress: 0, pct: '0%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-    ],
-  },
-  'data-structures': {
-    subjectKey: 'data-structures',
-    title: 'Data Structures & Algorithms',
-    icon: 'dataStructures',
-    badge: 'MEDIUM',
-    progress: 52,
-    desc: 'Practice arrays, linked lists, trees, graphs and algorithms with step-by-step mastery.',
-    counts: { chapters: 10, mcqs: 180, flashcards: 68 },
-    accent: '#2E5CE6',
-    accentLight: '#4F7AF7',
-    accentBg: '#EEF2FF',
-    accentSoft: '#E7EDFD',
-    chapters: [
-      { num: '01', title: 'Arrays & Strings', sub: 'Indexing, patterns and complexity', progress: 82, pct: '82%', complete: true, meta: '18 MCQs • 6 Flashcards' },
-      { num: '02', title: 'Linked Lists', sub: 'Singly, doubly and circular lists', progress: 71, pct: '71%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '03', title: 'Stacks & Queues', sub: 'ADT, implementations and uses', progress: 59, pct: '59%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '04', title: 'Trees', sub: 'Traversal, heaps and BST', progress: 41, pct: '41%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '05', title: 'Sorting', sub: 'Bubble, merge, quick and heap sort', progress: 23, pct: '23%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-      { num: '06', title: 'Graphs', sub: 'BFS, DFS and shortest paths', progress: 0, pct: '0%', complete: false, meta: '18 MCQs • 6 Flashcards' },
-    ],
-  },
-  'computer-organization': {
-    subjectKey: 'computer-organization',
-    title: 'Computer Organization & Architecture',
-    icon: 'computerOrganization',
-    badge: 'MEDIUM',
-    progress: 42,
-    desc: 'Understand how hardware, memory, instruction sets and pipelines shape computer systems.',
-    counts: { chapters: 8, mcqs: 140, flashcards: 54 },
-    accent: '#0E9494',
-    accentLight: '#13BABA',
-    accentBg: '#E6F7F7',
-    accentSoft: '#DDF4F4',
-    chapters: [
-      { num: '01', title: 'Number Systems', sub: 'Base conversions and arithmetic', progress: 80, pct: '80%', complete: true, meta: '14 MCQs • 6 Flashcards' },
-      { num: '02', title: 'Instruction Set Architecture', sub: 'Registers, addressing modes and ISA', progress: 66, pct: '66%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '03', title: 'CPU Organization', sub: 'Datapath and control unit', progress: 54, pct: '54%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '04', title: 'Pipelining', sub: 'Hazards, stalls and forwarding', progress: 38, pct: '38%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '05', title: 'Memory Hierarchy', sub: 'Cache, RAM and virtual memory', progress: 22, pct: '22%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-      { num: '06', title: 'I/O Devices', sub: 'Interfaces and interrupts', progress: 0, pct: '0%', complete: false, meta: '14 MCQs • 6 Flashcards' },
-    ],
-  },
+// ── Derive the subject catalog from the academicStore SSOT ─────────
+// This is a non-reactive snapshot for modules that don't use hooks.
+// React components should use useContentRegistry() / useSubjectCatalog()
+// for live synchronization.
+
+function buildCatalogFromExaminations(examinations) {
+  const catalog = {}
+  const orderedKeys = []
+
+  const ACCENT_PALETTE = [
+    { accent: '#F1621B', accentLight: '#FF7A2E', accentBg: '#FFF1E6', accentSoft: '#FDECE3' },
+    { accent: '#2E5CE6', accentLight: '#4F7AF7', accentBg: '#EEF2FF', accentSoft: '#E7EDFD' },
+    { accent: '#12B76A', accentLight: '#2ACB7A', accentBg: '#E9F9F1', accentSoft: '#DFF7EA' },
+    { accent: '#7C3AED', accentLight: '#9B5CFF', accentBg: '#F1EDFC', accentSoft: '#EFE6FC' },
+    { accent: '#0E9494', accentLight: '#13BABA', accentBg: '#E6F7F7', accentSoft: '#DDF4F4' },
+    { accent: '#E8491D', accentLight: '#FF6A3D', accentBg: '#FDECE7', accentSoft: '#FCE2DC' },
+  ]
+
+  const ICON_LIBRARY = [
+    'computerNetworks',
+    'operatingSystems',
+    'dbms',
+    'digitalElectronics',
+    'dataStructures',
+    'computerOrganization',
+    'physics',
+    'chemistry',
+  ]
+
+  const flattened = []
+  examinations
+    .filter((e) => !e.archived)
+    .sort((a, b) => a.order - b.order)
+    .forEach((exam) => {
+      exam.classes
+        .filter((c) => !c.archived)
+        .sort((a, b) => a.order - b.order)
+        .forEach((cls) => {
+          cls.subjects
+            .filter((s) => !s.archived)
+            .sort((a, b) => a.order - b.order)
+            .forEach((sub) => {
+              flattened.push({ exam, cls, sub })
+            })
+        })
+    })
+
+  flattened.forEach(({ exam, cls, sub }, index) => {
+    const key = subjectKeyFor(sub.name, sub.id)
+    const palette = ACCENT_PALETTE[index % ACCENT_PALETTE.length]
+    const icon = sub.icon || ICON_LIBRARY[index % ICON_LIBRARY.length]
+    const locked = Boolean(sub.locked)
+
+    const chapters = sub.chapters
+      .filter((c) => !c.archived)
+      .sort((a, b) => a.number - b.number)
+      .map((ch, ci) => {
+        const progress = ch.completion && typeof ch.completion === 'number'
+          ? ch.completion
+          : (ch.mcqs > 0 || ch.flashcards > 0)
+            ? Math.min(100, ((ch.mcqs > 0 ? 1 : 0) + (ch.flashcards > 0 ? 1 : 0) + (ch.notes > 0 ? 1 : 0)) * 25)
+            : 0
+        return {
+          num: String(ch.number || ci + 1).padStart(2, '0'),
+          title: ch.name,
+          sub: ch.difficulty ? `${ch.difficulty.toUpperCase()} • ${ch.estMinutes || 45} min` : `${ch.status || 'draft'} • ${ch.estMinutes || 45} min`,
+          progress,
+          pct: `${progress}%`,
+          complete: ch.mcqs > 0 && ch.flashcards > 0 && ch.notes > 0 && ch.status === 'published',
+          meta: `${ch.mcqs || 0} MCQs • ${ch.flashcards || 0} Flashcards`,
+          locked: Boolean(ch.locked),
+          status: ch.locked ? 'locked' : ch.status || 'draft',
+          id: ch.id,
+        }
+      })
+
+    const averageProgress = chapters.length
+      ? Math.round(chapters.reduce((sum, c) => sum + c.progress, 0) / chapters.length)
+      : 0
+
+    const stats = {
+      chapters: chapters.length,
+      mcqs: sub.chapters.reduce((n, c) => n + (c.mcqs || 0), 0),
+      flashcards: sub.chapters.reduce((n, c) => n + (c.flashcards || 0), 0),
+      notes: sub.chapters.reduce((n, c) => n + (c.notes || 0), 0),
+    }
+
+    const badge = locked
+      ? 'LOCKED'
+      : (sub.status || 'active').toUpperCase().slice(0, 6) === 'DRAFT'
+        ? 'DRAFT'
+        : sub.status === 'published'
+          ? 'READY'
+          : index % 2 === 0
+            ? 'MEDIUM'
+            : 'HARD'
+
+    catalog[key] = {
+      subjectKey: key,
+      subjectId: sub.id,
+      title: sub.name,
+      shortCode: sub.shortCode,
+      icon,
+      badge,
+      progress: averageProgress,
+      desc: cls.name || exam.name || '',
+      counts: stats,
+      accent: sub.accent || palette.accent,
+      accentLight: sub.accentLight || palette.accentLight,
+      accentBg: sub.accentBg || palette.accentBg,
+      accentSoft: sub.accentSoft || palette.accentSoft,
+      chapters,
+      locked,
+      status: sub.status || 'active',
+      order: sub.order || index + 1,
+      examName: exam.name,
+      examId: exam.id,
+      className: cls.name,
+      classId: cls.id,
+    }
+    orderedKeys.push(key)
+  })
+
+  return { catalog, orderedKeys }
 }
 
-export const subjectsList = Object.values(subjectCatalog).map((subject) => ({
-  subjectKey: subject.subjectKey,
-  title: subject.title,
-  icon: subject.icon,
-  badge: subject.badge,
-  progress: subject.progress,
-  counts: subject.counts,
-  accent: subject.accent,
-  accentBg: subject.accentBg,
-}))
+// ── Live snapshot (non-hook) ──────────────────────────────────────
+// Components that need live sync should use useContentRegistry().
+// This provides a static snapshot for non-hook consumers.
 
-export const getSubject = (subjectKey) => subjectCatalog[subjectKey] || subjectCatalog['computer-networks']
+let cachedSnapshot = null
+
+function getSnapshot() {
+  if (!cachedSnapshot) {
+    const { catalog, orderedKeys } = buildCatalogFromExaminations(getExaminations())
+    cachedSnapshot = { catalog, orderedKeys }
+  }
+  return cachedSnapshot
+}
+
+export const subjectCatalog = getSnapshot().catalog
+
+export const subjectsList = getSnapshot().orderedKeys.map((k) => subjectCatalog[k]).filter(Boolean)
+
+export const getSubject = (subjectKey) => subjectCatalog[subjectKey] || subjectCatalog[Object.keys(subjectCatalog)[0]] || null

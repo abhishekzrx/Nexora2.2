@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
+import { useContentRegistry } from './data/contentRegistry'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -42,56 +43,14 @@ const missionItems = [
   { label: 'Mock Test', value: '0%', width: 0, done: false },
 ]
 
-const subjectCards = [
-  {
-    subjectKey: 'computer-networks',
-    title: 'Computer Networks',
-    icon: 'computerNetworks',
-    iconClass: 'icon-blue',
-    ringTrack: '#E7EDFD',
-    ringColor: '#2E5CE6',
-    progress: 72,
-    ringLabel: '72%',
-    stats: '12 / 16 Chapters\n120 / 200 MCQs\n15 / 18 Flashcards',
-    continueClass: 'cont-blue',
-    highlight: true,
-  },
-  {
-    subjectKey: 'operating-systems',
-    title: 'Operating Systems',
-    icon: 'operatingSystems',
-    iconClass: 'icon-green',
-    ringTrack: '#DFF7EA',
-    ringColor: '#12B76A',
-    progress: 68,
-    ringLabel: '68%',
-    stats: '10 / 14 Chapters\n98 / 150 MCQs\n12 / 16 Flashcards',
-    continueClass: 'cont-green',
-  },
-  {
-    subjectKey: 'dbms',
-    title: 'DBMS',
-    icon: 'dbms',
-    iconClass: 'icon-purple',
-    ringTrack: '#EFE6FC',
-    ringColor: '#7C3AED',
-    progress: 80,
-    ringLabel: '80%',
-    stats: '9 / 12 Chapters\n140 / 175 MCQs\n18 / 20 Flashcards',
-    continueClass: 'cont-purple',
-  },
-  {
-    subjectKey: 'digital-electronics',
-    title: 'Digital Electronics',
-    icon: 'digitalElectronics',
-    iconClass: 'icon-orange',
-    ringTrack: '#FFE9D9',
-    ringColor: '#F1621B',
-    progress: 45,
-    ringLabel: '45%',
-    stats: '6 / 14 Chapters\n65 / 150 MCQs\n8 / 15 Flashcards',
-    continueClass: 'cont-orange',
-  },
+// Color tone mapping for dashboard subject cards
+const DASH_TONE_MAP = [
+  { iconClass: 'icon-blue', ringTrack: '#E7EDFD', ringColor: '#2E5CE6', continueClass: 'cont-blue' },
+  { iconClass: 'icon-green', ringTrack: '#DFF7EA', ringColor: '#12B76A', continueClass: 'cont-green' },
+  { iconClass: 'icon-purple', ringTrack: '#EFE6FC', ringColor: '#7C3AED', continueClass: 'cont-purple' },
+  { iconClass: 'icon-orange', ringTrack: '#FFE9D9', ringColor: '#F1621B', continueClass: 'cont-orange' },
+  { iconClass: 'icon-red', ringTrack: '#FDEDEC', ringColor: '#F04438', continueClass: 'cont-red' },
+  { iconClass: 'icon-teal', ringTrack: '#E6F7F7', ringColor: '#0E9494', continueClass: 'cont-teal' },
 ]
 
 const activityItems = [
@@ -276,6 +235,25 @@ function DashboardPage({
   onNavigateAdmin = () => {},
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const registry = useContentRegistry()
+
+  // Derive subject cards from the live registry (admin SSOT)
+  const subjectCards = useMemo(() => registry.subjectsList.slice(0, 4).map((s, i) => {
+    const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
+    return {
+      subjectKey: s.subjectKey,
+      title: s.title,
+      icon: s.icon,
+      iconClass: tone.iconClass,
+      ringTrack: tone.ringTrack,
+      ringColor: tone.ringColor,
+      progress: s.progress,
+      ringLabel: `${s.progress}%`,
+      stats: `${s.counts.chapters} Chapters\n${s.counts.mcqs} MCQs\n${s.counts.flashcards} Flashcards`,
+      continueClass: tone.continueClass,
+      highlight: i === 0,
+    }
+  }), [registry])
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''

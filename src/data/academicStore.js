@@ -186,6 +186,14 @@ export function useAcademicStore() {
   return { examinations }
 }
 
+/** Non-hook getter for the current examinations array (for utils, event handlers). */
+export function getExaminations() {
+  return examinations
+}
+
+/** Non-hook subscribe for external stores (contentRegistry). */
+export { subscribe, getSnapshot }
+
 // ── Helpers ───────────────────────────────────────────────────────
 function nextId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`

@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import '../styles/subjectDetail.css'
-import { getSubject } from '../data/mockData'
+import { useContentRegistry } from '../data/contentRegistry'
 import { deriveAnalytics } from '../utils/deriveAnalytics'
 import Header from '../components/layout/Header'
 import MobileLayout from '../components/layout/MobileLayout'
@@ -38,8 +38,9 @@ function SubjectDetailPage({
   onStartMCQPractice = () => {},
   onChapterClick = () => {},
 }) {
-  const subject = getSubject(subjectKey)
-  const derived = useMemo(() => deriveAnalytics(subject), [subject])
+  const registry = useContentRegistry()
+  const subject = registry.subjectCatalog[subjectKey] || null
+  const derived = useMemo(() => subject ? deriveAnalytics(subject) : null, [subject])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
 
   // Persist the selected tab per subject so returning from MCQ practice
@@ -47,6 +48,26 @@ function SubjectDetailPage({
   useEffect(() => {
     subjectTabs[subjectKey] = activeTab
   }, [subjectKey, activeTab])
+
+  // Empty state when subject no longer exists (deleted from admin)
+  if (!subject) {
+    return (
+      <div className="subject-detail-shell">
+        <MobileLayout activeTab="Subjects" disabledItems={['Practice', 'Profile']}>
+          <Header variant="back" title="Subject" onBackClick={onBackToSubjects} />
+          <main className="content">
+            <div className="acad-empty" style={{ marginTop: 24 }}>
+              <AppIcon name="chapters" size={28} />
+              <p>This subject is no longer available.</p>
+              <button type="button" className="btn btn-primary" onClick={onBackToSubjects}>
+                Back to Subjects
+              </button>
+            </div>
+          </main>
+        </MobileLayout>
+      </div>
+    )
+  }
 
   const renderContent = () => {
     if (activeTab === 'chapters') {

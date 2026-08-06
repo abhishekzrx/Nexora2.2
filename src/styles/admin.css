@@ -2568,6 +2568,267 @@
 .acad-confirm-actions .btn {
   flex: 1;
 }
+.acad-mobile-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.acad-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.acad-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dark);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.acad-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--gray-text);
+  flex-shrink: 0;
+}
+.acad-search-clear:hover {
+  background: var(--orange-bg);
+  color: var(--orange);
+}
+.acad-summary-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+.acad-summary-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+.acad-summary-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.acad-summary-icon.tone-orange { background: var(--orange-bg); color: var(--orange); }
+.acad-summary-icon.tone-blue { background: var(--blue-bg); color: var(--blue); }
+.acad-summary-icon.tone-green { background: var(--green-bg); color: var(--green); }
+.acad-summary-icon.tone-purple { background: var(--purple-bg); color: var(--purple); }
+.acad-summary-head {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.acad-summary-type {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-subtle);
+}
+.acad-summary-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--dark);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.acad-summary-health {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.acad-summary-health-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--gray-subtle);
+}
+.acad-summary-health-value {
+  font-size: 18px;
+  font-weight: 800;
+}
+.acad-summary-health-value.tone-green { color: var(--green); }
+.acad-summary-health-value.tone-orange { color: var(--orange); }
+.acad-summary-health-value.tone-red { color: var(--red); }
+.acad-summary-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.acad-summary-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--page-bg);
+  border-radius: 8px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--gray-text);
+}
+.acad-summary-meta-item strong {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+.acad-summary-add {
+  margin-top: 12px;
+}
+.acad-summary-add .btn {
+  width: 100%;
+}
+.acad-section {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+.acad-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.acad-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 0;
+  text-align: center;
+}
+.acad-action-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acad-action-btn.btn-primary {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+}
+.acad-action-btn.btn-primary:hover {
+  background: var(--orange-light);
+}
+.acad-action-btn.btn-secondary {
+  background: #fff;
+  color: var(--dark);
+  border: 1px solid var(--border);
+}
+.acad-action-btn.btn-secondary:hover {
+  background: var(--orange-bg);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.acad-action-btn.btn-danger {
+  background: var(--red);
+  color: #fff;
+  border: none;
+}
+.acad-action-btn.btn-danger:hover {
+  background: #d92d20;
+}
+.acad-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.acad-health-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  min-width: 0;
+}
+.acad-health-card.tone-green { background: var(--green-bg); border-color: rgba(18, 183, 106, 0.2); }
+.acad-health-card.tone-orange { background: var(--orange-bg); border-color: rgba(241, 98, 27, 0.2); }
+.acad-health-card.tone-red { background: var(--red-bg); border-color: rgba(240, 68, 56, 0.2); }
+.acad-health-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.acad-health-card.tone-green .acad-health-card-icon { color: var(--green); }
+.acad-health-card.tone-orange .acad-health-card-icon { color: var(--orange); }
+.acad-health-card.tone-red .acad-health-card-icon { color: var(--red); }
+.acad-health-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.acad-health-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dark-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acad-health-card-detail {
+  font-size: 10px;
+  color: var(--gray-text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acad-health-card-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.acad-health-card.tone-green .acad-health-card-status { color: var(--green); }
+.acad-health-card.tone-orange .acad-health-card-status { color: var(--orange); }
+.acad-health-card.tone-red .acad-health-card-status { color: var(--red); }
 
 /* ── AI MCQ Prompt Generator ────────────── */
 .admin-back-link {
@@ -2999,7 +3260,8 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .acad-layout {
+  .acad-mobile-layout {
+    display: grid;
     grid-template-columns: 280px 1fr;
     gap: 20px;
     align-items: start;
@@ -3011,6 +3273,18 @@
 
   .acad-stats-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .acad-actions-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .acad-health-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .acad-summary-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

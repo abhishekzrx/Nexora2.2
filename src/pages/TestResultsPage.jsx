@@ -8,7 +8,7 @@ import '../styles/testResults.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
 import ProgressRing from '../components/ui/ProgressRing'
 import AppIcon from '../components/ui/AppIcon'
-import { getSubject } from '../data/mockData'
+import { useContentRegistry } from '../data/contentRegistry'
 import { testSession } from '../utils/navigation'
 
 const statItems = [
@@ -39,7 +39,8 @@ const trendData = [
 ]
 
 function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSubjects, subjectKey }) {
-  const subject = getSubject(subjectKey || testSession.subjectKey)
+  const registry = useContentRegistry()
+  const subject = registry.subjectCatalog[subjectKey || testSession.subjectKey] || null
   const subjectTitle = subject?.title || 'Computer Networks'
 
   return (

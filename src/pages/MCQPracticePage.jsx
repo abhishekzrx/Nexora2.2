@@ -14,7 +14,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../styles/mcqPractice.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
-import { getSubject } from '../data/mockData'
+import { useContentRegistry } from '../data/contentRegistry'
 import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
 
@@ -253,8 +253,9 @@ const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, mar
 })
 
 function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit, reviewMode = false }) {
-  const subject = getSubject(subjectKey)
-  const subjectTitle = subject.title
+  const registry = useContentRegistry()
+  const subject = registry.subjectCatalog[subjectKey] || null
+  const subjectTitle = subject?.title || 'Subject'
 
   // Derive MCQ count from chapter meta (e.g. "20 MCQs • 8 Flashcards" → 20)
   const chapterMcqCount = chapter
@@ -333,6 +334,37 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     if (reviewMode) return
     setTimerOn((prev) => !prev)
   }, [reviewMode])
+
+  // Locked content cannot be practiced
+  const isLocked = subject?.locked || chapter?.locked || false
+  if (isLocked && !reviewMode) {
+    return (
+      <div className="mcq-shell">
+        <PhoneFrame>
+          <header className="header">
+            <div className="header-left">
+              <button type="button" className="back-btn" onClick={onBack} aria-label="Go back">
+                <AppIcon name="back" size={20} />
+              </button>
+              <div className="header-title">
+                <h1>Content Locked</h1>
+                <p>{subjectTitle}</p>
+              </div>
+            </div>
+          </header>
+          <main className="content">
+            <div className="acad-empty" style={{ marginTop: 24 }}>
+              <AppIcon name="lock" size={28} />
+              <p>This content is locked by the administrator.</p>
+              <button type="button" className="btn btn-primary" onClick={onBack}>
+                Go Back
+              </button>
+            </div>
+          </main>
+        </PhoneFrame>
+      </div>
+    )
+  }
 
   const handleSubmit = () => {
     // Persist the session so "Review Answers" can restore this exact test.

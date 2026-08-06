@@ -1,94 +1,18 @@
-﻿import { useRef, useState } from 'react'
+﻿import { useMemo, useRef, useState } from 'react'
 import './Subjects.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
 import SideDrawer from './components/layout/SideDrawer'
+import { useContentRegistry } from './data/contentRegistry'
 
-const heroStats = [
-  { icon: 'chapters', value: '5', label: 'Subjects' },
-  { icon: 'document', value: '2', label: 'Chapters' },
-  { icon: 'target', value: '200', label: 'MCQs' },
-]
-
-const subjects = [
-  {
-    subjectKey: 'computer-networks',
-    title: 'Computer Networks',
-    icon: 'computerNetworks',
-    iconClass: 'icon-orange',
-    pillClass: 'pill-orange',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 200 MCQs • 80 Flashcards',
-    progress: 72,
-    progressClass: 'fill-orange',
-    percentClass: 'pct-orange',
-    arrowClass: 'arrow-orange',
-  },
-  {
-    subjectKey: 'operating-systems',
-    title: 'Operating Systems',
-    icon: 'operatingSystems',
-    iconClass: 'icon-blue',
-    pillClass: 'pill-blue',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 0 MCQs • 0 Flashcards',
-    progress: 45,
-    progressClass: 'fill-blue',
-    percentClass: 'pct-blue',
-    arrowClass: 'arrow-blue',
-  },
-  {
-    subjectKey: 'dbms',
-    title: 'Database Management System',
-    icon: 'dbms',
-    iconClass: 'icon-green',
-    pillClass: 'pill-green',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 0 MCQs • 0 Flashcards',
-    progress: 30,
-    progressClass: 'fill-green',
-    percentClass: 'pct-green',
-    arrowClass: 'arrow-green',
-  },
-  {
-    subjectKey: 'digital-electronics',
-    title: 'Digital Electronics',
-    icon: 'digitalElectronics',
-    iconClass: 'icon-red',
-    pillClass: 'pill-red',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 0 MCQs • 0 Flashcards',
-    progress: 15,
-    progressClass: 'fill-red',
-    percentClass: 'pct-red',
-    arrowClass: 'arrow-red',
-  },
-  {
-    subjectKey: 'data-structures',
-    title: 'Data Structures & Algorithms',
-    icon: 'dataStructures',
-    iconClass: 'icon-purple',
-    pillClass: 'pill-purple',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 0 MCQs • 0 Flashcards',
-    progress: 20,
-    progressClass: 'fill-purple',
-    percentClass: 'pct-purple',
-    arrowClass: 'arrow-purple',
-  },
-  {
-    subjectKey: 'computer-organization',
-    title: 'Computer Organization & Architecture',
-    icon: 'computerOrganization',
-    iconClass: 'icon-teal',
-    pillClass: 'pill-teal',
-    pillLabel: 'MEDIUM',
-    meta: '10 Chapters • 0 MCQs • 0 Flashcards',
-    progress: 10,
-    progressClass: 'fill-teal',
-    percentClass: 'pct-teal',
-    arrowClass: 'arrow-teal',
-  },
+// Color tone mapping for subject cards
+const TONE_MAP = [
+  { iconClass: 'icon-orange', pillClass: 'pill-orange', progressClass: 'fill-orange', percentClass: 'pct-orange', arrowClass: 'arrow-orange' },
+  { iconClass: 'icon-blue', pillClass: 'pill-blue', progressClass: 'fill-blue', percentClass: 'pct-blue', arrowClass: 'arrow-blue' },
+  { iconClass: 'icon-green', pillClass: 'pill-green', progressClass: 'fill-green', percentClass: 'pct-green', arrowClass: 'arrow-green' },
+  { iconClass: 'icon-red', pillClass: 'pill-red', progressClass: 'fill-red', percentClass: 'pct-red', arrowClass: 'arrow-red' },
+  { iconClass: 'icon-purple', pillClass: 'pill-purple', progressClass: 'fill-purple', percentClass: 'pct-purple', arrowClass: 'arrow-purple' },
+  { iconClass: 'icon-teal', pillClass: 'pill-teal', progressClass: 'fill-teal', percentClass: 'pct-teal', arrowClass: 'arrow-teal' },
 ]
 
 const drawerSections = [
@@ -184,6 +108,33 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef(null)
+  const registry = useContentRegistry()
+
+  // Derive subject cards from the live registry (admin SSOT)
+  const subjects = useMemo(() => registry.subjectsList.map((s, i) => {
+    const tone = TONE_MAP[i % TONE_MAP.length]
+    return {
+      subjectKey: s.subjectKey,
+      title: s.title,
+      icon: s.icon,
+      iconClass: tone.iconClass,
+      pillClass: tone.pillClass,
+      pillLabel: s.badge || 'MEDIUM',
+      meta: `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
+      progress: s.progress,
+      progressClass: tone.progressClass,
+      percentClass: tone.percentClass,
+      arrowClass: tone.arrowClass,
+      locked: s.locked,
+    }
+  }), [registry])
+
+  const heroStats = useMemo(() => [
+    { icon: 'chapters', value: String(registry.subjectCount), label: 'Subjects' },
+    { icon: 'document', value: String(registry.chapterCount), label: 'Chapters' },
+    { icon: 'target', value: String(registry.mcqCount), label: 'MCQs' },
+  ], [registry])
+
   const filteredSubjects = subjects.filter((subject) =>
     subject.title.toLowerCase().includes(search.toLowerCase()),
   )
