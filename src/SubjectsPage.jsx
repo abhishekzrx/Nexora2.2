@@ -21,7 +21,7 @@ const drawerSections = [
     items: [
       { icon: 'home', label: 'Dashboard' },
       { icon: 'subjects', label: 'Subjects', active: true },
-      { icon: 'practice', label: 'Practice', disabled: true },
+      { icon: 'practice', label: 'Practice' },
       { icon: 'flashcards', label: 'Flashcards', disabled: true },
       { icon: 'mockTests', label: 'Mock Tests', disabled: true },
     ],
@@ -104,7 +104,7 @@ function SubjectCard({ subject, onSelect }) {
   )
 }
 
-function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigateAdmin = () => {} }) {
+function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigatePractice = () => {}, onNavigateAdmin = () => {} }) {
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef(null)
@@ -149,6 +149,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
         onItemClick={(item) => {
           setDrawerOpen(false)
           if (item.label === 'Dashboard') onNavigateHome()
+          else if (item.label === 'Practice') onNavigatePractice()
           else if (item.label === 'Admin') onNavigateAdmin()
         }}
       />
@@ -156,12 +157,14 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
       <MobileLayout
         className="subjects-phone"
         activeTab="Subjects"
-        disabledItems={['Practice', 'Profile']}
+        disabledItems={['Profile']}
         onNavigate={(item) => {
           if (item.center) {
             onOpenSubjectDetail('computer-networks')
           } else if (item.label === 'Home') {
             onNavigateHome()
+          } else if (item.label === 'Practice') {
+            onNavigatePractice()
           }
         }}
       >

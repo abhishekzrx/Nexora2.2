@@ -4,6 +4,7 @@ import SubjectsPage from './SubjectsPage'
 import SubjectDetailPage from './pages/SubjectDetailPage'
 import MCQPracticePage from './pages/MCQPracticePage'
 import TestResultsPage from './pages/TestResultsPage'
+import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
 
@@ -17,6 +18,8 @@ function resolveRoute() {
   if (parts.length === 0) return { name: 'dashboard' }
 
   if (parts[0] === 'subjects') return { name: 'subjects' }
+
+  if (parts[0] === 'practice') return { name: 'practice' }
 
   if (parts[0] === 'admin') return { name: 'admin' }
 
@@ -59,7 +62,24 @@ function App() {
       <SubjectsPage
         onNavigateHome={() => navigate('')}
         onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
+        onNavigatePractice={() => navigate('practice')}
         onNavigateAdmin={() => navigate('admin')}
+      />
+    )
+  }
+
+  if (name === 'practice') {
+    return (
+      <PracticeHubPage
+        onNavigateHome={() => navigate('')}
+        onOpenSubject={(key) => navigate(`subject/${key}`)}
+        onResume={(session) => {
+          testSession.subjectKey = session.subjectKey
+          testSession.chapter = null
+          testSession.mode = 'practice'
+          navigate(`subject/${session.subjectKey}/mcq`)
+        }}
+        onStartPractice={() => navigate('subjects')}
       />
     )
   }
@@ -123,6 +143,7 @@ function App() {
   return (
     <DashboardPage
       onNavigateSubjects={() => navigate('subjects')}
+      onNavigatePractice={() => navigate('practice')}
       onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
       onNavigateAdmin={() => navigate('admin')}
     />

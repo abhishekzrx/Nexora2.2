@@ -63,7 +63,7 @@ const activityItems = [
 const drawerPrimaryItems = [
   { icon: 'home', label: 'Dashboard', active: true },
   { icon: 'subjects', label: 'Subjects' },
-  { icon: 'practice', label: 'Practice', disabled: true },
+  { icon: 'practice', label: 'Practice' },
   { icon: 'flashcards', label: 'Flashcards', disabled: true },
   { icon: 'mockTests', label: 'Mock Tests', disabled: true },
 ]
@@ -231,6 +231,7 @@ function ActivityItem({ icon, iconClass, text, time }) {
 
 function DashboardPage({
   onNavigateSubjects = () => {},
+  onNavigatePractice = () => {},
   onOpenSubjectDetail = () => {},
   onNavigateAdmin = () => {},
 }) {
@@ -304,6 +305,10 @@ function DashboardPage({
                   onNavigateSubjects()
                   return
                 }
+                if (item.label === 'Practice') {
+                  onNavigatePractice()
+                  return
+                }
                 setDrawerOpen(false)
               }}
             />
@@ -359,10 +364,12 @@ function DashboardPage({
 
       <MobileLayout
         activeTab="Home"
-        disabledItems={['Practice', 'Profile']}
+        disabledItems={['Profile']}
         onNavigate={(item) => {
           if (item.center || item.label === 'Subjects') {
             onNavigateSubjects()
+          } else if (item.label === 'Practice') {
+            onNavigatePractice()
           }
         }}
       >
