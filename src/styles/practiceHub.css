@@ -16,25 +16,6 @@
   background: var(--page-bg);
 }
 
-/* ── Greeting ───────────────────────────────── */
-.hub-greeting {
-  padding: 4px 2px 8px;
-}
-
-.hub-greeting-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--dark);
-  letter-spacing: -0.4px;
-}
-
-.hub-greeting-sub {
-  font-size: 13px;
-  color: var(--gray-text);
-  margin-top: 4px;
-  line-height: 1.45;
-}
-
 /* ── Shared section header ──────────────────── */
 .hub-section-header {
   display: flex;
@@ -120,7 +101,7 @@
   background: linear-gradient(130deg, #0B0F1A 0%, #14181F 58%, #3A2410 100%);
   color: #fff;
   padding: 20px;
-  margin-top: 4px;
+  margin-top: 0;
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
 }
 

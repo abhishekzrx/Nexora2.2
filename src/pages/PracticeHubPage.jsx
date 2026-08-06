@@ -535,7 +535,7 @@ function PracticeHubPage({
             <button type="button" className="back-btn" onClick={onNavigateHome} aria-label="Go home">
               <AppIcon name="back" size={20} />
             </button>
-            <div className="header-title">Practice</div>
+            <div className="header-title">Practice Hub</div>
           </div>
           <div className="header-right">
             <button type="button" className="header-icon header-notify" aria-label="Notifications" disabled>
@@ -549,15 +549,6 @@ function PracticeHubPage({
         </header>
 
         <main className="content hub-content">
-          <div className="hub-greeting">
-            <div className="hub-greeting-title">Practice Hub</div>
-            <div className="hub-greeting-sub">
-              {continueSession
-                ? 'Resume where you left off and keep the momentum going.'
-                : 'Pick up right where you stopped — your next best session is one tap away.'}
-            </div>
-          </div>
-
           {/* 1. Continue Learning */}
           <ContinueHero session={continueSession} onResume={handleResume} />
 
