@@ -637,7 +637,6 @@ function AcademicStructurePage({ onBack, onNavigate }) {
         {type === 'chapter' ? (
           <div className="acad-chapter-actions">
             <Button variant="secondary" onClick={() => onNavigate('aiGenerator', getChapterContext(exam.id, cls.id, sub.id, ch.id))}><AppIcon name="aiCoach" size={14} />Open AI Studio</Button>
-            <Button variant="secondary" onClick={() => onNavigate('contentManager')}><AppIcon name="folder" size={14} />View Library</Button>
           </div>
         ) : null}
       </div>

@@ -9,21 +9,21 @@ import AppIcon from '../components/ui/AppIcon'
 import MobileLayout from '../components/layout/MobileLayout'
 import SideDrawer from '../components/layout/SideDrawer'
 import AdminDashboard from '../components/admin/AdminDashboard'
-import AdminInjectMcqs from '../components/admin/AdminInjectMcqs'
-import AdminContentManager from '../components/admin/AdminContentManager'
 import AiContentStudio from '../components/admin/AiContentStudio'
-import AcademicStructurePage from '../components/admin/AcademicStructurePage'
+import SubjectManagementPage from '../components/admin/SubjectManagementPage'
+import ChapterManagementPage from '../components/admin/ChapterManagementPage'
+import LearningWorkspaceManager from '../components/admin/LearningWorkspaceManager'
 import AdminModals from '../components/admin/AdminModals'
+import AdminFeedbackProvider from '../components/admin/AdminFeedback'
 
 const drawerSections = [
   {
     label: 'ADMIN',
     items: [
       { icon: 'adminDashboard', label: 'Dashboard' },
-      { icon: 'folder', label: 'Academic Structure' },
+      { icon: 'adminDashboard', label: 'Course Management' },
+      { icon: 'chapters', label: 'Subject Management' },
       { icon: 'aiCoach', label: 'AI Content Studio' },
-      { icon: 'upload', label: 'Inject MCQs' },
-      { icon: 'folder', label: 'Content Manager' },
     ],
   },
 ]
@@ -34,6 +34,7 @@ function AdminPage({ onBackHome = () => {} }) {
   const [modalTarget, setModalTarget] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [aiPreload, setAiPreload] = useState(null)
+  const [chapterSubject, setChapterSubject] = useState(null)
 
   const openModal = (modal, target) => {
     setModalTarget(target || null)
@@ -50,16 +51,23 @@ function AdminPage({ onBackHome = () => {} }) {
   }
 
   const navigate = (target, preload) => {
-    if (target === 'injectMcqs') setPage('injectMcqs')
-    else if (target === 'contentManager') setPage('contentManager')
-    else if (target === 'academicStructure') setPage('academicStructure')
-    else if (target === 'aiGenerator') {
+    if (target === 'aiGenerator') {
       setAiPreload(preload || null)
       setPage('aiGenerator')
+    } else if (target === 'courseManager') {
+      setPage('courseManager')
+    } else if (target === 'subjectManager') {
+      setPage('subjectManager')
+    } else if (target === 'chapterManager') {
+      setChapterSubject(preload || null)
+      setPage('chapterManager')
     } else setPage('dashboard')
   }
 
+  const handleBackToDashboard = () => setPage('dashboard')
+
   return (
+    <AdminFeedbackProvider>
     <div className="admin-shell">
       <SideDrawer
         open={drawerOpen}
@@ -69,10 +77,9 @@ function AdminPage({ onBackHome = () => {} }) {
         onItemClick={(item) => {
           setDrawerOpen(false)
           if (item.label === 'Dashboard') navigate('dashboard')
-          else if (item.label === 'Academic Structure') navigate('academicStructure')
+          else if (item.label === 'Course Management') navigate('courseManager')
+          else if (item.label === 'Subject Management') navigate('subjectManager')
           else if (item.label === 'AI Content Studio') navigate('aiGenerator')
-          else if (item.label === 'Inject MCQs') navigate('injectMcqs')
-          else if (item.label === 'Content Manager') navigate('contentManager')
         }}
       />
 
@@ -101,20 +108,17 @@ function AdminPage({ onBackHome = () => {} }) {
           {page === 'dashboard' ? (
             <AdminDashboard onOpenModal={openModal} onNavigate={navigate} />
           ) : null}
+          {page === 'courseManager' ? (
+            <LearningWorkspaceManager onBack={handleBackToDashboard} />
+          ) : null}
+          {page === 'subjectManager' ? (
+            <SubjectManagementPage onBack={handleBackToDashboard} onOpenChapters={(subjectName) => navigate('chapterManager', subjectName)} />
+          ) : null}
+          {page === 'chapterManager' ? (
+            <ChapterManagementPage onBack={() => navigate('subjectManager')} subjectName={chapterSubject} />
+          ) : null}
           {page === 'aiGenerator' ? (
-            <AiContentStudio onBack={() => navigate('dashboard')} onNavigate={navigate} preload={aiPreload} />
-          ) : null}
-          {page === 'academicStructure' ? (
-            <AcademicStructurePage onBack={() => navigate('dashboard')} onNavigate={navigate} />
-          ) : null}
-          {page === 'injectMcqs' ? (
-            <AdminInjectMcqs
-              onCancel={() => navigate('dashboard')}
-              onSuccess={handleSuccess}
-            />
-          ) : null}
-          {page === 'contentManager' ? (
-            <AdminContentManager onOpenModal={openModal} onNavigate={navigate} />
+            <AiContentStudio onBack={handleBackToDashboard} onNavigate={navigate} preload={aiPreload} />
           ) : null}
         </main>
       </MobileLayout>
@@ -127,6 +131,7 @@ function AdminPage({ onBackHome = () => {} }) {
         onTargetChange={setModalTarget}
       />
     </div>
+    </AdminFeedbackProvider>
   )
 }
 

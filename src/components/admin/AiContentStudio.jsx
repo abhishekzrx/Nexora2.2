@@ -513,10 +513,6 @@ function AiContentStudio({ onBack, onNavigate, preload }) {
               <AppIcon name="upload" size={14} />
               Inject Another
             </Button>
-            <Button variant="secondary" onClick={() => onNavigate('contentManager')}>
-              <AppIcon name="folder" size={14} />
-              View Library
-            </Button>
           </div>
         </div>
       ) : null}

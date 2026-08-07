@@ -15,7 +15,7 @@
  */
 import { useMemo, useState } from 'react'
 import '../styles/practiceHub.css'
-import PhoneFrame from '../components/layout/PhoneFrame'
+import MobileLayout from '../components/layout/MobileLayout'
 import AppIcon from '../components/ui/AppIcon'
 import ProgressRing from '../components/ui/ProgressRing'
 import { useContentRegistry } from '../data/contentRegistry'
@@ -492,6 +492,7 @@ function EmptyHistory({ onStart }) {
 // ── Page ───────────────────────────────────────────────────────────
 function PracticeHubPage({
   onNavigateHome = () => {},
+  onNavigateSubjects = () => {},
   onOpenSubject = () => {},
   onResume = () => {},
   onStartPractice = () => {},
@@ -529,7 +530,17 @@ function PracticeHubPage({
 
   return (
     <div className="hub-shell">
-      <PhoneFrame>
+      <MobileLayout
+        activeTab="Practice"
+        disabledItems={['Profile']}
+        onNavigate={(item) => {
+          if (item.center || item.label === 'Subjects') {
+            onNavigateSubjects()
+          } else if (item.label === 'Home') {
+            onNavigateHome()
+          }
+        }}
+      >
         <header className="header hub-header">
           <div className="header-left">
             <button type="button" className="back-btn" onClick={onNavigateHome} aria-label="Go home">
@@ -621,7 +632,7 @@ function PracticeHubPage({
             <EmptyHistory onStart={() => handleQuickSelect(store.quickActions[0])} />
           )}
         </main>
-      </PhoneFrame>
+      </MobileLayout>
     </div>
   )
 }

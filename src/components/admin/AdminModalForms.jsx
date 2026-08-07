@@ -8,8 +8,39 @@ import AppIcon from '../ui/AppIcon'
 import { AdminFormField } from './AdminModal'
 import { useAdminStore } from '../../data/adminStore'
 
+// ── Subject icon options (centralized AppIcon system) ─────────────
+// Uses ONLY the existing centralized AppIcon registry names.
+// All icons render via the global AppIcon component.
+const SUBJECT_ICON_OPTIONS = [
+  { name: 'computerNetworks', label: 'Networks' },
+  { name: 'operatingSystems', label: 'OS' },
+  { name: 'dbms', label: 'Database' },
+  { name: 'digitalElectronics', label: 'Digital' },
+  { name: 'dataStructures', label: 'DSA' },
+  { name: 'computerOrganization', label: 'COA' },
+  { name: 'physics', label: 'Physics' },
+  { name: 'chemistry', label: 'Chemistry' },
+  { name: 'biology', label: 'Biology' },
+  { name: 'computer', label: 'Computer' },
+  { name: 'chapters', label: 'Book' },
+  { name: 'document', label: 'Document' },
+  { name: 'quiz', label: 'Quiz' },
+  { name: 'flashcardsTab', label: 'Cards' },
+  { name: 'target', label: 'Target' },
+  { name: 'rocket', label: 'Rocket' },
+  { name: 'medal', label: 'Medal' },
+  { name: 'trophy', label: 'Trophy' },
+  { name: 'star', label: 'Star' },
+  { name: 'lightbulb', label: 'Idea' },
+]
+
+// ── Subject color presets ─────────────────────────────────────────
+const SUBJECT_COLOR_OPTIONS = [
+  '#F1621B', '#2E5CE6', '#12B76A', '#7C3AED',
+  '#F04438', '#0E9494', '#F79009', '#EE46BC',
+]
+
 export function SubjectForm({ value, onChange }) {
-  const isEdit = Boolean(value)
   const data = value || {}
   return (
     <>
@@ -24,18 +55,7 @@ export function SubjectForm({ value, onChange }) {
           required
         />
       </AdminFormField>
-      <AdminFormField label="Subject Icon" required htmlFor="subjectIcon">
-        <input
-          id="subjectIcon"
-          type="text"
-          className="admin-form-input"
-          placeholder="e.g., ⚛️"
-          value={data.icon || ''}
-          onChange={(e) => onChange?.({ ...data, icon: e.target.value })}
-          required
-        />
-      </AdminFormField>
-      <AdminFormField label="Description" htmlFor="subjectDesc">
+      <AdminFormField label="Subject Description" htmlFor="subjectDesc">
         <textarea
           id="subjectDesc"
           className="admin-form-textarea"
@@ -43,6 +63,48 @@ export function SubjectForm({ value, onChange }) {
           value={data.desc || ''}
           onChange={(e) => onChange?.({ ...data, desc: e.target.value })}
         />
+      </AdminFormField>
+      <AdminFormField label="Subject Icon" required htmlFor="subjectIcon">
+        <div className="admin-icon-picker-grid">
+          {SUBJECT_ICON_OPTIONS.map((opt) => (
+            <button
+              key={opt.name}
+              type="button"
+              className={`admin-icon-picker-btn${data.icon === opt.name ? ' selected' : ''}`}
+              onClick={() => onChange?.({ ...data, icon: opt.name })}
+              title={opt.label}
+              aria-label={`Select icon ${opt.label}`}
+            >
+              <AppIcon name={opt.name} size={22} />
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      </AdminFormField>
+      <AdminFormField label="Subject Color" htmlFor="subjectColor">
+        <div className="admin-color-picker-grid">
+          {SUBJECT_COLOR_OPTIONS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`admin-color-picker-btn${data.color === color ? ' selected' : ''}`}
+              style={{ background: color }}
+              onClick={() => onChange?.({ ...data, color })}
+              aria-label={`Select color ${color}`}
+            />
+          ))}
+        </div>
+      </AdminFormField>
+      <AdminFormField label="Status" htmlFor="subjectStatus">
+        <select
+          id="subjectStatus"
+          className="admin-form-select"
+          value={data.status || 'active'}
+          onChange={(e) => onChange?.({ ...data, status: e.target.value })}
+        >
+          <option value="active">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
       </AdminFormField>
     </>
   )

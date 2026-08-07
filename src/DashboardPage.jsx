@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
@@ -6,6 +6,87 @@ import { useContentRegistry } from './data/contentRegistry'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
+
+// ── Dynamic Readiness Levels ─────────────────────────────
+// Future backend integration only needs to pass a readiness
+// percentage — all colors, labels, gradients, badges and
+// visual states update automatically from this config.
+const READINESS_LEVELS = {
+  beginner: {
+    min: 0,
+    max: 39,
+    label: 'Beginner',
+    message: "Let's build your foundation.",
+    ringGradient: ['#FF5A5F', '#F1621B'],
+    glow: 'rgba(240, 68, 56, 0.4)',
+    accent: '#FF6B6B',
+    badgeClass: 'badge-beginner',
+    cardAccent: 'rgba(240, 68, 56, 0.14)',
+  },
+  improving: {
+    min: 40,
+    max: 69,
+    label: 'Improving',
+    message: "You're making steady progress.",
+    ringGradient: ['#F1621B', '#FFB020'],
+    glow: 'rgba(241, 98, 27, 0.4)',
+    accent: '#FF8A3D',
+    badgeClass: 'badge-improving',
+    cardAccent: 'rgba(241, 98, 27, 0.14)',
+  },
+  competitive: {
+    min: 70,
+    max: 84,
+    label: 'Competitive',
+    message: "You're approaching exam-ready performance.",
+    ringGradient: ['#0E9494', '#12B76A'],
+    glow: 'rgba(14, 148, 148, 0.4)',
+    accent: '#3EE088',
+    badgeClass: 'badge-competitive',
+    cardAccent: 'rgba(14, 148, 148, 0.14)',
+  },
+  examReady: {
+    min: 85,
+    max: 100,
+    label: 'Exam Ready',
+    message: 'Excellent! Maintain your momentum.',
+    ringGradient: ['#12B76A', '#34D399'],
+    glow: 'rgba(18, 183, 106, 0.4)',
+    accent: '#3EE088',
+    badgeClass: 'badge-exam-ready',
+    cardAccent: 'rgba(18, 183, 106, 0.14)',
+  },
+}
+
+function getReadinessLevel(score) {
+  const clamped = Math.max(0, Math.min(100, score))
+  if (clamped <= 39) return READINESS_LEVELS.beginner
+  if (clamped <= 69) return READINESS_LEVELS.improving
+  if (clamped <= 84) return READINESS_LEVELS.competitive
+  return READINESS_LEVELS.examReady
+}
+
+function useAnimatedNumber(target, duration = 1200) {
+  const [value, setValue] = useState(0)
+
+  useEffect(() => {
+    let raf
+    const start = performance.now()
+
+    const tick = (now) => {
+      const elapsed = now - start
+      const t = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setValue(Math.round(target * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+
+  return value
+}
 
 const miniCards = [
   {
@@ -110,6 +191,80 @@ function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillCol
         />
       </svg>
       <div className="progress-ring-value">{children}</div>
+    </div>
+  )
+}
+
+function ReadinessRing({ size, radius, strokeWidth, progress, gradient, glow, trackColor, children }) {
+  const [animatedProgress, setAnimatedProgress] = useState(0)
+  const animatedRef = useRef(0)
+  const gradientId = useMemo(() => `readiness-grad-${Math.random().toString(36).slice(2, 9)}`, [])
+  const circumference = 2 * Math.PI * radius
+
+  useEffect(() => {
+    let raf
+    const start = performance.now()
+    const from = animatedRef.current
+    const to = progress
+    const duration = 1400
+
+    const tick = (now) => {
+      const elapsed = now - start
+      const t = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      const current = from + (to - from) * eased
+      setAnimatedProgress(current)
+      animatedRef.current = current
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [progress])
+
+  const dashOffset = circumference - (animatedProgress / 100) * circumference
+
+  return (
+    <div className="readiness-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={gradient[0]} />
+            <stop offset="100%" stopColor={gradient[1]} />
+          </linearGradient>
+        </defs>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <circle
+          className="readiness-ring-progress"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={`url(#${gradientId})`}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 8px ${glow})` }}
+        />
+      </svg>
+      <div className="readiness-ring-value">{children}</div>
+    </div>
+  )
+}
+
+function ReadinessBadge({ level }) {
+  return (
+    <div className={`readiness-badge ${level.badgeClass}`}>
+      <span className="readiness-badge-dot" />
+      {level.label}
     </div>
   )
 }
@@ -237,6 +392,12 @@ function DashboardPage({
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const registry = useContentRegistry()
+
+  // ── Exam Readiness (mock value — future Supabase integration
+  //    only needs to pass a readiness percentage) ─────────────
+  const readinessScore = 72
+  const readinessLevel = getReadinessLevel(readinessScore)
+  const animatedScore = useAnimatedNumber(readinessScore)
 
   // Derive subject cards from the live registry (admin SSOT)
   const subjectCards = useMemo(() => registry.subjectsList.slice(0, 4).map((s, i) => {
@@ -456,40 +617,44 @@ function DashboardPage({
             </div>
           </div>
 
-          <section className="readiness-card">
+          <section
+            className="readiness-card"
+            style={{
+              '--readiness-accent': readinessLevel.accent,
+              '--readiness-glow': readinessLevel.glow,
+              '--readiness-card-accent': readinessLevel.cardAccent,
+            }}
+          >
             <div className="readiness-title">EXAM READINESS</div>
             <div className="readiness-top">
-              <ProgressRing
+              <ReadinessRing
                 size={118}
                 radius={50}
                 strokeWidth={11}
-                progress={72}
+                progress={readinessScore}
+                gradient={readinessLevel.ringGradient}
+                glow={readinessLevel.glow}
                 trackColor="#2A2E38"
-                fillColor="#F1621B"
               >
-                <div className="readiness-pct">72%</div>
-                <div className="readiness-ready-label">Ready</div>
-              </ProgressRing>
-              <div className="readiness-msg-wrap">
-                <div className="readiness-msg">You're doing great! 💪</div>
-                <div className="readiness-msg2">
-                  Keep consistent and focus on weak areas.
-                </div>
-              </div>
-            </div>
+                <div className="readiness-ring-label">{readinessLevel.label}</div>
+              </ReadinessRing>
 
-            <div className="readiness-divider">
-              <div>
-                <div className="predicted-label">Predicted Score</div>
+              <div className="readiness-score-block">
+                <div className="readiness-score-value" style={{ color: readinessLevel.accent }}>
+                  {animatedScore}%
+                </div>
+                <div className="readiness-score-label">Readiness</div>
+              </div>
+
+              <div className="readiness-projected">
+                <div className="predicted-label">Projected Score</div>
                 <div className="predicted-score">
                   82<span> / 100</span>
                 </div>
               </div>
-              <div className="improving-pill">
-                <AppIcon name="trendingUp" size={14} />
-                Improving
-              </div>
             </div>
+
+            <div className="readiness-divider" />
 
             <div className="areas-row">
               <div className="areas-col">
@@ -515,6 +680,11 @@ function DashboardPage({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="readiness-status-row">
+              <ReadinessBadge level={readinessLevel} />
+              <div className="readiness-message">{readinessLevel.message}</div>
             </div>
           </section>
 

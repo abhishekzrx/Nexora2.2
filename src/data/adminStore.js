@@ -3,6 +3,11 @@
  * Mutable in-memory store for the Admin Content Management System.
  * No backend — purely local mock data with full CRUD operations.
  *
+ * Course-Centric Architecture:
+ * Every content entity (Subject, Chapter, MCQ, Flashcard) belongs to
+ * a Course via `courseId`. The active Course acts as the working
+ * context — all CRUD operations automatically scope to it.
+ *
  * Components subscribe via useAdminStore() and re-render automatically
  * whenever any CRUD operation mutates the store, so all counters and
  * related UI stay in sync without a page refresh.
@@ -15,15 +20,33 @@ import {
   mcqRows,
   flashcardCards,
 } from './adminData'
+import { getActiveWorkspaceId } from './workspaceStore'
 
 let listeners = []
 let version = 0
 
 // ── Seed state from adminData ─────────────────────────────────────
-let subjects = adminSubjects.map((s) => ({ ...s, stats: s.stats.map((st) => ({ ...st })) }))
-let chapters = allChapters.map((c) => ({ ...c }))
-let mcqs = mcqRows.map((m) => ({ ...m }))
-let flashcards = flashcardCards.map((f) => ({ ...f }))
+// All seed content belongs to the default active course (bpsc-tre-4).
+const DEFAULT_COURSE_ID = 'bpsc-tre-4'
+
+let subjects = adminSubjects.map((s) => ({
+  ...s,
+  courseId: DEFAULT_COURSE_ID,
+  status: 'active',
+  locked: false,
+  color: '#F1621B',
+  order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
+  stats: s.stats.map((st) => ({ ...st })),
+}))
+let chapters = allChapters.map((c, i) => ({
+  ...c,
+  courseId: DEFAULT_COURSE_ID,
+  status: 'active',
+  locked: false,
+  number: i + 1,
+}))
+let mcqs = mcqRows.map((m) => ({ ...m, courseId: DEFAULT_COURSE_ID }))
+let flashcards = flashcardCards.map((f) => ({ ...f, courseId: DEFAULT_COURSE_ID }))
 
 function emit() {
   version += 1
@@ -43,7 +66,14 @@ function getSnapshot() {
 
 export function useAdminStore() {
   useSyncExternalStore(subscribe, getSnapshot)
-  return { subjects, chapters, mcqs, flashcards }
+  const activeCourseId = getActiveWorkspaceId()
+  return {
+    subjects: subjects.filter((s) => s.courseId === activeCourseId),
+    chapters: chapters.filter((c) => c.courseId === activeCourseId),
+    mcqs: mcqs.filter((m) => m.courseId === activeCourseId),
+    flashcards: flashcards.filter((f) => f.courseId === activeCourseId),
+    activeCourseId,
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -51,10 +81,14 @@ function nextId(items) {
   return items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1
 }
 
+function currentCourseId() {
+  return getActiveWorkspaceId() || DEFAULT_COURSE_ID
+}
+
 function recomputeSubjectStats(subject) {
-  const subjectChapters = chapters.filter((c) => c.subject === subject.name)
-  const subjectMcqs = mcqs.filter((m) => m.subject === subject.name)
-  const subjectFlashcards = flashcards.filter((f) => f.subject === subject.name)
+  const subjectChapters = chapters.filter((c) => c.subject === subject.name && c.courseId === subject.courseId)
+  const subjectMcqs = mcqs.filter((m) => m.subject === subject.name && m.courseId === subject.courseId)
+  const subjectFlashcards = flashcards.filter((f) => f.subject === subject.name && f.courseId === subject.courseId)
   subject.stats = [
     { value: String(subjectChapters.length), label: 'Chapters' },
     { value: String(subjectMcqs.length), label: 'MCQs' },
@@ -68,17 +102,24 @@ function recomputeAllSubjectStats() {
 }
 
 // ── Subject CRUD ──────────────────────────────────────────────────
-export function addSubject({ name, icon, desc }) {
+export function addSubject({ name, icon, desc, color, status }) {
+  const courseId = currentCourseId()
+  const courseSubjects = subjects.filter((s) => s.courseId === courseId)
   const subject = {
     id: `s${nextId(subjects)}`,
+    courseId,
     name: name || 'New Subject',
     icon: icon || 'chapters',
     desc: desc || '',
+    color: color || '#F1621B',
+    status: status || 'active',
+    locked: false,
+    order: courseSubjects.length + 1,
     stats: [
       { value: '0', label: 'Chapters' },
       { value: '0', label: 'MCQs' },
       { value: '0', label: 'Flashcards' },
-      { value: 'Active', label: 'Status' },
+      { value: status === 'disabled' ? 'Disabled' : 'Active', label: 'Status' },
     ],
   }
   subjects = [...subjects, subject]
@@ -86,14 +127,21 @@ export function addSubject({ name, icon, desc }) {
   return subject
 }
 
-export function updateSubject(id, { name, icon, desc }) {
+export function updateSubject(id, { name, icon, desc, color, status }) {
   subjects = subjects.map((subject) => {
     if (subject.id !== id) return subject
-    const updated = { ...subject, name: name || subject.name, icon: icon || subject.icon, desc: desc ?? subject.desc }
-    // Rename cascades to chapters/mcqs/flashcards
-    chapters = chapters.map((c) => (c.subject === subject.name ? { ...c, subject: updated.name } : c))
-    mcqs = mcqs.map((m) => (m.subject === subject.name ? { ...m, subject: updated.name } : m))
-    flashcards = flashcards.map((f) => (f.subject === subject.name ? { ...f, subject: updated.name } : f))
+    const updated = {
+      ...subject,
+      name: name || subject.name,
+      icon: icon || subject.icon,
+      desc: desc ?? subject.desc,
+      color: color || subject.color,
+      status: status || subject.status,
+    }
+    // Rename cascades to chapters/mcqs/flashcards within the same course
+    chapters = chapters.map((c) => (c.subject === subject.name && c.courseId === subject.courseId ? { ...c, subject: updated.name } : c))
+    mcqs = mcqs.map((m) => (m.subject === subject.name && m.courseId === subject.courseId ? { ...m, subject: updated.name } : m))
+    flashcards = flashcards.map((f) => (f.subject === subject.name && f.courseId === subject.courseId ? { ...f, subject: updated.name } : f))
     return updated
   })
   recomputeAllSubjectStats()
@@ -104,17 +152,54 @@ export function deleteSubject(id) {
   const target = subjects.find((s) => s.id === id)
   let impacted = { name: '', chapters: 0, mcqs: 0, flashcards: 0 }
   if (target) {
-    const chapterCount = chapters.filter((c) => c.subject === target.name).length
-    const mcqCount = mcqs.filter((m) => m.subject === target.name).length
-    const flashcardCount = flashcards.filter((f) => f.subject === target.name).length
+    const chapterCount = chapters.filter((c) => c.subject === target.name && c.courseId === target.courseId).length
+    const mcqCount = mcqs.filter((m) => m.subject === target.name && m.courseId === target.courseId).length
+    const flashcardCount = flashcards.filter((f) => f.subject === target.name && f.courseId === target.courseId).length
     impacted = { name: target.name, chapters: chapterCount, mcqs: mcqCount, flashcards: flashcardCount }
-    chapters = chapters.filter((c) => c.subject !== target.name)
-    mcqs = mcqs.filter((m) => m.subject !== target.name)
-    flashcards = flashcards.filter((f) => f.subject !== target.name)
+    chapters = chapters.filter((c) => !(c.subject === target.name && c.courseId === target.courseId))
+    mcqs = mcqs.filter((m) => !(m.subject === target.name && m.courseId === target.courseId))
+    flashcards = flashcards.filter((f) => !(f.subject === target.name && f.courseId === target.courseId))
   }
   subjects = subjects.filter((s) => s.id !== id)
   emit()
   return impacted
+}
+
+export function duplicateSubject(id) {
+  const target = subjects.find((s) => s.id === id)
+  if (!target) return
+  const courseId = target.courseId
+  const copy = {
+    ...JSON.parse(JSON.stringify(target)),
+    id: `s${nextId(subjects)}`,
+    name: `${target.name} (Copy)`,
+    status: 'active',
+    locked: false,
+    order: subjects.filter((s) => s.courseId === courseId).length + 1,
+  }
+  copy.stats = copy.stats.map((st) => ({ ...st }))
+  subjects = [...subjects, copy]
+  emit()
+  return copy
+}
+
+export function reorderSubjects(orderedIds) {
+  subjects = subjects.map((s) => ({
+    ...s,
+    order: orderedIds.indexOf(s.id) + 1,
+  }))
+  emit()
+}
+
+export function setSubjectStatus(id, status) {
+  subjects = subjects.map((s) => (s.id === id ? { ...s, status } : s))
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function toggleSubjectLock(id) {
+  subjects = subjects.map((s) => (s.id === id ? { ...s, locked: !s.locked } : s))
+  emit()
 }
 
 /**
@@ -126,24 +211,28 @@ export function getDeleteSubjectImpact(id) {
   if (!target) return { name: '', chapters: 0, mcqs: 0, flashcards: 0 }
   return {
     name: target.name,
-    chapters: chapters.filter((c) => c.subject === target.name).length,
-    mcqs: mcqs.filter((m) => m.subject === target.name).length,
-    flashcards: flashcards.filter((f) => f.subject === target.name).length,
+    chapters: chapters.filter((c) => c.subject === target.name && c.courseId === target.courseId).length,
+    mcqs: mcqs.filter((m) => m.subject === target.name && m.courseId === target.courseId).length,
+    flashcards: flashcards.filter((f) => f.subject === target.name && f.courseId === target.courseId).length,
   }
 }
 
 // ── Chapter CRUD ──────────────────────────────────────────────────
 export function addChapter({ subject, name, desc, number }) {
+  const courseId = currentCourseId()
+  const courseChapters = chapters.filter((c) => c.courseId === courseId)
   const chapter = {
     id: nextId(chapters),
+    courseId,
     name: name || 'New Chapter',
     subject: subject || 'Computer Networks',
     desc: desc || '',
     mcqs: 0,
     flashcards: 0,
-    status: 'success',
+    status: 'active',
     statusText: 'Active',
-    number: number ? Number(number) : chapters.length + 1,
+    locked: false,
+    number: number ? Number(number) : courseChapters.length + 1,
   }
   chapters = [...chapters, chapter]
   recomputeAllSubjectStats()
@@ -166,15 +255,64 @@ export function updateChapter(id, { subject, name, desc, number }) {
   emit()
 }
 
+export function duplicateChapter(id) {
+  const target = chapters.find((c) => c.id === id)
+  if (!target) return
+  const courseId = target.courseId
+  const copy = {
+    ...JSON.parse(JSON.stringify(target)),
+    id: nextId(chapters),
+    name: `${target.name} (Copy)`,
+    status: 'active',
+    locked: false,
+    number: chapters.filter((c) => c.courseId === courseId && c.subject === target.subject).length + 1,
+  }
+  chapters = [...chapters, copy]
+  recomputeAllSubjectStats()
+  emit()
+  return copy
+}
+
+export function reorderChapters(subjectName, orderedChapters) {
+  const courseId = currentCourseId()
+  const orderMap = new Map(orderedChapters.map((c, index) => [c.id, index + 1]))
+  chapters = chapters.map((chapter) => {
+    if (chapter.subject !== subjectName || chapter.courseId !== courseId) return chapter
+    const newNumber = orderMap.get(chapter.id)
+    return newNumber ? { ...chapter, number: newNumber } : chapter
+  })
+  emit()
+}
+
+export function setChapterStatus(id, status) {
+  chapters = chapters.map((c) => {
+    if (c.id !== id) return c
+    const isActive = status === 'active'
+    return {
+      ...c,
+      status: isActive ? 'success' : 'warning',
+      statusText: isActive ? 'Active' : 'Disabled',
+      ...(status === 'active' ? { statusText: 'Active' } : { statusText: 'Disabled' }),
+    }
+  })
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function toggleChapterLock(id) {
+  chapters = chapters.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c))
+  emit()
+}
+
 export function deleteChapter(id) {
   const target = chapters.find((c) => c.id === id)
   let impacted = { name: '', subject: '', mcqs: 0, flashcards: 0 }
   if (target) {
-    const mcqCount = mcqs.filter((m) => m.chapter === target.name).length
-    const flashcardCount = flashcards.filter((f) => f.chapter === target.name).length
+    const mcqCount = mcqs.filter((m) => m.chapter === target.name && m.courseId === target.courseId).length
+    const flashcardCount = flashcards.filter((f) => f.chapter === target.name && f.courseId === target.courseId).length
     impacted = { name: target.name, subject: target.subject, mcqs: mcqCount, flashcards: flashcardCount }
-    mcqs = mcqs.filter((m) => m.chapter !== target.name)
-    flashcards = flashcards.filter((f) => f.chapter !== target.name)
+    mcqs = mcqs.filter((m) => !(m.chapter === target.name && m.courseId === target.courseId))
+    flashcards = flashcards.filter((f) => !(f.chapter === target.name && f.courseId === target.courseId))
   }
   chapters = chapters.filter((c) => c.id !== id)
   recomputeAllSubjectStats()
@@ -192,8 +330,8 @@ export function getDeleteChapterImpact(id) {
   return {
     name: target.name,
     subject: target.subject,
-    mcqs: mcqs.filter((m) => m.chapter === target.name).length,
-    flashcards: flashcards.filter((f) => f.chapter === target.name).length,
+    mcqs: mcqs.filter((m) => m.chapter === target.name && m.courseId === target.courseId).length,
+    flashcards: flashcards.filter((f) => f.chapter === target.name && f.courseId === target.courseId).length,
   }
 }
 
@@ -208,8 +346,10 @@ export function deleteSelectedMcqs(ids) {
 }
 
 export function addMcq({ question, options, correct, difficulty, subject, chapter }) {
+  const courseId = currentCourseId()
   const mcq = {
     id: nextId(mcqs),
+    courseId,
     question: question || 'New question?',
     options: options || ['', '', '', ''],
     correct: correct || 0,
@@ -251,24 +391,27 @@ export function deleteMcq(id) {
 }
 
 export function deleteMcqsByChapter(chapterName) {
-  const count = mcqs.filter((m) => m.chapter === chapterName).length
-  mcqs = mcqs.filter((m) => m.chapter !== chapterName)
+  const courseId = currentCourseId()
+  const count = mcqs.filter((m) => m.chapter === chapterName && m.courseId === courseId).length
+  mcqs = mcqs.filter((m) => !(m.chapter === chapterName && m.courseId === courseId))
   recomputeAllSubjectStats()
   emit()
   return count
 }
 
 export function deleteMcqsBySubject(subjectName) {
-  const count = mcqs.filter((m) => m.subject === subjectName).length
-  mcqs = mcqs.filter((m) => m.subject !== subjectName)
+  const courseId = currentCourseId()
+  const count = mcqs.filter((m) => m.subject === subjectName && m.courseId === courseId).length
+  mcqs = mcqs.filter((m) => !(m.subject === subjectName && m.courseId === courseId))
   recomputeAllSubjectStats()
   emit()
   return count
 }
 
 export function deleteAllMcqs() {
-  const count = mcqs.length
-  mcqs = []
+  const courseId = currentCourseId()
+  const count = mcqs.filter((m) => m.courseId === courseId).length
+  mcqs = mcqs.filter((m) => m.courseId !== courseId)
   recomputeAllSubjectStats()
   emit()
   return count
@@ -276,8 +419,10 @@ export function deleteAllMcqs() {
 
 // ── Flashcard CRUD ────────────────────────────────────────────────
 export function addFlashcard({ subject, chapter, front, back }) {
+  const courseId = currentCourseId()
   const flashcard = {
     id: nextId(flashcards),
+    courseId,
     subject: subject || 'Computer Networks',
     chapter: chapter || 'General',
     front: front || 'New question?',
@@ -312,24 +457,27 @@ export function deleteFlashcard(id) {
 }
 
 export function deleteFlashcardsByChapter(chapterName) {
-  const count = flashcards.filter((f) => f.chapter === chapterName).length
-  flashcards = flashcards.filter((f) => f.chapter !== chapterName)
+  const courseId = currentCourseId()
+  const count = flashcards.filter((f) => f.chapter === chapterName && f.courseId === courseId).length
+  flashcards = flashcards.filter((f) => !(f.chapter === chapterName && f.courseId === courseId))
   recomputeAllSubjectStats()
   emit()
   return count
 }
 
 export function deleteFlashcardsBySubject(subjectName) {
-  const count = flashcards.filter((f) => f.subject === subjectName).length
-  flashcards = flashcards.filter((f) => f.subject !== subjectName)
+  const courseId = currentCourseId()
+  const count = flashcards.filter((f) => f.subject === subjectName && f.courseId === courseId).length
+  flashcards = flashcards.filter((f) => !(f.subject === subjectName && f.courseId === courseId))
   recomputeAllSubjectStats()
   emit()
   return count
 }
 
 export function deleteAllFlashcards() {
-  const count = flashcards.length
-  flashcards = []
+  const courseId = currentCourseId()
+  const count = flashcards.filter((f) => f.courseId === courseId).length
+  flashcards = flashcards.filter((f) => f.courseId !== courseId)
   recomputeAllSubjectStats()
   emit()
   return count
@@ -342,6 +490,7 @@ export function deleteAllFlashcards() {
  * Returns { imported, duplicates, failed, lastSubject, lastChapter }
  */
 export function injectMcqs(records) {
+  const courseId = currentCourseId()
   let imported = 0
   let duplicates = 0
   let failed = 0
@@ -353,7 +502,7 @@ export function injectMcqs(records) {
       failed += 1
       return
     }
-    const exists = mcqs.some((m) => m.question.toLowerCase() === String(record.question).toLowerCase())
+    const exists = mcqs.some((m) => m.question.toLowerCase() === String(record.question).toLowerCase() && m.courseId === courseId)
     if (exists) {
       duplicates += 1
       return
@@ -366,6 +515,7 @@ export function injectMcqs(records) {
       ...mcqs,
       {
         id: nextId(mcqs),
+        courseId,
         question: record.question,
         options,
         correct,
@@ -394,6 +544,7 @@ export function injectMcqs(records) {
  * Returns { imported, duplicates, failed, lastSubject, lastChapter }
  */
 export function injectFlashcards(records) {
+  const courseId = currentCourseId()
   let imported = 0
   let duplicates = 0
   let failed = 0
@@ -405,7 +556,7 @@ export function injectFlashcards(records) {
       failed += 1
       return
     }
-    const exists = flashcards.some((f) => f.front.toLowerCase() === String(record.front).toLowerCase())
+    const exists = flashcards.some((f) => f.front.toLowerCase() === String(record.front).toLowerCase() && f.courseId === courseId)
     if (exists) {
       duplicates += 1
       return
@@ -414,6 +565,7 @@ export function injectFlashcards(records) {
       ...flashcards,
       {
         id: nextId(flashcards),
+        courseId,
         subject: record.subject,
         chapter: record.chapter,
         front: record.front,
@@ -433,19 +585,38 @@ export function injectFlashcards(records) {
 
 // ── Derived counts for dashboard summary cards ────────────────────
 export function getCounts() {
+  const courseId = currentCourseId()
   return {
-    subjects: subjects.length,
-    chapters: chapters.length,
-    mcqs: mcqs.length,
-    flashcards: flashcards.length,
+    subjects: subjects.filter((s) => s.courseId === courseId).length,
+    chapters: chapters.filter((c) => c.courseId === courseId).length,
+    mcqs: mcqs.filter((m) => m.courseId === courseId).length,
+    flashcards: flashcards.filter((f) => f.courseId === courseId).length,
   }
+}
+
+// ── Derived subject/chapter lookups ───────────────────────────────
+export function getSubjectByName(name) {
+  const courseId = currentCourseId()
+  return subjects.find((s) => s.name === name && s.courseId === courseId) || null
+}
+
+export function getSubjectsByCourse(courseId) {
+  return subjects.filter((s) => s.courseId === courseId)
+}
+
+export function getChaptersBySubject(subjectName) {
+  const courseId = currentCourseId()
+  return chapters
+    .filter((c) => c.subject === subjectName && c.courseId === courseId)
+    .sort((a, b) => a.number - b.number)
 }
 
 // ── Chapter ordering (reorder) ────────────────────────────────────
 export function saveChapterOrder(subjectName, orderedChapters) {
+  const courseId = currentCourseId()
   const orderMap = new Map(orderedChapters.map((c, index) => [c.id, index + 1]))
   chapters = chapters.map((chapter) => {
-    if (chapter.subject !== subjectName) return chapter
+    if (chapter.subject !== subjectName || chapter.courseId !== courseId) return chapter
     const newNumber = orderMap.get(chapter.id)
     return newNumber ? { ...chapter, number: newNumber } : chapter
   })

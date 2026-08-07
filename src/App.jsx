@@ -72,6 +72,7 @@ function App() {
     return (
       <PracticeHubPage
         onNavigateHome={() => navigate('')}
+        onNavigateSubjects={() => navigate('subjects')}
         onOpenSubject={(key) => navigate(`subject/${key}`)}
         onResume={(session) => {
           testSession.subjectKey = session.subjectKey

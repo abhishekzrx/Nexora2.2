@@ -33,7 +33,6 @@ export const workspaceHighlights = [
 export const quickActions = [
   { icon: 'add', label: 'Add Subject', modal: 'addSubject' },
   { icon: 'add', label: 'Add Chapter', modal: 'addChapter' },
-  { icon: 'add', label: 'Inject MCQs', modal: 'injectMcqs' },
   { icon: 'add', label: 'Add Flashcards', modal: 'addFlashcard' },
 ]
 

@@ -65,7 +65,7 @@ img{
   margin:0 auto;
   background:var(--page-bg);
   min-height:100vh;
-  padding-bottom:90px;
+  padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px));
   position:relative;
 }
 
@@ -285,14 +285,32 @@ img{
 }
 
 .readiness-card{
-  background:linear-gradient(115deg,#0B0F1A 0%, #14181F 55%, #4A2410 100%);
+  position:relative;
+  background:linear-gradient(115deg,#0B0F1A 0%, #14181F 55%, #1A1F2A 100%);
   border-radius:20px;
   padding:22px 18px;
   margin-bottom:16px;
   color:#fff;
+  overflow:hidden;
+  transition:background 0.6s ease;
+}
+
+/* Subtle ambient accent lighting based on readiness level */
+.readiness-card::before{
+  content:'';
+  position:absolute;
+  top:-40%;
+  right:-30%;
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  background:radial-gradient(circle, var(--readiness-card-accent) 0%, transparent 70%);
+  pointer-events:none;
+  transition:background 0.6s ease;
 }
 
 .readiness-title{
+  position:relative;
   font-size:12.5px;
   font-weight:800;
   letter-spacing:1px;
@@ -301,13 +319,15 @@ img{
 }
 
 .readiness-top{
+  position:relative;
   display:flex;
   align-items:center;
-  gap:18px;
+  gap:14px;
   margin-bottom:20px;
   flex-wrap:nowrap;
 }
 
+/* ── Circular Progress Ring ─────────────────────────── */
 .readiness-ring{
   position:relative;
   width:118px;
@@ -315,82 +335,104 @@ img{
   flex-shrink:0;
 }
 
-.readiness-pct{
-  font-size:26px;
+.readiness-ring svg{
+  transform:rotate(-90deg);
+  display:block;
+}
+
+.readiness-ring-progress{
+  transition:stroke-dashoffset 0.3s ease;
+}
+
+.readiness-ring-value{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  pointer-events:none;
+  box-sizing:border-box;
+  line-height:1;
+}
+
+.readiness-ring-label{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:0.4px;
+  color:#C4C9D4;
+  text-transform:uppercase;
+}
+
+/* ── Readiness Percentage (visual focus) ────────────── */
+.readiness-score-block{
+  flex:1;
+  min-width:0;
+  text-align:center;
+}
+
+.readiness-score-value{
+  font-size:34px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:-0.5px;
+  transition:color 0.6s ease;
+}
+
+.readiness-score-label{
+  font-size:11px;
+  font-weight:600;
+  color:#B7BCC7;
+  margin-top:5px;
+  letter-spacing:0.3px;
+}
+
+/* ── Projected Score ────────────────────────────────── */
+.readiness-projected{
+  flex-shrink:0;
+  text-align:right;
+  min-width:0;
+}
+
+.predicted-label{
+  font-size:11px;
+  color:#B7BCC7;
+  margin-bottom:5px;
+  white-space:nowrap;
+}
+
+.predicted-score{
+  font-size:20px;
   font-weight:800;
   color:#fff;
   line-height:1;
 }
 
-.readiness-ready-label{
-  font-size:11.5px;
-  color:#C4C9D4;
-  margin-top:3px;
-}
-
-.readiness-msg-wrap{
-  flex:1;
-  min-width:0;
-}
-
-.readiness-msg{
-  font-size:14.5px;
-  font-weight:700;
-  color:#fff;
-  margin-bottom:6px;
-  line-height:1.4;
-}
-
-.readiness-msg2{
-  font-size:12.5px;
-  color:#B7BCC7;
-  line-height:1.5;
-}
-
-.readiness-divider{
-  border-top:1px solid rgba(255,255,255,0.12);
-  padding-top:14px;
-  margin-bottom:16px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-}
-
-.predicted-label{
-  font-size:12px;
-  color:#B7BCC7;
-  margin-bottom:5px;
-}
-
-.predicted-score{
-  font-size:22px;
-  font-weight:800;
-  color:#fff;
-}
-
 .predicted-score span{
-  font-size:14px;
+  font-size:13px;
   font-weight:600;
   color:#B7BCC7;
 }
 
-.improving-pill{
-  background:rgba(18,183,106,0.18);
-  color:#3EE088;
-  font-size:11.5px;
-  font-weight:700;
-  padding:7px 12px;
-  border-radius:20px;
-  white-space:nowrap;
+/* ── Divider ────────────────────────────────────────── */
+.readiness-divider{
+  position:relative;
+  border-top:1px solid rgba(255,255,255,0.12);
+  padding-top:14px;
+  margin-bottom:16px;
 }
 
+/* ── Areas ──────────────────────────────────────────── */
 .areas-row{
+  position:relative;
   display:flex;
   gap:16px;
 }
 
 .areas-col{
   flex:1;
+  min-width:0;
 }
 
 .areas-title{
@@ -415,6 +457,9 @@ img{
   font-size:12.5px;
   color:#E4E7EC;
   margin-bottom:9px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .area-item:last-child{
@@ -439,6 +484,85 @@ img{
 
 .dot-bad{
   background:var(--red);
+}
+
+/* ── Status Badge & Message ─────────────────────────── */
+.readiness-status-row{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+
+.readiness-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11.5px;
+  font-weight:800;
+  letter-spacing:0.3px;
+  padding:7px 13px;
+  border-radius:20px;
+  white-space:nowrap;
+  flex-shrink:0;
+  animation:badge-pop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.readiness-badge-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+  box-shadow:0 0 6px currentColor;
+}
+
+.badge-beginner{
+  background:rgba(240,68,56,0.16);
+  color:#FF6B6B;
+  border:1px solid rgba(240,68,56,0.3);
+}
+
+.badge-improving{
+  background:rgba(241,98,27,0.16);
+  color:#FF8A3D;
+  border:1px solid rgba(241,98,27,0.3);
+}
+
+.badge-competitive{
+  background:rgba(14,148,148,0.16);
+  color:#3EE088;
+  border:1px solid rgba(14,148,148,0.3);
+}
+
+.badge-exam-ready{
+  background:rgba(18,183,106,0.16);
+  color:#3EE088;
+  border:1px solid rgba(18,183,106,0.3);
+}
+
+.readiness-message{
+  font-size:12.5px;
+  color:#B7BCC7;
+  line-height:1.4;
+  min-width:0;
+}
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes badge-pop{
+  0%{
+    transform:scale(0.8);
+    opacity:0;
+  }
+  60%{
+    transform:scale(1.05);
+  }
+  100%{
+    transform:scale(1);
+    opacity:1;
+  }
 }
 
 .continue-card{
@@ -994,7 +1118,7 @@ img{
   display:flex;
   justify-content:space-around;
   align-items:center;
-  padding:10px 6px 14px;
+  padding:10px 6px calc(14px + env(safe-area-inset-bottom, 0px));
   z-index:20;
 }
 
@@ -1199,6 +1323,40 @@ img{
 
 .drawer-logout:hover{
   background:var(--red-bg);
+}
+
+/* ── Responsive adjustments for the readiness card ──── */
+@media (max-width: 360px){
+  .readiness-card{
+    padding:18px 14px;
+  }
+
+  .readiness-top{
+    gap:10px;
+  }
+
+  .readiness-ring{
+    width:100px;
+    height:100px;
+  }
+
+  .readiness-score-value{
+    font-size:28px;
+  }
+
+  .readiness-projected{
+    text-align:right;
+  }
+
+  .predicted-score{
+    font-size:17px;
+  }
+
+  .readiness-status-row{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+  }
 }
 
 @media (min-width: 481px){
