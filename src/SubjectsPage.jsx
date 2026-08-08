@@ -3,9 +3,9 @@ import './Subjects.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
 import SideDrawer from './components/layout/SideDrawer'
-import { useContentRegistry } from './data/contentRegistry'
+import { useCourseRegistry } from './data/courseRegistry'
+import { useWorkspaceStore } from './data/workspaceStore'
 
-// Color tone mapping for subject cards
 const TONE_MAP = [
   { iconClass: 'icon-orange', pillClass: 'pill-orange', progressClass: 'fill-orange', percentClass: 'pct-orange', arrowClass: 'arrow-orange' },
   { iconClass: 'icon-blue', pillClass: 'pill-blue', progressClass: 'fill-blue', percentClass: 'pct-blue', arrowClass: 'arrow-blue' },
@@ -46,37 +46,6 @@ const drawerSections = [
   },
 ]
 
-function ProgressRing({ size, radius, strokeWidth, progress, trackColor, fillColor }) {
-  const circumference = 2 * Math.PI * radius
-  const dashOffset = circumference - (progress / 100) * circumference
-
-  return (
-    <div className="progress-ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={fillColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-        />
-      </svg>
-    </div>
-  )
-}
-
 function SubjectCard({ subject, onSelect }) {
   return (
     <button type="button" className="subj-card" onClick={() => onSelect(subject.subjectKey)}>
@@ -104,13 +73,15 @@ function SubjectCard({ subject, onSelect }) {
   )
 }
 
-function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigatePractice = () => {}, onNavigateAdmin = () => {} }) {
+function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigatePractice = () => {}, onNavigateAdmin = () => {} }) {
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef(null)
-  const registry = useContentRegistry()
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+  const registry = useCourseRegistry(courseId || activeWorkspaceId)
 
-  // Derive subject cards from the live registry (admin SSOT)
+  const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
+
   const subjects = useMemo(() => registry.subjectsList.map((s, i) => {
     const tone = TONE_MAP[i % TONE_MAP.length]
     return {
@@ -144,7 +115,7 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
       <SideDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        profile={{ name: 'Abhi Kumar', sub: 'BPSC TRE 4.0 • Computer Science', streak: '14 Day Streak' }}
+        profile={{ name: 'Abhi Kumar', sub: `${activeCourse?.name || 'Select Course'}`, streak: '14 Day Streak' }}
         sections={drawerSections}
         onItemClick={(item) => {
           setDrawerOpen(false)
@@ -198,25 +169,17 @@ function SubjectsPage({ onNavigateHome = () => {}, onOpenSubjectDetail = () => {
           <section className="hero-card">
             <div className="active-pill">
               <span className="live-dot" />
-              BPSC TRE 4.0 ACTIVE
+              {activeCourse?.name?.toUpperCase() || 'COURSE ACTIVE'}
             </div>
             <div className="hero-top">
               <div className="hero-text">
-                <div className="hero-title">Computer Science Prep Hub 🚀</div>
+                <div className="hero-title">{activeCourse?.name || 'Computer Science Prep Hub'} 🚀</div>
                 <div className="hero-sub">
-                  Your all-in-one platform to learn, practice and master Computer Science.
+                  Your all-in-one platform to learn, practice and master {activeCourse?.name || 'Computer Science'}.
                 </div>
               </div>
               <div className="hero-ring-wrap">
-                <ProgressRing
-                  size={96}
-                  radius={42}
-                  strokeWidth={8}
-                  progress={72}
-                  trackColor="rgba(255,255,255,0.18)"
-                  fillColor="#F1621B"
-                />               
-                <div className="hero-ring-value">72%</div>
+                <div className="hero-ring-value">{registry.subjectsList.length > 0 ? Math.round(registry.subjectsList.reduce((s, sub) => s + sub.progress, 0) / registry.subjectsList.length) : 0}%</div>
                 <div className="hero-ring-label">Overall Progress</div>
               </div>
             </div>

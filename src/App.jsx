@@ -8,6 +8,7 @@ import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
 import { switchToAdmin, switchToStudent, getActiveRole } from './data/roleStore'
+import { useWorkspaceStore } from './data/workspaceStore'
 
 /**
  * Resolve the current hash into a route descriptor.
@@ -39,6 +40,7 @@ function resolveRoute() {
 
 function App() {
   const [route, setRoute] = useState(resolveRoute)
+  const { activeWorkspaceId } = useWorkspaceStore()
 
   useEffect(() => {
     const onHashChange = () => setRoute(resolveRoute())
@@ -69,6 +71,7 @@ function App() {
   if (name === 'subjects') {
     return (
       <SubjectsPage
+        courseId={activeWorkspaceId}
         onNavigateHome={() => navigate('')}
         onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
         onNavigatePractice={() => navigate('practice')}
@@ -97,6 +100,7 @@ function App() {
   if (name === 'subject') {
     return (
       <SubjectDetailPage
+        courseId={activeWorkspaceId}
         subjectKey={subjectKey}
         onBackToSubjects={() => navigate('subjects')}
         onNavigateHome={() => navigate('')}
@@ -152,6 +156,7 @@ function App() {
 
   return (
     <DashboardPage
+      courseId={activeWorkspaceId}
       onNavigateSubjects={() => navigate('subjects')}
       onNavigatePractice={() => navigate('practice')}
       onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}

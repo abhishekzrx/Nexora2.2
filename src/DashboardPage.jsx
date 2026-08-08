@@ -392,6 +392,7 @@ function ActivityItem({ icon, iconClass, text, time }) {
 }
 
 function DashboardPage({
+  courseId,
   onNavigateSubjects = () => {},
   onNavigatePractice = () => {},
   onOpenSubjectDetail = () => {},
@@ -401,10 +402,11 @@ function DashboardPage({
   const [selectedCourseId, setSelectedCourseId] = useState(() => {
     try {
       const saved = localStorage.getItem('nexora-student-course')
-      return saved || null
+      if (saved) return saved
     } catch {
-      return null
+      // ignore
     }
+    return courseId || null
   })
   const registry = useContentRegistry()
   const courseRegistry = useCourseRegistry(selectedCourseId)

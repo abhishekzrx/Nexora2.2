@@ -1,11 +1,12 @@
 /**
  * SubjectDetailPage
  * Universal reusable Subject Detail / Chapter Analytics page.
- * Renders dynamically based on the selected subject from mock data.
+ * Renders dynamically based on the selected subject from course registry.
  */
 import { useEffect, useMemo, useState } from 'react'
 import '../styles/subjectDetail.css'
-import { useContentRegistry } from '../data/contentRegistry'
+import { useCourseRegistry } from '../data/courseRegistry'
+import { useWorkspaceStore } from '../data/workspaceStore'
 import { deriveAnalytics } from '../utils/deriveAnalytics'
 import Header from '../components/layout/Header'
 import MobileLayout from '../components/layout/MobileLayout'
@@ -31,6 +32,7 @@ const tabItems = [
 ]
 
 function SubjectDetailPage({
+  courseId,
   subjectKey,
   onBackToSubjects = () => {},
   onNavigateHome = () => {},
@@ -38,18 +40,18 @@ function SubjectDetailPage({
   onStartMCQPractice = () => {},
   onChapterClick = () => {},
 }) {
-  const registry = useContentRegistry()
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+  const registry = useCourseRegistry(courseId || activeWorkspaceId)
   const subject = registry.subjectCatalog[subjectKey] || null
   const derived = useMemo(() => subject ? deriveAnalytics(subject) : null, [subject])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
 
-  // Persist the selected tab per subject so returning from MCQ practice
-  // (or any navigation) does not reset the user's context.
+  const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
+
   useEffect(() => {
     subjectTabs[subjectKey] = activeTab
   }, [subjectKey, activeTab])
 
-  // Empty state when subject no longer exists (deleted from admin)
   if (!subject) {
     return (
       <div className="subject-detail-shell">
@@ -58,7 +60,7 @@ function SubjectDetailPage({
           <main className="content">
             <div className="acad-empty" style={{ marginTop: 24 }}>
               <AppIcon name="chapters" size={28} />
-              <p>This subject is no longer available.</p>
+              <p>This subject is no longer available in {activeCourse?.name || 'this course'}.</p>
               <button type="button" className="btn btn-primary" onClick={onBackToSubjects}>
                 Back to Subjects
               </button>
@@ -90,7 +92,7 @@ function SubjectDetailPage({
           </div>
           <div className="chapter-list">
             {subject.chapters.map((chapter) => (
-              <ChapterCard key={chapter.num} chapter={chapter} onClick={onChapterClick} />
+              <ChapterCard key={chapter.id || chapter.num} chapter={chapter} onClick={onChapterClick} />
             ))}
           </div>
           <div className="banner">
