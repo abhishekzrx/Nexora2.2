@@ -1,197 +1,287 @@
 /**
  * AdminDashboard
- * Overview screen: Course Control Center with premium summary cards,
- * course switcher, quick actions, and recent activity.
- * Store-driven so counters update live.
- * All icons go through the global AppIcon system.
+ * Main dashboard for the Admin Panel.
+ * Fully Course-aware — all data derives from the active Course.
  */
-import { useMemo, useState } from 'react'
-import Button from '../ui/Button'
+import { useMemo } from 'react'
 import AppIcon from '../ui/AppIcon'
-import { AdminSectionCard } from './AdminShared'
-import { useAdminStore } from '../../data/adminStore'
+import AdminSidebar from './AdminSidebar'
+import CourseSelector from './CourseSelector'
+import CourseManager from './CourseManager'
+import SubjectManager from './SubjectManager'
+import ChapterManager from './ChapterManager'
+import McqManager from './McqManager'
+import FlashcardManager from './FlashcardManager'
+import EmptyCourseState from './EmptyCourseState'
+import FeedbackUI from './FeedbackUI'
+import { useAdminStore, getCounts } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
-import { workspaceHighlights, quickActions, recentActivity } from '../../data/adminData'
+import { useFeedback } from '../../data/feedbackStore'
 
-function AdminDashboard({ onOpenModal, onNavigate }) {
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+const QUICK_ACTIONS = [
+  { key: 'subjects', label: 'Add Subject', icon: 'add' },
+  { key: 'chapters', label: 'Add Chapter', icon: 'document' },
+  { key: 'mcqs', label: 'Add MCQs', icon: 'mcqs' },
+  { key: 'flashcards', label: 'Add Flashcards', icon: 'flashcardsTab' },
+]
+
+function buildCourseActivity(course, subjects, chapters, mcqs, flashcards) {
+  const items = []
+  const totalChapters = chapters.length
+  const totalMcqs = mcqs.length
+  const totalFlashcards = flashcards.length
+  const totalSubjects = subjects.length
+
+  if (totalSubjects > 0) {
+    items.push({
+      icon: 'chapters',
+      strong: `${totalSubjects} Subject${totalSubjects > 1 ? 's' : ''}`,
+      text: 'created in this course',
+      time: 'Recently',
+    })
+  }
+  if (totalChapters > 0) {
+    items.push({
+      icon: 'document',
+      strong: `${totalChapters} Chapter${totalChapters > 1 ? 's' : ''}`,
+      text: 'added across subjects',
+      time: 'Recently',
+    })
+  }
+  if (totalMcqs > 0) {
+    items.push({
+      icon: 'mcqs',
+      strong: `${totalMcqs} MCQs`,
+      text: 'injected into question bank',
+      time: 'Recently',
+    })
+  }
+  if (totalFlashcards > 0) {
+    items.push({
+      icon: 'flashcardsTab',
+      strong: `${totalFlashcards} Flashcards`,
+      text: 'generated for review',
+      time: 'Recently',
+    })
+  }
+  if (course.contentHealth?.issues?.length > 0) {
+    items.push({
+      icon: 'warning',
+      strong: 'Content Issues',
+      text: course.contentHealth.issues[0],
+      time: 'Needs attention',
+    })
+  }
+  if (items.length === 0) {
+    items.push({
+      icon: 'adminDashboard',
+      strong: 'Empty Course',
+      text: 'No content has been added yet',
+      time: 'Start building',
+    })
+  }
+  return items.slice(0, 5)
+}
+
+function getReadinessLevel(score) {
+  const clamped = Math.max(0, Math.min(100, score))
+  if (clamped <= 39) return { label: 'Beginner', tone: 'orange', gradient: ['#FF5A5F', '#F1621B'] }
+  if (clamped <= 69) return { label: 'Improving', tone: 'orange', gradient: ['#F1621B', '#FFB020'] }
+  if (clamped <= 84) return { label: 'Competitive', tone: 'teal', gradient: ['#0E9494', '#12B76A'] }
+  return { label: 'Exam Ready', tone: 'green', gradient: ['#12B76A', '#34D399'] }
+}
+
+function AdminDashboard({ activeSection, onNavigate }) {
   const { subjects, chapters, mcqs, flashcards } = useAdminStore()
-  const [showSwitcher, setShowSwitcher] = useState(false)
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+  const { showToast } = useFeedback()
 
-  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || null
-  const iconStyle = activeWorkspace?.themeColor ? { '--ws-icon-color': activeWorkspace.themeColor } : {}
+  const counts = getCounts()
+  const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0]
 
-  // Live metrics from admin store (scoped to active course)
-  const liveMetrics = useMemo(() => [
-    { icon: 'subjects', value: subjects.length, label: 'Subjects', tone: 'blue' },
-    { icon: 'document', value: chapters.length, label: 'Chapters', tone: 'purple' },
-    { icon: 'mcqs', value: mcqs.length, label: 'MCQs', tone: 'orange' },
-    { icon: 'flashcardsTab', value: flashcards.length, label: 'Flashcards', tone: 'purple' },
-  ], [subjects, chapters, mcqs, flashcards])
+  const courseActivity = buildCourseActivity(activeCourse, subjects, chapters, mcqs, flashcards)
+
+  const readinessScore = useMemo(() => {
+    if (!activeCourse) return 0
+    return Math.round(activeCourse.metadata?.completion || activeCourse.contentHealth?.score || 0)
+  }, [activeCourse])
+
+  const readinessLevel = getReadinessLevel(readinessScore)
+
+  const healthScore = useMemo(() => {
+    if (!activeCourse) return 0
+    return Math.round(activeCourse.contentHealth?.score || 0)
+  }, [activeCourse])
+
+  const handleQuickAction = (key) => {
+    onNavigate?.(key)
+    showToast({ type: 'success', title: 'Quick Action', message: `Navigated to ${key}` })
+  }
+
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
+
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'subjects':
+        return <SubjectManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'chapters':
+        return <ChapterManager key={activeWorkspaceId} courseName={activeCourse?.name} selectedSubject={subjects[0]?.name} />
+      case 'mcqs':
+        return <McqManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'flashcards':
+        return <FlashcardManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'courses':
+        return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      default:
+        return (
+          <>
+            {subjects.length === 0 ? (
+              <EmptyCourseState courseName={activeCourse?.name} />
+            ) : (
+              <>
+                <div className="admin-section">
+                  <h2 className="admin-section-title">Quick Actions</h2>
+                  <div className="admin-quick-grid">
+                    {QUICK_ACTIONS.map((action) => (
+                      <button
+                        key={action.key}
+                        type="button"
+                        className="admin-quick-card"
+                        onClick={() => handleQuickAction(action.key)}
+                      >
+                        <span className="admin-quick-icon">
+                          <AppIcon name={action.icon} size={20} />
+                        </span>
+                        <span className="admin-quick-label">{action.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="admin-section">
+                  <h2 className="admin-section-title">Course Health</h2>
+                  <div className="admin-health-grid">
+                    <div className="admin-health-card">
+                      <div className="admin-health-ring">
+                        <div className="admin-health-ring-value" style={{ color: healthScore >= 70 ? 'var(--green)' : healthScore >= 40 ? 'var(--orange)' : 'var(--red)' }}>
+                          {healthScore}%
+                        </div>
+                      </div>
+                      <div className="admin-health-label">Content Health</div>
+                    </div>
+                    <div className="admin-health-metrics">
+                      <div className="admin-health-metric">
+                        <AppIcon name="chapters" size={14} />
+                        <span>{counts.subjects} Subjects</span>
+                      </div>
+                      <div className="admin-health-metric">
+                        <AppIcon name="document" size={14} />
+                        <span>{counts.chapters} Chapters</span>
+                      </div>
+                      <div className="admin-health-metric">
+                        <AppIcon name="mcqs" size={14} />
+                        <span>{counts.mcqs} MCQs</span>
+                      </div>
+                      <div className="admin-health-metric">
+                        <AppIcon name="flashcardsTab" size={14} />
+                        <span>{counts.flashcards} Flashcards</span>
+                      </div>
+                    </div>
+                  </div>
+                  {activeCourse.contentHealth?.issues?.length > 0 && (
+                    <div className="admin-health-issues">
+                      {activeCourse.contentHealth.issues.map((issue, idx) => (
+                        <div key={idx} className="admin-health-issue">
+                          <AppIcon name="warning" size={13} />
+                          {issue}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-section">
+                  <h2 className="admin-section-title">Exam Readiness</h2>
+                  <div className="admin-readiness-card">
+                    <div className="admin-readiness-top">
+                      <div className="admin-readiness-ring">
+                        <div className="admin-readiness-ring-fill" style={{ '--readiness-pct': `${readinessScore}%`, background: `linear-gradient(135deg, ${readinessLevel.gradient[0]}, ${readinessLevel.gradient[1]})` }} />
+                        <div className="admin-readiness-ring-value">{readinessScore}%</div>
+                      </div>
+                      <div className="admin-readiness-info">
+                        <div className="admin-readiness-level" style={{ color: readinessLevel.tone === 'green' ? 'var(--green)' : readinessLevel.tone === 'teal' ? 'var(--teal)' : 'var(--orange)' }}>
+                          {readinessLevel.label}
+                        </div>
+                        <div className="admin-readiness-message">
+                          {readinessScore >= 80 ? 'Course content is well-structured and comprehensive.' : readinessScore >= 50 ? 'Course is progressing well. Add more content to improve readiness.' : 'Course needs more content. Start adding subjects and chapters.'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="admin-readiness-meta">
+                      <span>Based on {counts.subjects} subjects, {counts.chapters} chapters, and content completeness</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-section">
+                  <h2 className="admin-section-title">Recent Activity</h2>
+                  <div className="admin-activity-feed">
+                    {courseActivity.map((item, idx) => (
+                      <div key={idx} className="admin-activity-item">
+                        <span className="admin-activity-icon">
+                          <AppIcon name={item.icon} size={16} />
+                        </span>
+                        <div className="admin-activity-body">
+                          <span className="admin-activity-strong">{item.strong}</span>
+                          <span className="admin-activity-text">{item.text}</span>
+                        </div>
+                        <span className="admin-activity-time">{item.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )
+    }
+  }
 
   return (
-    <>
-      <div className="admin-page-header">
-        <div className="admin-page-title">Dashboard</div>
-      </div>
+    <div className="admin-dashboard-shell">
+      <AdminSidebar
+        activeSection={activeSection}
+        onNavigate={onNavigate}
+        courseName={activeCourse?.name}
+      />
 
-      {/* ── Course Switcher (remains on Dashboard) ──────────────── */}
-      <div className="admin-course-switcher">
-        <button
-          type="button"
-          className="admin-course-switcher-btn"
-          onClick={() => setShowSwitcher((cur) => !cur)}
-        >
-          <span className="admin-course-switcher-icon" style={iconStyle}>
-            <AppIcon name={activeWorkspace?.icon || 'adminDashboard'} size={18} />
-          </span>
-          <span className="admin-course-switcher-body">
-            <span className="admin-course-switcher-label">Active Course</span>
-            <span className="admin-course-switcher-name">
-              {activeWorkspace?.name || 'No course selected'}
-            </span>
-          </span>
-          <span className="admin-course-switcher-chevron">
-            <AppIcon name="chevronDown" size={18} />
-          </span>
-        </button>
-
-        {showSwitcher ? (
-          <div className="admin-course-switcher-dropdown">
-            <div className="admin-course-switcher-head">
-              <span className="admin-course-switcher-title">Switch Course</span>
-              <button
-                type="button"
-                className="admin-course-switcher-close"
-                onClick={() => setShowSwitcher(false)}
-                aria-label="Close course switcher"
-              >
-                <AppIcon name="close" size={14} />
-              </button>
-            </div>
-            <div className="admin-course-list">
-              {workspaces.map((ws) => (
-                <div
-                  key={ws.id}
-                  className={`admin-course-item${ws.id === activeWorkspaceId ? ' current' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="admin-course-item-main"
-                    onClick={() => {
-                      setActiveWorkspace(ws.id)
-                      setShowSwitcher(false)
-                    }}
-                  >
-                    <span className="admin-course-item-icon" style={ws.themeColor ? { '--ws-icon-color': ws.themeColor } : {}}>
-                      <AppIcon name={ws.icon} size={15} />
-                    </span>
-                    <span className="admin-course-item-body">
-                      <span className="admin-course-item-name">{ws.name}</span>
-                      <span className={`admin-course-item-status tone-${ws.status === 'active' ? 'green' : ws.status === 'archived' ? 'red' : ws.status === 'draft' ? 'orange' : 'gray'}`}>
-                        {ws.status}
-                      </span>
-                    </span>
-                    {ws.id === activeWorkspaceId ? (
-                      <span className="admin-course-item-check">
-                        <AppIcon name="check" size={14} />
-                      </span>
-                    ) : null}
-                  </button>
-                </div>
-              ))}
+      <div className="admin-dashboard-main">
+        <div className="admin-dashboard-header">
+          <div>
+            <h1 className="admin-dashboard-greeting">
+              {greeting}, Abhi 👋
+            </h1>
+            <div className="admin-dashboard-sub">
+              {activeSection === 'dashboard' ? "Here's what's happening across your courses today." : `${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Management`}
             </div>
           </div>
-        ) : null}
+          <CourseSelector
+            courses={workspaces}
+            activeCourseId={activeWorkspaceId}
+            onSelect={(id) => {
+              setActiveWorkspace(id)
+              const course = workspaces.find((w) => w.id === id)
+              showToast({ type: 'success', title: 'Workspace Switched', message: `Now viewing ${course?.name || id}` })
+            }}
+          />
+        </div>
+
+        {renderSection()}
       </div>
 
-      {/* ── Live Workspace Metrics ──────────────────────────────── */}
-      <div className="admin-summary-grid">
-        {liveMetrics.map((metric) => (
-          <div className="admin-summary-card" key={metric.label}>
-            <div className="admin-summary-card-inner">
-              <span className={`admin-summary-icon tone-${metric.tone}`}>
-                <AppIcon name={metric.icon} size={18} />
-              </span>
-              <div className="admin-summary-body">
-                <div className="admin-summary-value">{metric.value}</div>
-                <div className="admin-summary-label">{metric.label}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AdminSectionCard title="Workspace Highlights">
-        <div className="admin-highlights-list">
-          {workspaceHighlights.map((highlight) => (
-            <div className="admin-highlight-item" key={highlight.label}>
-              <span className={`admin-highlight-icon tone-${highlight.tone}`} aria-hidden="true">
-                <AppIcon name={highlight.icon} size={15} />
-              </span>
-              <div className="admin-highlight-body">
-                <div className="admin-highlight-label">{highlight.label}</div>
-                {highlight.progress !== undefined ? (
-                  <div className="admin-highlight-bar-track">
-                    <div className="admin-highlight-bar-fill" style={{ width: `${highlight.progress}%` }} />
-                  </div>
-                ) : null}
-              </div>
-              <div className="admin-highlight-value">{highlight.value}</div>
-            </div>
-          ))}
-        </div>
-      </AdminSectionCard>
-
-      <AdminSectionCard title="Quick Actions">
-        <div className="admin-quick-actions">
-          <Button variant="primary" onClick={() => onNavigate('aiGenerator')}>
-            <AppIcon name="aiCoach" size={16} />
-            AI Content Studio
-          </Button>
-          <Button variant="primary" onClick={() => onNavigate('courseManager')}>
-            <AppIcon name="adminDashboard" size={16} />
-            Course Management
-          </Button>
-          <Button variant="primary" onClick={() => onNavigate('subjectManager')}>
-            <AppIcon name="chapters" size={16} />
-            Subject Management
-          </Button>
-          {quickActions.map((action) => (
-            <Button
-              key={action.label}
-              variant="primary"
-              onClick={() => {
-                if (action.modal === 'injectMcqs') {
-                  onNavigate('injectMcqs')
-                } else {
-                  onOpenModal(action.modal)
-                }
-              }}
-            >
-              <AppIcon name={action.icon} size={16} />
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      </AdminSectionCard>
-
-      <AdminSectionCard title="Recent Activity">
-        <div className="admin-activity-list">
-          {recentActivity.map((item, index) => (
-            <div className="admin-activity-item" key={`${item.strong}-${index}`}>
-              <span className="admin-activity-icon" aria-hidden="true">
-                <AppIcon name={item.icon} size={16} />
-              </span>
-              <div>
-                <strong>{item.strong}</strong> {item.text}
-              </div>
-              <div className="admin-activity-time">{item.time}</div>
-            </div>
-          ))}
-        </div>
-      </AdminSectionCard>
-    </>
+      <FeedbackUI />
+    </div>
   )
 }
 

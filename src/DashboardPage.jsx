@@ -3,6 +3,13 @@ import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
 import { useContentRegistry } from './data/contentRegistry'
+import { navigate } from './utils/navigation'
+import { useRoleStore } from './data/roleStore'
+import { useWorkspaceStore } from './data/workspaceStore'
+import { useCourseRegistry } from './data/courseRegistry'
+import StudentCourseSelector from './components/student/StudentCourseSelector'
+import RoleSwitch from './components/student/RoleSwitch'
+import EmptyCourseState from './components/admin/EmptyCourseState'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -391,7 +398,18 @@ function DashboardPage({
   onNavigateAdmin = () => {},
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedCourseId, setSelectedCourseId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nexora-student-course')
+      return saved || null
+    } catch {
+      return null
+    }
+  })
   const registry = useContentRegistry()
+  const courseRegistry = useCourseRegistry(selectedCourseId)
+  const { workspaces, activeWorkspaceId: _activeWorkspaceId, setActiveWorkspace: _setActiveWorkspace } = useWorkspaceStore()
+  const { isAdmin } = useRoleStore()
 
   // ── Exam Readiness (mock value — future Supabase integration
   //    only needs to pass a readiness percentage) ─────────────
@@ -399,23 +417,38 @@ function DashboardPage({
   const readinessLevel = getReadinessLevel(readinessScore)
   const animatedScore = useAnimatedNumber(readinessScore)
 
-  // Derive subject cards from the live registry (admin SSOT)
-  const subjectCards = useMemo(() => registry.subjectsList.slice(0, 4).map((s, i) => {
-    const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
-    return {
-      subjectKey: s.subjectKey,
-      title: s.title,
-      icon: s.icon,
-      iconClass: tone.iconClass,
-      ringTrack: tone.ringTrack,
-      ringColor: tone.ringColor,
-      progress: s.progress,
-      ringLabel: `${s.progress}%`,
-      stats: `${s.counts.chapters} Chapters\n${s.counts.mcqs} MCQs\n${s.counts.flashcards} Flashcards`,
-      continueClass: tone.continueClass,
-      highlight: i === 0,
+  const activeCourse = workspaces.find((w) => w.id === selectedCourseId) || workspaces[0]
+  const effectiveCourseId = selectedCourseId || activeCourse?.id
+
+  // Derive subject cards from course registry when course selected, else fallback to contentRegistry
+  const subjectCards = useMemo(() => {
+    const source = effectiveCourseId ? courseRegistry : registry
+    return source.subjectsList.slice(0, 4).map((s, i) => {
+      const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
+      return {
+        subjectKey: s.subjectKey,
+        title: s.title,
+        icon: s.icon,
+        iconClass: tone.iconClass,
+        ringTrack: tone.ringTrack,
+        ringColor: tone.ringColor,
+        progress: s.progress,
+        ringLabel: `${s.progress}%`,
+        stats: `${s.counts.chapters} Chapters\n${s.counts.mcqs} MCQs\n${s.counts.flashcards} Flashcards`,
+        continueClass: tone.continueClass,
+        highlight: i === 0,
+      }
+    })
+  }, [effectiveCourseId, courseRegistry, registry])
+
+  const handleCourseSelect = (id) => {
+    setSelectedCourseId(id)
+    try {
+      localStorage.setItem('nexora-student-course', id)
+    } catch {
+      // ignore
     }
-  }), [registry])
+  }
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''
@@ -546,7 +579,17 @@ function DashboardPage({
             </button>
             <div>
               <div className="greeting-title">Good Evening, Abhi 👋</div>
-              <div className="greeting-sub">BPSC TRE 4.0 • Computer Science</div>
+              <div className="greeting-sub">{activeCourse?.name || 'Select a Course'}</div>
+              <StudentCourseSelector
+                courses={workspaces.filter((w) => w.published && w.status !== 'archived')}
+                activeCourseId={selectedCourseId}
+                onSelect={handleCourseSelect}
+              />
+              {isAdmin && (
+                <div className="dashboard-role-switch">
+                  <RoleSwitch onSwitchToAdmin={onNavigateAdmin} onSwitchToStudent={() => navigate('')} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -757,11 +800,15 @@ function DashboardPage({
 
           <SectionHeader title="Your Subjects" onAction={onNavigateSubjects} />
 
-          <section className="subjects-grid">
-            {subjectCards.map((subject) => (
-              <SubjectCard key={subject.title} subject={subject} onSelect={onOpenSubjectDetail} />
-            ))}
-          </section>
+          {effectiveCourseId && courseRegistry.subjectsList.length === 0 ? (
+            <EmptyCourseState />
+          ) : (
+            <section className="subjects-grid">
+              {subjectCards.map((subject) => (
+                <SubjectCard key={subject.title} subject={subject} onSelect={onOpenSubjectDetail} />
+              ))}
+            </section>
+          )}
 
           <section className="bottom-row">
             <div className="coach-card">

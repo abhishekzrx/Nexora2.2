@@ -1,15 +1,14 @@
 /**
  * MCQPracticePage
  * Reusable MCQ practice screen with question grid, timer,
- * options, and submit bar. Reproduces htmlresource/mcq-practice.html.
+ * options, and submit bar.
  *
- * Supports two modes:
- * - practice: normal timed test that saves the session on submit.
- * - review: read-only replay of the last session (seeded from testSession).
- *
- * Stability: only the question content (text, options, selected state,
- * progress value) re-renders when navigating. The header, summary bar,
- * sidebar, nav buttons, and submit bar stay mounted and fixed.
+ * UX enhancements:
+ * - Previous/Next controls moved inside the Question Card
+ * - Mobile-only Exam Mode (Buddha icon toggle)
+ * - Global Light/Dark theme for the MCQ page
+ * - Exam Mode works with both themes
+ * - Question state survives mode changes
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../styles/mcqPractice.css'
@@ -56,10 +55,27 @@ const questions = [
   },
 ]
 
+const THEME_KEY = 'mcq-practice-theme'
+
+function getInitialTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY)
+    if (saved === 'light' || saved === 'dark') return saved
+  } catch {
+    // ignore
+  }
+  return 'dark'
+}
+
+function getIsMobile() {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth <= 640
+}
+
 /**
  * QuestionPanel
- * Memoized so it only re-renders when the current question, its answer,
- * or the mark state changes. The surrounding layout stays untouched.
+ * Contains question text, options, Mark/Report, and internal navigation.
+ * Memoized so it only re-renders when question-specific data changes.
  */
 const QuestionPanel = memo(function QuestionPanel({
   question,
@@ -68,21 +84,28 @@ const QuestionPanel = memo(function QuestionPanel({
   selectedOption,
   onSelectOption,
   onToggleMark,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
   reviewMode,
   scrollRef,
+  _theme,
+  examMode,
+  isMobile,
 }) {
   return (
-    <div className="question-panel">
+    <div className={`question-panel${examMode && isMobile ? ' exam-mode' : ''}`}>
       <div className="qpanel-top">
         <div className="qpanel-title">
           Question {questionNumber} of {totalQuestions}
         </div>
         <div className="qpanel-actions">
-          <button type="button" className="action-btn" onClick={onToggleMark} disabled={reviewMode}>
+          <button type="button" className="action-btn" onClick={onToggleMark} disabled={reviewMode} aria-label="Mark for review">
             <AppIcon name="bookmark" size={13} />
             Mark
           </button>
-          <button type="button" className="action-btn report" disabled={reviewMode}>
+          <button type="button" className="action-btn report" disabled={reviewMode} aria-label="Report question">
             <AppIcon name="flag" size={13} />
             Report
           </button>
@@ -135,6 +158,33 @@ const QuestionPanel = memo(function QuestionPanel({
           </div>
         ) : null}
       </div>
+
+      {/* Internal question navigation footer */}
+      <div className="qpanel-footer">
+        <button
+          type="button"
+          className="qpanel-nav-btn prev"
+          onClick={onPrev}
+          disabled={!hasPrev}
+          aria-label="Previous question"
+        >
+          <AppIcon name="back" size={16} />
+          Previous
+        </button>
+        <span className="qpanel-counter" aria-live="polite">
+          {questionNumber} / {totalQuestions}
+        </span>
+        <button
+          type="button"
+          className="qpanel-nav-btn next"
+          onClick={onNext}
+          disabled={!hasNext}
+          aria-label="Next question"
+        >
+          Next
+          <AppIcon name="arrowForward" size={16} />
+        </button>
+      </div>
     </div>
   )
 })
@@ -149,6 +199,7 @@ const Sidebar = memo(function Sidebar({
   answers,
   marked,
   onGoTo,
+  theme,
 }) {
   const getQuestionClass = (index) => {
     if (answers[index] !== undefined) return 'answered'
@@ -157,7 +208,7 @@ const Sidebar = memo(function Sidebar({
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar theme-${theme}`}>
       <h2>Questions ({totalQuestions})</h2>
       <div className="legend">
         <div className="legend-item"><span className="legend-dot dot-answered" />Answered</div>
@@ -208,9 +259,9 @@ const Sidebar = memo(function Sidebar({
  * SummaryBar
  * Memoized — only re-renders when the answer/mark/visited counts change.
  */
-const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, markedCount, notVisitedCount }) {
+const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, markedCount, notVisitedCount, theme }) {
   return (
-    <div className="summary-bar">
+    <div className={`summary-bar theme-${theme}`}>
       <div className="summary-item">
         <div className="summary-icon icon-total">
           <AppIcon name="viewList" size={15} />
@@ -257,7 +308,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
-  // Derive MCQ count from chapter meta (e.g. "20 MCQs • 8 Flashcards" → 20)
   const chapterMcqCount = chapter
     ? Number.parseInt(chapter.meta?.match(/(\d+)\s*MCQs?/i)?.[1] || '20', 10)
     : 20
@@ -277,6 +327,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   })
   const [timerOn, setTimerOn] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(29 * 60 + 45)
+  const [theme, setTheme] = useState(getInitialTheme)
+  const [examMode, setExamMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(getIsMobile)
 
   const questionScrollRef = useRef(null)
 
@@ -284,6 +337,22 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const answeredCount = Object.keys(answers).length
   const markedCount = marked.size
   const notVisitedCount = totalQuestions - visited.size
+
+  // Persist theme preference
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // ignore
+    }
+  }, [theme])
+
+  // Track mobile viewport
+  useEffect(() => {
+    const handleResize = () => setIsMobile(getIsMobile())
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Timer countdown — only runs while timerOn is true.
   useEffect(() => {
@@ -322,7 +391,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const goTo = useCallback((index) => {
     setCurrentIndex(index)
     setVisited((prev) => new Set(prev).add(index))
-    // Scroll only the question container back to the top — never the page.
     requestAnimationFrame(() => {
       if (questionScrollRef.current) {
         questionScrollRef.current.scrollTop = 0
@@ -330,16 +398,32 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     })
   }, [])
 
+  const goPrev = useCallback(() => {
+    goTo(Math.max(0, currentIndex - 1))
+  }, [currentIndex, goTo])
+
+  const goNext = useCallback(() => {
+    goTo(Math.min(totalQuestions - 1, currentIndex + 1))
+  }, [currentIndex, goTo, totalQuestions])
+
   const toggleTimer = useCallback(() => {
     if (reviewMode) return
     setTimerOn((prev) => !prev)
   }, [reviewMode])
 
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
+
+  const toggleExamMode = useCallback(() => {
+    setExamMode((prev) => !prev)
+  }, [])
+
   // Locked content cannot be practiced
   const isLocked = subject?.locked || chapter?.locked || false
   if (isLocked && !reviewMode) {
     return (
-      <div className="mcq-shell">
+      <div className={`mcq-shell theme-${theme}`}>
         <PhoneFrame>
           <header className="header">
             <div className="header-left">
@@ -367,7 +451,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }
 
   const handleSubmit = () => {
-    // Persist the session so "Review Answers" can restore this exact test.
     testSession.subjectKey = subjectKey
     testSession.chapter = chapter
     testSession.answers = { ...answers }
@@ -378,7 +461,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }
 
   return (
-    <div className="mcq-shell">
+    <div className={`mcq-shell theme-${theme}${examMode && isMobile ? ' exam-mode' : ''}`}>
       <PhoneFrame>
         <header className="header">
           <div className="header-left">
@@ -409,25 +492,52 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             >
               <AppIcon name={timerOn ? 'pause' : 'timer'} size={16} />
             </button>
+            {/* Exam Mode toggle */}
+            <button
+              type="button"
+              className={`exam-toggle${examMode ? ' active' : ''}`}
+              onClick={toggleExamMode}
+              aria-label={examMode ? 'Exit exam mode' : 'Enter exam mode'}
+              title={examMode ? 'Exit Exam Mode' : 'Exam Mode'}
+            >
+              <AppIcon name="examMode" size={18} />
+            </button>
+            {/* Theme toggle */}
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            >
+              <AppIcon name={theme === 'dark' ? 'lightMode' : 'darkMode'} size={18} />
+            </button>
           </div>
         </header>
 
         <main className="content">
-          <SummaryBar
-            totalQuestions={totalQuestions}
-            answeredCount={answeredCount}
-            markedCount={markedCount}
-            notVisitedCount={notVisitedCount}
-          />
+          {/* Hide summary bar and sidebar in mobile exam mode */}
+          {!(examMode && isMobile) && (
+            <SummaryBar
+              totalQuestions={totalQuestions}
+              answeredCount={answeredCount}
+              markedCount={markedCount}
+              notVisitedCount={notVisitedCount}
+              theme={theme}
+            />
+          )}
 
           <div className="main-layout">
-            <Sidebar
-              totalQuestions={totalQuestions}
-              currentIndex={currentIndex}
-              answers={answers}
-              marked={marked}
-              onGoTo={goTo}
-            />
+            {!(examMode && isMobile) && (
+              <Sidebar
+                totalQuestions={totalQuestions}
+                currentIndex={currentIndex}
+                answers={answers}
+                marked={marked}
+                onGoTo={goTo}
+                theme={theme}
+              />
+            )}
 
             <QuestionPanel
               question={current}
@@ -436,58 +546,48 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               selectedOption={answers[currentIndex]}
               onSelectOption={selectOption}
               onToggleMark={toggleMark}
+              onPrev={goPrev}
+              onNext={goNext}
+              hasPrev={currentIndex > 0}
+              hasNext={currentIndex < totalQuestions - 1}
               reviewMode={reviewMode}
               scrollRef={questionScrollRef}
+               theme={theme}
+               examMode={examMode}
+               isMobile={isMobile}
             />
           </div>
 
-          <div className="nav-buttons">
-            <button
-              type="button"
-              className="nav-btn prev"
-              onClick={() => goTo(Math.max(0, currentIndex - 1))}
-              disabled={currentIndex === 0}
-            >
-              <AppIcon name="back" size={16} />
-              Previous
-            </button>
-            <button
-              type="button"
-              className="nav-btn next"
-              onClick={() => goTo(Math.min(totalQuestions - 1, currentIndex + 1))}
-              disabled={currentIndex === totalQuestions - 1}
-            >
-              Next
-              <AppIcon name="arrowForward" size={16} />
-            </button>
-          </div>
+          {/* External nav-buttons removed — navigation is now inside QuestionPanel */}
         </main>
 
-        <div className="submit-bar">
-          <div className="submit-left">
-            <div className="submit-icon">
-              <AppIcon name={reviewMode ? 'reviewAnswers' : 'submit'} size={20} />
-            </div>
-            <div>
-              <div className="submit-title">
-                {reviewMode ? 'Review complete' : 'Answer 10 more questions to submit the test'}
+        {!(examMode && isMobile) && (
+          <div className="submit-bar">
+            <div className="submit-left">
+              <div className="submit-icon">
+                <AppIcon name={reviewMode ? 'reviewAnswers' : 'submit'} size={20} />
               </div>
-              <div className="submit-sub">
-                {reviewMode
-                  ? 'You can go back to your results at any time.'
-                  : 'You can submit the test after answering at least 10 questions.'}
+              <div>
+                <div className="submit-title">
+                  {reviewMode ? 'Review complete' : 'Answer 10 more questions to submit the test'}
+                </div>
+                <div className="submit-sub">
+                  {reviewMode
+                    ? 'You can go back to your results at any time.'
+                    : 'You can submit the test after answering at least 10 questions.'}
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              className="submit-btn"
+              onClick={reviewMode ? onBack : handleSubmit}
+            >
+              <AppIcon name={reviewMode ? 'back' : 'send'} size={16} />
+              {reviewMode ? 'Back to Results' : 'Submit Test'}
+            </button>
           </div>
-          <button
-            type="button"
-            className="submit-btn"
-            onClick={reviewMode ? onBack : handleSubmit}
-          >
-            <AppIcon name={reviewMode ? 'back' : 'send'} size={16} />
-            {reviewMode ? 'Back to Results' : 'Submit Test'}
-          </button>
-        </div>
+        )}
       </PhoneFrame>
     </div>
   )

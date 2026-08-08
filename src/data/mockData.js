@@ -9,7 +9,7 @@
  * redesign is necessary.
  */
 import { getExaminations } from './academicStore'
-import { subjectKeyFor, slugify } from './contentRegistry'
+import { subjectKeyFor } from './contentRegistry'
 
 export const userProfile = {
   name: 'Abhi Kumar',

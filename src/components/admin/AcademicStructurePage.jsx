@@ -1,3 +1,4 @@
+
 /**
  * AcademicStructurePage
  * Academic Structure Management — the core CMS for Nexora.
@@ -28,30 +29,10 @@ import {
   updateChapter,
   deleteChapter,
   duplicateChapter,
-  bulkUpdateClasses,
-  bulkUpdateSubjects,
-  bulkUpdateChapters,
   getChapterContext,
 } from '../../data/academicStore'
 
 // ── Small shared UI ───────────────────────────────────────────────
-function HealthBadge({ score }) {
-  const tone = score >= 80 ? 'green' : score >= 50 ? 'orange' : 'red'
-  return <span className={`acad-health-badge tone-${tone}`}><AppIcon name="check" size={11} />{score}%</span>
-}
-
-function StatusPill({ status }) {
-  const map = {
-    active: { label: 'Active', tone: 'green' },
-    inactive: { label: 'Inactive', tone: 'gray' },
-    draft: { label: 'Draft', tone: 'orange' },
-    published: { label: 'Published', tone: 'green' },
-    locked: { label: 'Locked', tone: 'red' },
-    archived: { label: 'Archived', tone: 'gray' },
-  }
-  const cfg = map[status] || map.active
-  return <span className={`acad-status-pill tone-${cfg.tone}`}>{cfg.label}</span>
-}
 
 function SectionHeader({ icon, title, action }) {
   return (
@@ -240,7 +221,6 @@ function AcademicStructurePage({ onBack, onNavigate }) {
   const [expandedIds, setExpandedIds] = useState({})
   const [showForm, setShowForm] = useState(null) // { type, parent }
   const [confirm, setConfirm] = useState(null)
-  const [bulkSelected, setBulkSelected] = useState([])
   const [search, setSearch] = useState('')
 
   const toggleExpand = (id) => setExpandedIds((cur) => ({ ...cur, [id]: !cur[id] }))
@@ -334,7 +314,6 @@ function AcademicStructurePage({ onBack, onNavigate }) {
   // ── Handlers ────────────────────────────────────────────────────
   const handleSelect = (node) => {
     setSelected({ type: node.type, examId: node.examId, classId: node.classId, subjectId: node.subjectId, chapterId: node.chapterId })
-    setBulkSelected([])
     // Auto-expand ancestors when selecting a child
     if (node.examId) setExpandedIds((cur) => ({ ...cur, [node.examId]: true }))
     if (node.classId) setExpandedIds((cur) => ({ ...cur, [node.classId]: true }))
@@ -375,14 +354,6 @@ function AcademicStructurePage({ onBack, onNavigate }) {
     if (type === 'class') updateClass(target.examId, target.classId, patch)
     if (type === 'subject') updateSubject(target.examId, target.classId, target.subjectId, patch)
     if (type === 'chapter') updateChapter(target.examId, target.classId, target.subjectId, target.chapterId, patch)
-  }
-
-  const handleBulk = (patch) => {
-    if (!context || bulkSelected.length === 0) return
-    if (context.type === 'class') bulkUpdateClasses(context.exam.id, bulkSelected, patch)
-    if (context.type === 'subject') bulkUpdateSubjects(context.exam.id, context.cls.id, bulkSelected, patch)
-    if (context.type === 'chapter') bulkUpdateChapters(context.exam.id, context.cls.id, context.sub.id, bulkSelected, patch)
-    setBulkSelected([])
   }
 
   const handleGenerateContent = () => {

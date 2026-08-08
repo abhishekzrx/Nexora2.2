@@ -15,7 +15,6 @@
 import { useSyncExternalStore } from 'react'
 import {
   adminSubjects,
-  chaptersData,
   allChapters,
   mcqRows,
   flashcardCards,

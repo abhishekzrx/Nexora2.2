@@ -14,7 +14,7 @@
  * changes — no UI, component, navigation, or business-logic redesign.
  */
 import { useMemo } from 'react'
-import { useAcademicStore, computeStats, getExaminations } from './academicStore'
+import { useAcademicStore, computeStats } from './academicStore'
 
 // ── Smart visual defaults ─────────────────────────────────────────
 

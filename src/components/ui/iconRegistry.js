@@ -81,6 +81,8 @@ import SpaceDashboardRounded from '@mui/icons-material/SpaceDashboardRounded'
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
 import LockRounded from '@mui/icons-material/LockRounded'
 import LockOpenRounded from '@mui/icons-material/LockOpenRounded'
+import LightModeRounded from '@mui/icons-material/LightModeRounded'
+import DarkModeRounded from '@mui/icons-material/DarkModeRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
@@ -140,7 +142,10 @@ export const iconRegistry = {
   viewList: { component: ViewListRounded, optical: 0 },
   viewGrid: { component: GridViewRounded, optical: 0 },
   quickJump: { component: CenterFocusStrongRounded, optical: 1 },
+  examMode: { component: CenterFocusStrongRounded, optical: 1 },
   quiz: { component: QuizRounded, optical: 0 },
+  lightMode: { component: LightModeRounded, optical: 0 },
+  darkMode: { component: DarkModeRounded, optical: 0 },
   chapters: { component: MenuBookRounded, optical: 0 },
   mcqs: { component: QuizRounded, optical: 0 },
   flashcardsTab: { component: StyleRounded, optical: 0 },

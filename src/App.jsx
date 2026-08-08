@@ -7,6 +7,7 @@ import TestResultsPage from './pages/TestResultsPage'
 import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
+import { switchToAdmin, switchToStudent, getActiveRole } from './data/roleStore'
 
 /**
  * Resolve the current hash into a route descriptor.
@@ -54,7 +55,15 @@ function App() {
   const { name, subjectKey } = route
 
   if (name === 'admin') {
-    return <AdminPage onBackHome={() => navigate('')} />
+    if (getActiveRole() !== 'admin') {
+      switchToAdmin()
+    }
+    return <AdminPage onBackHome={() => { switchToStudent(); navigate('') }} />
+  }
+
+  // Leaving admin route → ensure role is student
+  if (getActiveRole() === 'admin' && name !== 'admin') {
+    switchToStudent()
   }
 
   if (name === 'subjects') {
