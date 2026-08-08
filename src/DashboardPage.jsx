@@ -356,24 +356,48 @@ function SubjectCard({ subject, onSelect }) {
       className={`subject-card${subject.highlight ? ' highlight' : ''}`}
       onClick={() => onSelect(subject.subjectKey)}
     >
-      <div className="subject-top">
+      <div className="subject-card-header">
         <div className={`subject-icon ${subject.iconClass}`}>
-          <AppIcon name={subject.icon} size={16} />
+          <AppIcon name={subject.icon} size={20} />
         </div>
-        <div className="subject-name">{subject.title}</div>
+        <div className="subject-progress-ring">
+          <ProgressRing
+            size={44}
+            radius={18}
+            strokeWidth={4}
+            progress={subject.progress}
+            trackColor="#E7EDFD"
+            fillColor="#2E5CE6"
+          >
+            <span className="subject-progress-pct">{subject.progress}%</span>
+          </ProgressRing>
+        </div>
       </div>
-      <ProgressRing
-        size={70}
-        radius={29}
-        strokeWidth={7}
-        progress={subject.progress}
-        trackColor={subject.ringTrack}
-        fillColor={subject.ringColor}
+      <div className="subject-name">{subject.title}</div>
+      <div className="subject-stats">
+        <span className="subject-stat">
+          <AppIcon name="document" size={11} />
+          {subject.chapters}
+        </span>
+        <span className="subject-stat">
+          <AppIcon name="mcqs" size={11} />
+          {subject.mcqs}
+        </span>
+        <span className="subject-stat">
+          <AppIcon name="flashcardsTab" size={11} />
+          {subject.flashcards}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="subject-continue"
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect(subject.subjectKey)
+        }}
       >
-        {subject.ringLabel}
-      </ProgressRing>
-      <div className="subject-stats">{subject.stats}</div>
-      <div className={`subject-continue ${subject.continueClass}`}>Continue →</div>
+        Continue <AppIcon name="arrowForward" size={13} />
+      </button>
     </button>
   )
 }
@@ -432,12 +456,10 @@ function DashboardPage({
         title: s.title,
         icon: s.icon,
         iconClass: tone.iconClass,
-        ringTrack: tone.ringTrack,
-        ringColor: tone.ringColor,
         progress: s.progress,
-        ringLabel: `${s.progress}%`,
-        stats: `${s.counts.chapters} Chapters\n${s.counts.mcqs} MCQs\n${s.counts.flashcards} Flashcards`,
-        continueClass: tone.continueClass,
+        chapters: s.counts?.chapters || 0,
+        mcqs: s.counts?.mcqs || 0,
+        flashcards: s.counts?.flashcards || 0,
         highlight: i === 0,
       }
     })
