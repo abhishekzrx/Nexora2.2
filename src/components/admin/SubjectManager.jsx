@@ -23,7 +23,6 @@ import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore
 import IconPicker from './IconPicker'
 
 const STATUS_OPTIONS = ['active', 'draft', 'disabled', 'published']
-const SORT_OPTIONS = ['name-asc', 'name-desc', 'order', 'status']
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
 
 const STATUS_MAP = {
@@ -132,12 +131,12 @@ function SubjectCard({ subject, onRename, onDuplicate, onDelete, onToggleLock, o
   )
 }
 
-function SubjectManager(_courseName) {
+function SubjectManager(courseName) {
   const { activeCourseId } = useWorkspaceStore()
   const { subjects } = useAdminStore()
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState('order')
-  const [filterStatus, setFilterStatus] = useState('all')
+  const [sortBy, _setSortBy] = useState('order')
+  const [filterStatus, _setFilterStatus] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
@@ -198,16 +197,16 @@ function SubjectManager(_courseName) {
       <div className="subject-manager-header">
         <div className="subject-manager-title">
           <AppIcon name="chapters" size={20} />
-          Subject Manager
+          <div>
+            <div className="subject-manager-heading">Subject Manager</div>
+            {courseName && <div className="subject-manager-course">{courseName}</div>}
+          </div>
         </div>
         <div className="subject-manager-actions">
           <div className="course-search">
             <AppIcon name="search" size={15} />
             <input type="text" placeholder="Search subjects..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <select className="admin-form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
           <select className="admin-form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="all">All Status</option>
             <option value="active">Active</option>

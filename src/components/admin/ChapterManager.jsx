@@ -21,7 +21,6 @@ import { useWorkspaceStore } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 
 const STATUS_OPTIONS = ['active', 'draft', 'disabled', 'published']
-const SORT_OPTIONS = ['number', 'name-asc', 'name-desc', 'status']
 
 const STATUS_MAP = {
   active: { label: 'Active', tone: 'green' },
@@ -125,12 +124,12 @@ function ChapterCard({ chapter, subjectName, onRename, onDuplicate, onDelete, on
   )
 }
 
-function ChapterManager(_courseName, _selectedSubject) {
+function ChapterManager(courseName, selectedSubject) {
   const { activeCourseId } = useWorkspaceStore()
   const { subjects, chapters } = useAdminStore()
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState('number')
-  const [filterStatus, setFilterStatus] = useState('all')
+  const [sortBy, _setSortBy] = useState('number')
+  const [filterStatus, _setFilterStatus] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
@@ -198,7 +197,13 @@ function ChapterManager(_courseName, _selectedSubject) {
       <div className="chapter-manager-header">
         <div className="chapter-manager-title">
           <AppIcon name="document" size={20} />
-          Chapter Manager
+          <div>
+            <div className="chapter-manager-heading">Chapter Manager</div>
+            <div className="chapter-manager-context">
+              {courseName && <span>{courseName}</span>}
+              {subjectFilter && <span>• {subjectFilter}</span>}
+            </div>
+          </div>
         </div>
         <div className="chapter-manager-actions">
           <div className="course-search">
@@ -208,16 +213,6 @@ function ChapterManager(_courseName, _selectedSubject) {
           <select className="admin-form-select" value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}>
             <option value="">All Subjects</option>
             {courseSubjects.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
-          </select>
-          <select className="admin-form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <select className="admin-form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="locked">Locked</option>
-            <option value="published">Published</option>
           </select>
           <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
             <AppIcon name="add" size={15} /> Add Chapter
