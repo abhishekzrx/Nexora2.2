@@ -16,7 +16,6 @@ import {
   publishWorkspace,
   unpublishWorkspace,
   deleteWorkspace,
-  getWorkspaces,
   setActiveWorkspace,
 } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
@@ -231,7 +230,7 @@ function CourseManager(_courseName) {
   const [createStatus, setCreateStatus] = useState('draft')
 
   const filtered = useMemo(() => {
-    let list = [...getWorkspaces()]
+    let list = [...workspaces]
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter((c) => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
@@ -245,7 +244,7 @@ function CourseManager(_courseName) {
       return 0
     })
     return list
-  }, [search, sortBy])
+  }, [workspaces, search, sortBy])
 
   const handleCreate = () => {
     if (!createName.trim()) return

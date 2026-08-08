@@ -4,7 +4,7 @@
  * Chapters always belong to a Subject within the Course.
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import {
@@ -142,6 +142,13 @@ function ChapterManager(courseName, selectedSubject) {
     return subjects.filter((s) => s.courseId === activeCourseId)
   }, [activeCourseId, subjects])
 
+  // When opening the create form, default subject to first available if none selected
+  useEffect(() => {
+    if (showCreate && !subjectFilter && courseSubjects.length > 0) {
+      setSubjectFilter(courseSubjects[0].name)
+    }
+  }, [showCreate, subjectFilter, courseSubjects])
+
   const filtered = useMemo(() => {
     let list = chapters.filter((c) => c.courseId === activeCourseId)
     if (subjectFilter) {
@@ -166,7 +173,11 @@ function ChapterManager(courseName, selectedSubject) {
   }, [chapters, activeCourseId, subjectFilter, search, sortBy, filterStatus])
 
   const handleCreate = () => {
-    if (!createName.trim() || !activeCourseId || !subjectFilter) return
+    if (!createName.trim() || !activeCourseId) return
+    if (!subjectFilter) {
+      showToast({ type: 'warning', title: 'Select a Subject', message: 'Please select a subject before creating a chapter.' })
+      return
+    }
     addChapter({
       subject: subjectFilter,
       name: createName.trim(),
