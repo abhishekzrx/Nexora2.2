@@ -2237,6 +2237,32 @@
   }
 }
 
+/* ── Subject / Chapter Mobile Create CTAs ─────────────────── */
+
+.subject-create-mobile-cta,
+.chapter-create-mobile-cta {
+  width: 100%;
+  margin-bottom: 14px;
+  justify-content: center;
+}
+
+.subject-create-cta,
+.chapter-create-cta {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .subject-create-mobile-cta,
+  .chapter-create-mobile-cta {
+    display: none;
+  }
+
+  .subject-create-cta,
+  .chapter-create-cta {
+    display: inline-flex;
+  }
+}
+
  /* ── Subject Manager ───────────────────────────────────── */
 
  .subject-manager {

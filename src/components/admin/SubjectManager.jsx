@@ -214,11 +214,16 @@ function SubjectManager(courseName) {
             <option value="locked">Locked</option>
             <option value="published">Published</option>
           </select>
-          <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
+          <Button variant="primary" className="subject-create-cta" onClick={() => setShowCreate(!showCreate)}>
             <AppIcon name="add" size={15} /> Add Subject
           </Button>
         </div>
       </div>
+
+      <Button variant="primary" className="subject-create-mobile-cta" onClick={() => setShowCreate(!showCreate)}>
+        <AppIcon name="add" size={16} />
+        {showCreate ? 'Cancel' : 'Add Subject'}
+      </Button>
 
       {showCreate && (
         <div className="subject-create-card">

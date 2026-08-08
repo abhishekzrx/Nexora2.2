@@ -225,11 +225,16 @@ function ChapterManager(courseName, selectedSubject) {
             <option value="">All Subjects</option>
             {courseSubjects.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
-          <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
+          <Button variant="primary" className="chapter-create-cta" onClick={() => setShowCreate(!showCreate)}>
             <AppIcon name="add" size={15} /> Add Chapter
           </Button>
         </div>
       </div>
+
+      <Button variant="primary" className="chapter-create-mobile-cta" onClick={() => setShowCreate(!showCreate)}>
+        <AppIcon name="add" size={16} />
+        {showCreate ? 'Cancel' : 'Add Chapter'}
+      </Button>
 
       {showCreate && (
         <div className="chapter-create-card">
