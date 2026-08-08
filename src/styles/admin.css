@@ -101,12 +101,29 @@
 }
 
 .admin-mobile-section .admin-health-card-mobile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-}
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 14px;
+   padding: 16px;
+ }
+
+ .admin-mobile-section .admin-analytics-card {
+   padding: 14px;
+ }
+
+ .admin-mobile-section .admin-analytics-row {
+   gap: 8px;
+ }
+
+ .admin-mobile-section .admin-analytics-label {
+   min-width: 70px;
+   font-size: 11px;
+ }
+
+ .admin-mobile-section .admin-analytics-footer {
+   gap: 12px;
+ }
 
 .admin-mobile-section .admin-health-ring {
   width: 90px;
@@ -668,7 +685,120 @@
    min-width: 140px;
  }
 
- /* ── Course Health ─────────────────────────────────────── */
+  /* ── Course Analytics ──────────────────────────────────── */
+
+  .admin-analytics-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  .admin-analytics-header {
+    margin-bottom: 14px;
+  }
+
+  .admin-analytics-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--dark);
+    margin-bottom: 2px;
+  }
+
+  .admin-analytics-subtitle {
+    font-size: 12px;
+    color: var(--gray-text);
+  }
+
+  .admin-analytics-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .admin-analytics-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .admin-analytics-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dark);
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+
+  .admin-analytics-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .admin-analytics-bar-track {
+    flex: 1;
+    height: 10px;
+    background: var(--page-bg);
+    border-radius: 5px;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .admin-analytics-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.4s ease;
+    min-width: 0;
+  }
+
+  .admin-analytics-value {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--dark);
+    min-width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .admin-analytics-footer {
+    display: flex;
+    gap: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .admin-analytics-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .admin-analytics-stat-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--dark);
+    line-height: 1.2;
+  }
+
+  .admin-analytics-stat-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--gray-text);
+    white-space: nowrap;
+  }
+
+  /* ── Course Health ─────────────────────────────────────── */
 
  .admin-health-grid {
    display: flex;

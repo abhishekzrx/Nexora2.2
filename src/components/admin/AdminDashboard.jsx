@@ -42,6 +42,62 @@ const QUICK_ACTIONS = [
   { key: 'flashcards', label: 'Add Flashcards', icon: 'flashcardsTab' },
 ]
 
+const ANALYTICS_ITEMS = [
+  { key: 'subjects', label: 'Subjects', icon: 'chapters', color: '#F1621B' },
+  { key: 'chapters', label: 'Chapters', icon: 'document', color: '#2E5CE6' },
+  { key: 'mcqs', label: 'MCQs', icon: 'mcqs', color: '#12B76A' },
+  { key: 'flashcards', label: 'Flashcards', icon: 'flashcardsTab', color: '#7C3AED' },
+]
+
+function CourseAnalytics({ counts }) {
+  const maxValue = Math.max(counts.subjects, counts.chapters, counts.mcqs, counts.flashcards, 1)
+  return (
+    <div className="admin-analytics-card">
+      <div className="admin-analytics-header">
+        <div className="admin-analytics-title">Course Analytics</div>
+        <div className="admin-analytics-subtitle">Content overview for the active course</div>
+      </div>
+      <div className="admin-analytics-chart">
+        {ANALYTICS_ITEMS.map((item) => {
+          const value = counts[item.key] || 0
+          const pct = Math.round((value / maxValue) * 100)
+          return (
+            <div key={item.key} className="admin-analytics-row">
+              <div className="admin-analytics-label">
+                <span className="admin-analytics-icon" style={{ background: `${item.color}15`, color: item.color }}>
+                  <AppIcon name={item.icon} size={14} />
+                </span>
+                <span>{item.label}</span>
+              </div>
+              <div className="admin-analytics-bar-track">
+                <div
+                  className="admin-analytics-bar-fill"
+                  style={{ width: `${pct}%`, background: item.color }}
+                />
+              </div>
+              <div className="admin-analytics-value">{value}</div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="admin-analytics-footer">
+        <div className="admin-analytics-stat">
+          <span className="admin-analytics-stat-value">{counts.subjects + counts.chapters + counts.mcqs + counts.flashcards}</span>
+          <span className="admin-analytics-stat-label">Total Items</span>
+        </div>
+        <div className="admin-analytics-stat">
+          <span className="admin-analytics-stat-value">{counts.chapters > 0 ? Math.round((counts.chapters / Math.max(counts.subjects, 1)).toFixed(1)) : 0}</span>
+          <span className="admin-analytics-stat-label">Avg Chapters/Subject</span>
+        </div>
+        <div className="admin-analytics-stat">
+          <span className="admin-analytics-stat-value">{counts.mcqs + counts.flashcards}</span>
+          <span className="admin-analytics-stat-label">Practice Items</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function buildCourseActivity(course, subjects, chapters, mcqs, flashcards) {
   const items = []
   const totalChapters = chapters.length
@@ -162,31 +218,33 @@ function AdminDashboard({ activeSection, onNavigate }) {
       default:
         return (
           <>
-            {subjects.length === 0 ? (
-              <EmptyCourseState courseName={activeCourse?.name} />
-            ) : (
-              <>
-                <div className="admin-section">
-                  <h2 className="admin-section-title">Quick Actions</h2>
-                  <div className="admin-quick-grid">
-                    {QUICK_ACTIONS.map((action) => (
-                      <button
-                        key={action.key}
-                        type="button"
-                        className="admin-quick-card"
-                        onClick={() => handleQuickAction(action.key)}
-                      >
-                        <span className="admin-quick-icon">
-                          <AppIcon name={action.icon} size={20} />
-                        </span>
-                        <span className="admin-quick-label">{action.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+      {subjects.length === 0 ? (
+        <EmptyCourseState courseName={activeCourse?.name} />
+      ) : (
+        <>
+          <div className="admin-section">
+            <h2 className="admin-section-title">Quick Actions</h2>
+            <div className="admin-quick-grid">
+              {QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.key}
+                  type="button"
+                  className="admin-quick-card"
+                  onClick={() => handleQuickAction(action.key)}
+                >
+                  <span className="admin-quick-icon">
+                    <AppIcon name={action.icon} size={20} />
+                  </span>
+                  <span className="admin-quick-label">{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-                <div className="admin-section">
-                  <h2 className="admin-section-title">Course Health</h2>
+          <CourseAnalytics counts={counts} />
+
+          <div className="admin-section">
+            <h2 className="admin-section-title">Course Health</h2>
                   <div className="admin-health-grid">
                     <div className="admin-health-card">
                       <div className="admin-health-ring">
@@ -304,6 +362,8 @@ function AdminDashboard({ activeSection, onNavigate }) {
                   ))}
                 </div>
               </div>
+
+              <CourseAnalytics counts={counts} />
 
               <div className="admin-section">
                 <h2 className="admin-section-title">Course Health</h2>
