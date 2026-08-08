@@ -3,9 +3,10 @@
  * Main dashboard for the Admin Panel.
  * Fully Course-aware — all data derives from the active Course.
  */
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import AppIcon from '../ui/AppIcon'
 import AdminSidebar from './AdminSidebar'
+import AdminMobileLayout from './AdminMobileLayout'
 import CourseSelector from './CourseSelector'
 import CourseManager from './CourseManager'
 import SubjectManager from './SubjectManager'
@@ -17,6 +18,22 @@ import FeedbackUI from './FeedbackUI'
 import { useAdminStore, getCounts } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { useFeedback } from '../../data/feedbackStore'
+
+const MOBILE_BREAKPOINT = 768
+
+function getIsMobile() {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth <= MOBILE_BREAKPOINT
+}
+
+const MOBILE_SECTION_MAP = {
+  dashboard: 'Dashboard',
+  courses: 'Courses',
+  subjects: 'Subjects',
+  chapters: 'Chapters',
+  mcqs: 'MCQs',
+  flashcards: 'Flashcards',
+}
 
 const QUICK_ACTIONS = [
   { key: 'subjects', label: 'Add Subject', icon: 'add' },
@@ -92,9 +109,16 @@ function getReadinessLevel(score) {
 }
 
 function AdminDashboard({ activeSection, onNavigate }) {
+  const [isMobile, setIsMobile] = useState(getIsMobile)
   const { subjects, chapters, mcqs, flashcards } = useAdminStore()
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { showToast } = useFeedback()
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(getIsMobile())
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const counts = getCounts()
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0]
@@ -120,6 +144,8 @@ function AdminDashboard({ activeSection, onNavigate }) {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
+
+  const mobileSection = MOBILE_SECTION_MAP[activeSection] || 'Dashboard'
 
   const renderSection = () => {
     switch (activeSection) {
@@ -246,6 +272,78 @@ function AdminDashboard({ activeSection, onNavigate }) {
           </>
         )
     }
+  }
+
+  const courseSection = renderSection()
+
+  if (isMobile) {
+    return (
+      <AdminMobileLayout
+        activeTab={mobileSection}
+        onNavigate={(item) => onNavigate?.(item.label.toLowerCase())}
+        courseName={activeCourse?.name}
+      >
+        <div className="admin-mobile-section">
+          {activeSection === 'dashboard' && (
+            <div className="admin-mobile-dashboard">
+              <div className="admin-section">
+                <h2 className="admin-section-title">Quick Actions</h2>
+                <div className="admin-quick-grid">
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      className="admin-quick-card"
+                      onClick={() => handleQuickAction(action.key)}
+                    >
+                      <span className="admin-quick-icon">
+                        <AppIcon name={action.icon} size={20} />
+                      </span>
+                      <span className="admin-quick-label">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="admin-section">
+                <h2 className="admin-section-title">Course Health</h2>
+                <div className="admin-health-card-mobile">
+                  <div className="admin-health-ring">
+                    <div className="admin-health-ring-value" style={{ color: healthScore >= 70 ? 'var(--green)' : healthScore >= 40 ? 'var(--orange)' : 'var(--red)' }}>
+                      {healthScore}%
+                    </div>
+                    <div className="admin-health-label">Content Health</div>
+                  </div>
+                  <div className="admin-health-metrics-mobile">
+                    <div className="admin-health-metric"><AppIcon name="chapters" size={14} /><span>{counts.subjects} Subjects</span></div>
+                    <div className="admin-health-metric"><AppIcon name="document" size={14} /><span>{counts.chapters} Chapters</span></div>
+                    <div className="admin-health-metric"><AppIcon name="mcqs" size={14} /><span>{counts.mcqs} MCQs</span></div>
+                    <div className="admin-health-metric"><AppIcon name="flashcardsTab" size={14} /><span>{counts.flashcards} Flashcards</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-section">
+                <h2 className="admin-section-title">Recent Activity</h2>
+                <div className="admin-activity-feed">
+                  {courseActivity.map((item, idx) => (
+                    <div key={idx} className="admin-activity-item">
+                      <span className="admin-activity-icon"><AppIcon name={item.icon} size={16} /></span>
+                      <div className="admin-activity-body">
+                        <span className="admin-activity-strong">{item.strong}</span>
+                        <span className="admin-activity-text">{item.text}</span>
+                      </div>
+                      <span className="admin-activity-time">{item.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {activeSection !== 'dashboard' && courseSection}
+        </div>
+      </AdminMobileLayout>
+    )
   }
 
   return (

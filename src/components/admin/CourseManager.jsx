@@ -1,20 +1,8 @@
 /**
  * CourseManager
- * Dedicated Course management module for the Admin Panel.
- * Operates on the centralized workspaceStore (single source of truth).
- *
- * Supported operations:
- * - Create
- * - Rename
- * - Duplicate
- * - Archive / Activate
- * - Delete
- * - Publish / Unpublish
- * - Change Status (Draft, Published, Archived, Private)
- * - Search
- * - Sort
+ * Mobile-first Course management module.
+ * Uses centralized workspaceStore — same data for desktop and mobile.
  */
-
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
@@ -27,7 +15,6 @@ import {
   activateWorkspace,
   publishWorkspace,
   unpublishWorkspace,
-  makePrivateWorkspace,
   deleteWorkspace,
   getWorkspaces,
   setActiveWorkspace,
@@ -60,32 +47,41 @@ function StatusBadge({ status }) {
 function InlineForm({ fields, onSubmit, onCancel, submitLabel = 'Save' }) {
   const [values, setValues] = useState(() => Object.fromEntries(fields.map((f) => [f.key, f.default || ''])))
   return (
-    <div className="acad-inline-form">
-      {fields.map((field) => (
-        <div key={field.key} className="acad-inline-field">
-          <label className="admin-form-label">{field.label}</label>
-          {field.type === 'select' ? (
-            <select className="admin-form-select" value={values[field.key]} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}>
-              {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          ) : (
-            <input type="text" className="admin-form-input" placeholder={field.placeholder || ''} value={values[field.key]} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })} />
-          )}
+    <div className="course-create-card">
+      <div className="course-create-title">Create New Course</div>
+      <div className="course-create-form">
+        {fields.map((field) => (
+          <div key={field.key} className="course-form-field">
+            <label className="course-form-label">{field.label}</label>
+            {field.type === 'select' ? (
+              <select className="course-form-select" value={values[field.key]} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}>
+                {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="course-form-input"
+                placeholder={field.placeholder || ''}
+                value={values[field.key]}
+                onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+              />
+            )}
+          </div>
+        ))}
+        <div className="course-form-actions">
+          <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button variant="primary" onClick={() => onSubmit(values)}>{submitLabel}</Button>
         </div>
-      ))}
-      <div className="acad-inline-actions">
-        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" onClick={() => onSubmit(values)}>{submitLabel}</Button>
       </div>
     </div>
   )
 }
 
-function CourseCard({ course, isActive, onSelect, onRename, onDuplicate, onArchive, onActivate, onPublish, onUnpublish, onMakePrivate, onDelete }) {
+function CourseCard({ course, isActive, onSelect, onRename, onDuplicate, onArchive, onActivate, onPublish, onUnpublish, onDelete }) {
   const [showActions, setShowActions] = useState(false)
   const [showRename, setShowRename] = useState(false)
   const [renameValue, setRenameValue] = useState(course.name)
-  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const actionRef = useRef(null)
 
   const handleRename = () => {
     if (renameValue.trim()) {
@@ -114,86 +110,111 @@ function CourseCard({ course, isActive, onSelect, onRename, onDuplicate, onArchi
     })
   }
 
-  const handleStatusChange = (newStatus) => {
-    if (newStatus === 'published') onPublish(course.id)
-    else if (newStatus === 'archived') onArchive(course.id)
-    else if (newStatus === 'private') onMakePrivate(course.id)
-    else if (newStatus === 'active') onActivate(course.id)
-    else if (newStatus === 'draft') unpublishWorkspace(course.id)
-    setShowStatusMenu(false)
-    showToast({ type: 'success', title: 'Status Updated', message: `Course is now ${STATUS_MAP[newStatus]?.label || newStatus}` })
-  }
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (actionRef.current && !actionRef.current.contains(e.target)) {
+        setShowActions(false)
+      }
+    }
+    if (showActions) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [showActions])
 
   return (
     <div className={`course-card${isActive ? ' active' : ''}`} style={{ '--course-accent': course.themeColor || '#F1621B' }}>
-      <div className="course-card-top">
-        <div className="course-icon-dot" style={{ background: course.themeColor || '#F1621B' }}>
-          <AppIcon name={course.icon || 'adminDashboard'} size={18} />
-        </div>
-        <div className="course-card-info">
-          {showRename ? (
-            <div className="course-rename-row">
+      <div className="course-card-main">
+        <div className="course-card-left">
+          <div className="course-icon-dot" style={{ background: course.themeColor || '#F1621B' }}>
+            <AppIcon name={course.icon || 'adminDashboard'} size={16} />
+          </div>
+          <div className="course-card-info">
+            {showRename ? (
               <input
                 type="text"
-                className="admin-form-input"
+                className="course-rename-input"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onBlur={handleRename}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setShowRename(false) }}
                 autoFocus
               />
-            </div>
-          ) : (
-            <div className="course-name">{course.name}</div>
-          )}
-          <div className="course-meta">{course.description || 'No description'}</div>
-          <div className="course-meta-row">
-            <StatusBadge status={course.status || course.published ? 'published' : 'draft'} />
-            <span className="course-version">v{course.version || '1.0'}</span>
-            <span className="course-date">{course.lastUpdated || course.createdAt}</span>
+            ) : (
+              <>
+                <div className="course-name">{course.name}</div>
+                <div className="course-desc">{course.description || 'No description'}</div>
+              </>
+            )}
           </div>
         </div>
-        <div className="course-card-actions">
-          <button type="button" className="course-action-btn" onClick={() => setShowActions(!showActions)} aria-label="More actions">
-            <AppIcon name="moreVert" size={18} />
-          </button>
-          {showActions && (
-            <div className="course-action-menu">
-              <button type="button" onClick={() => { setShowRename(true); setShowActions(false) }}><AppIcon name="edit" size={14} /> Rename</button>
-              <button type="button" onClick={() => { onDuplicate(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Duplicated', message: `Copy of "${course.name}" created` }) }}><AppIcon name="copy" size={14} /> Duplicate</button>
-              <button type="button" onClick={() => { setShowStatusMenu(!showStatusMenu); setShowActions(false) }}><AppIcon name="settings" size={14} /> Change Status</button>
-              {course.published ? (
-                <button type="button" onClick={() => { onUnpublish(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Unpublished', message: `"${course.name}" is now a draft` }) }}><AppIcon name="close" size={14} /> Unpublish</button>
-              ) : (
-                <button type="button" onClick={() => { onPublish(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Published', message: `"${course.name}" is now visible to students` }) }}><AppIcon name="check" size={14} /> Publish</button>
-              )}
-              {course.status !== 'archived' ? (
-                <button type="button" onClick={() => { onArchive(course.id); setShowActions(false); showToast({ type: 'warning', title: 'Course Archived', message: `"${course.name}" moved to archive` }) }}><AppIcon name="folder" size={14} /> Archive</button>
-              ) : (
-                <button type="button" onClick={() => { onActivate(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Activated', message: `"${course.name}" restored from archive` }) }}><AppIcon name="arrowUp" size={14} /> Activate</button>
-              )}
-              <button type="button" className="danger" onClick={() => { handleDelete(); setShowActions(false) }}><AppIcon name="delete" size={14} /> Delete</button>
-            </div>
-          )}
-          {showStatusMenu && (
-            <div className="course-status-menu">
-              {STATUS_OPTIONS.map((s) => (
-                <button key={s} type="button" onClick={() => handleStatusChange(s)}>
-                  <span className={`status-dot tone-${STATUS_MAP[s]?.tone || 'gray'}`} />
-                  {STATUS_MAP[s]?.label || s}
+        <div className="course-card-right">
+          <StatusBadge status={course.status || (course.published ? 'published' : 'draft')} />
+          <div className="course-card-actions" ref={actionRef}>
+            <button
+              type="button"
+              className="course-action-btn"
+              onClick={() => setShowActions(!showActions)}
+              aria-label="More actions"
+            >
+              <AppIcon name="moreVert" size={18} />
+            </button>
+            {showActions && (
+              <div className="course-action-menu">
+                <button type="button" onClick={() => { setShowRename(true); setShowActions(false) }}>
+                  <AppIcon name="edit" size={14} /> Rename
                 </button>
-              ))}
-            </div>
-          )}
+                <button type="button" onClick={() => { onDuplicate(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Duplicated', message: `Copy of "${course.name}" created` }) }}>
+                  <AppIcon name="copy" size={14} /> Duplicate
+                </button>
+                {course.published ? (
+                  <button type="button" onClick={() => { onUnpublish(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Unpublished', message: `"${course.name}" is now a draft` }) }}>
+                    <AppIcon name="close" size={14} /> Unpublish
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { onPublish(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Published', message: `"${course.name}" is now visible to students` }) }}>
+                    <AppIcon name="check" size={14} /> Publish
+                  </button>
+                )}
+                {course.status !== 'archived' ? (
+                  <button type="button" onClick={() => { onArchive(course.id); setShowActions(false); showToast({ type: 'warning', title: 'Course Archived', message: `"${course.name}" moved to archive` }) }}>
+                    <AppIcon name="folder" size={14} /> Archive
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { onActivate(course.id); setShowActions(false); showToast({ type: 'success', title: 'Course Activated', message: `"${course.name}" restored from archive` }) }}>
+                    <AppIcon name="arrowUp" size={14} /> Activate
+                  </button>
+                )}
+                <button type="button" className="danger" onClick={() => { handleDelete(); setShowActions(false) }}>
+                  <AppIcon name="delete" size={14} /> Delete
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="course-card-footer">
-        <div className="course-stat"><AppIcon name="subjects" size={14} /> {course.metadata?.subjects || 0} Subjects</div>
-        <div className="course-stat"><AppIcon name="document" size={14} /> {course.metadata?.chapters || 0} Chapters</div>
-        <div className="course-stat"><AppIcon name="mcqs" size={14} /> {course.metadata?.mcqs || 0} MCQs</div>
-        <div className="course-stat"><AppIcon name="flashcardsTab" size={14} /> {course.metadata?.flashcards || 0} Flashcards</div>
-        <button type="button" className={`course-select-btn${isActive ? ' active' : ''}`} onClick={() => onSelect(course.id)}>
-          {isActive ? 'Selected' : 'Select'} <AppIcon name="arrowForward" size={14} />
+        <div className="course-stat">
+          <AppIcon name="document" size={13} />
+          <span className="course-stat-value">{course.metadata?.chapters || 0}</span>
+          <span className="course-stat-label">Chapters</span>
+        </div>
+        <div className="course-stat">
+          <AppIcon name="mcqs" size={13} />
+          <span className="course-stat-value">{course.metadata?.mcqs || 0}</span>
+          <span className="course-stat-label">MCQs</span>
+        </div>
+        <div className="course-stat">
+          <AppIcon name="flashcardsTab" size={13} />
+          <span className="course-stat-value">{course.metadata?.flashcards || 0}</span>
+          <span className="course-stat-label">Flashcards</span>
+        </div>
+        <button
+          type="button"
+          className={`course-select-btn${isActive ? ' active' : ''}`}
+          onClick={() => onSelect(course.id)}
+        >
+          {isActive ? 'Active' : 'Select'}
         </button>
       </div>
     </div>
@@ -208,17 +229,6 @@ function CourseManager(_courseName) {
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
   const [createStatus, setCreateStatus] = useState('draft')
-  const actionRef = useRef(null)
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (actionRef.current && !actionRef.current.contains(e.target)) {
-        // Close any open action menus handled per-card
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
 
   const filtered = useMemo(() => {
     let list = [...getWorkspaces()]
@@ -257,44 +267,53 @@ function CourseManager(_courseName) {
     <div className="course-manager">
       <div className="course-manager-header">
         <div className="course-manager-title">
-          <AppIcon name="adminDashboard" size={20} />
-          Course Manager
-        </div>
-        <div className="course-manager-actions">
-          <div className="course-search">
-            <AppIcon name="search" size={15} />
-            <input type="text" placeholder="Search courses..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <AppIcon name="folder" size={20} />
+          <div>
+            <div className="course-manager-heading">Course Manager</div>
+            <div className="course-manager-sub">Manage courses and their learning content</div>
           </div>
-          <select className="admin-form-select course-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
-            <AppIcon name="add" size={15} /> Create Course
-          </Button>
         </div>
       </div>
 
-      {showCreate && (
-        <div className="course-create-card">
-          <div className="course-create-title">Create New Course</div>
-          <InlineForm
-            fields={[
-              { key: 'name', label: 'Course Name', placeholder: 'e.g., GATE 2026 – Mechanical' },
-              { key: 'description', label: 'Description', placeholder: 'Brief course description' },
-              { key: 'status', label: 'Status', type: 'select', options: STATUS_OPTIONS, default: 'draft' },
-            ]}
-            onSubmit={handleCreate}
-            onCancel={() => { setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateStatus('draft') }}
-            submitLabel="Create"
+      <div className="course-manager-toolbar">
+        <div className="course-search">
+          <AppIcon name="search" size={16} />
+          <input
+            type="text"
+            placeholder="Search courses..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <select className="course-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+
+      <Button variant="primary" className="course-create-cta" onClick={() => setShowCreate(!showCreate)}>
+        <AppIcon name="add" size={16} />
+        {showCreate ? 'Cancel' : 'Create Course'}
+      </Button>
+
+      {showCreate && (
+        <InlineForm
+          fields={[
+            { key: 'name', label: 'Course Name', placeholder: 'e.g., GATE 2026 – Mechanical' },
+            { key: 'description', label: 'Description', placeholder: 'Brief course description' },
+            { key: 'status', label: 'Status', type: 'select', options: STATUS_OPTIONS, default: 'draft' },
+          ]}
+          onSubmit={handleCreate}
+          onCancel={() => { setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateStatus('draft') }}
+          submitLabel="Create"
+        />
       )}
 
       <div className="course-list">
         {filtered.length === 0 ? (
-          <div className="acad-empty">
+          <div className="course-empty">
             <AppIcon name="adminDashboard" size={28} />
-            <p>No Courses found</p>
+            <p>No courses found</p>
+            <span>Try another search or create a new course.</span>
           </div>
         ) : (
           filtered.map((course) => (
@@ -309,7 +328,6 @@ function CourseManager(_courseName) {
               onActivate={activateWorkspace}
               onPublish={publishWorkspace}
               onUnpublish={unpublishWorkspace}
-              onMakePrivate={makePrivateWorkspace}
               onDelete={deleteWorkspace}
             />
           ))
