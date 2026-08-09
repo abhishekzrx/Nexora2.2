@@ -16,6 +16,8 @@ import PhoneFrame from '../components/layout/PhoneFrame'
 import { useContentRegistry } from '../data/contentRegistry'
 import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
+import { showToast } from '../data/feedbackStore'
+import { mcqService } from '../services/mcqService'
 import { useAdminStore } from '../data/adminStore'
 import { useWorkspaceStore } from '../data/workspaceStore'
 import { slugify } from '../data/courseRegistry'
@@ -197,45 +199,58 @@ const QuestionPanel = memo(function QuestionPanel({
  * Memoized — the question grid and legend never re-render on navigation.
  */
 const Sidebar = memo(function Sidebar({
-  totalQuestions,
+  totalGridSize = 20,
+  availableCount = 5,
   currentIndex,
   answers,
   marked,
   onGoTo,
+  onUnavailableClick,
   theme,
 }) {
   const getQuestionClass = (index) => {
-    if (answers[index] !== undefined) return 'answered'
-    if (marked.has(index)) return 'marked'
+    if (index >= availableCount) return ' unavailable'
+    if (answers[index] !== undefined) return ' answered'
+    if (marked.has(index)) return ' marked'
     return ''
   }
 
   return (
     <aside className={`sidebar theme-${theme}`}>
-      <h2>Questions ({totalQuestions})</h2>
+      <h2>Questions ({availableCount}/{totalGridSize})</h2>
       <div className="legend">
         <div className="legend-item"><span className="legend-dot dot-answered" />Answered</div>
         <div className="legend-item"><span className="legend-dot dot-notanswered" />Not Answered</div>
         <div className="legend-item"><span className="legend-dot dot-marked" />Marked</div>
-        <div className="legend-item"><span className="legend-dot dot-notvisited" />Not Visited</div>
+        <div className="legend-item"><span className="legend-dot dot-unavailable" />Unavailable</div>
       </div>
 
       <div className="qgrid">
-        {Array.from({ length: totalQuestions }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`qbtn${getQuestionClass(i)}${i === currentIndex ? ' current' : ''}`}
-            onClick={() => onGoTo(i)}
-          >
-            {i + 1}
-            {marked.has(i) ? (
-              <span className="flag-mini">
-                <AppIcon name="flag" size={7} />
-              </span>
-            ) : null}
-          </button>
-        ))}
+        {Array.from({ length: totalGridSize }, (_, i) => {
+          const isAvailable = i < availableCount
+          return (
+            <button
+              key={i}
+              type="button"
+              className={`qbtn${getQuestionClass(i)}${i === currentIndex ? ' current' : ''}`}
+              onClick={() => {
+                if (isAvailable) {
+                  onGoTo(i)
+                } else {
+                  onUnavailableClick?.(i + 1)
+                }
+              }}
+              title={isAvailable ? `Question ${i + 1}` : `Question ${i + 1} is unavailable`}
+            >
+              {i + 1}
+              {marked.has(i) ? (
+                <span className="flag-mini">
+                  <AppIcon name="flag" size={7} />
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
       </div>
 
       <div className="quick-jump-divider">
@@ -245,12 +260,21 @@ const Sidebar = memo(function Sidebar({
         </div>
         <select
           className="select-question"
-          value={currentIndex}
-          onChange={(e) => onGoTo(Number(e.target.value))}
+          value={currentIndex < availableCount ? currentIndex : ''}
+          onChange={(e) => {
+            const idx = Number(e.target.value)
+            if (idx < availableCount) {
+              onGoTo(idx)
+            } else {
+              onUnavailableClick?.(idx + 1)
+            }
+          }}
         >
           <option value="">Select Question</option>
-          {Array.from({ length: totalQuestions }, (_, i) => (
-            <option key={i} value={i}>Question {i + 1}</option>
+          {Array.from({ length: totalGridSize }, (_, i) => (
+            <option key={i} value={i} disabled={i >= availableCount}>
+              Question {i + 1} {i >= availableCount ? ' (Unavailable)' : ''}
+            </option>
           ))}
         </select>
       </div>
@@ -313,7 +337,54 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
+  const [dbQuestions, setDbQuestions] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadRemoteMcqs() {
+      if (!activeWorkspaceId) return
+      try {
+        const subjectId = subject?.subjectId || subjectKey
+        const chapterId = chapter?.id || chapter?.title || chapter?.name
+        const res = await mcqService.getMcqs(
+          activeWorkspaceId,
+          subjectId,
+          chapterId,
+          subjectTitle,
+          chapter?.title || chapter?.name || ''
+        )
+        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((m, idx) => {
+            const rawOpts = m.options || [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD].filter(Boolean)
+            const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
+            let correctIdx = 0
+            if (typeof m.correct === 'number') correctIdx = m.correct
+            else if (typeof m.correct_answer === 'string' || typeof m.correctAnswer === 'string') {
+              const strKey = String(m.correct_answer || m.correctAnswer || 'A').toUpperCase()
+              const map = { A: 0, B: 1, C: 2, D: 3 }
+              correctIdx = map[strKey] ?? 0
+            }
+            return {
+              id: m.id || idx + 1,
+              text: m.question || m.text,
+              options: opts,
+              correct: correctIdx,
+              explanation: m.explanation || 'No detailed explanation provided for this question.',
+            }
+          })
+          setDbQuestions(mapped)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch remote Supabase MCQs:', err)
+      }
+    }
+    loadRemoteMcqs()
+    return () => { isMounted = false }
+  }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
+
   const activeQuestions = useMemo(() => {
+    if (dbQuestions.length > 0) return dbQuestions
+
     const courseId = activeWorkspaceId
     const allMcqs = adminState.allMcqs || adminState.mcqs || []
 
@@ -345,9 +416,10 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     }
 
     return questions
-  }, [adminState.allMcqs, adminState.mcqs, activeWorkspaceId, subjectKey, subjectTitle, chapter])
+  }, [dbQuestions, adminState.allMcqs, adminState.mcqs, activeWorkspaceId, subjectKey, subjectTitle, chapter])
 
-  const totalQuestions = activeQuestions.length
+  const totalGridSize = 20
+  const availableCount = activeQuestions.length
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState(() =>
@@ -372,7 +444,16 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const current = activeQuestions[currentIndex] || activeQuestions[0] || questions[0]
   const answeredCount = Object.keys(answers).length
   const markedCount = marked.size
-  const notVisitedCount = totalQuestions - visited.size
+  const notVisitedCount = Math.max(0, totalGridSize - visited.size)
+
+  const handleUnavailableClick = useCallback((qNum) => {
+    showToast({
+      type: 'warning',
+      title: 'Question Unavailable',
+      message: `Question #${qNum} is not available in the database for this chapter. Admin can inject more MCQs in Admin Panel.`,
+      duration: 4000,
+    })
+  }, [])
 
   // Persist theme preference
   useEffect(() => {
@@ -425,6 +506,10 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [currentIndex, reviewMode])
 
   const goTo = useCallback((index) => {
+    if (index >= availableCount) {
+      handleUnavailableClick(index + 1)
+      return
+    }
     setCurrentIndex(index)
     setVisited((prev) => new Set(prev).add(index))
     requestAnimationFrame(() => {
@@ -432,15 +517,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         questionScrollRef.current.scrollTop = 0
       }
     })
-  }, [])
+  }, [availableCount, handleUnavailableClick])
 
   const goPrev = useCallback(() => {
     goTo(Math.max(0, currentIndex - 1))
   }, [currentIndex, goTo])
 
   const goNext = useCallback(() => {
-    goTo(Math.min(totalQuestions - 1, currentIndex + 1))
-  }, [currentIndex, goTo, totalQuestions])
+    if (currentIndex + 1 < availableCount) {
+      goTo(currentIndex + 1)
+    } else {
+      handleUnavailableClick(currentIndex + 2)
+    }
+  }, [currentIndex, availableCount, goTo, handleUnavailableClick])
 
   const toggleTimer = useCallback(() => {
     if (reviewMode) return
@@ -555,7 +644,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           {/* Hide summary bar and sidebar in mobile exam mode */}
           {!(examMode && isMobile) && (
             <SummaryBar
-              totalQuestions={totalQuestions}
+              totalQuestions={totalGridSize}
               answeredCount={answeredCount}
               markedCount={markedCount}
               notVisitedCount={notVisitedCount}
@@ -566,11 +655,13 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           <div className="main-layout">
             {!(examMode && isMobile) && (
               <Sidebar
-                totalQuestions={totalQuestions}
+                totalGridSize={totalGridSize}
+                availableCount={availableCount}
                 currentIndex={currentIndex}
                 answers={answers}
                 marked={marked}
                 onGoTo={goTo}
+                onUnavailableClick={handleUnavailableClick}
                 theme={theme}
               />
             )}
@@ -578,19 +669,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             <QuestionPanel
               question={current}
               questionNumber={currentIndex + 1}
-              totalQuestions={totalQuestions}
+              totalQuestions={availableCount}
               selectedOption={answers[currentIndex]}
               onSelectOption={selectOption}
               onToggleMark={toggleMark}
               onPrev={goPrev}
               onNext={goNext}
               hasPrev={currentIndex > 0}
-              hasNext={currentIndex < totalQuestions - 1}
+              hasNext={currentIndex < availableCount - 1}
               reviewMode={reviewMode}
               scrollRef={questionScrollRef}
-               theme={theme}
-               examMode={examMode}
-               isMobile={isMobile}
+              theme={theme}
+              examMode={examMode}
+              isMobile={isMobile}
             />
           </div>
 

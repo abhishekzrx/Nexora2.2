@@ -350,6 +350,11 @@
   background: var(--card-border);
 }
 
+.mcq-shell .dot-unavailable {
+  background: var(--card-muted);
+  opacity: 0.5;
+}
+
 .mcq-shell .qgrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -370,6 +375,7 @@
   font-weight: 700;
   color: var(--card-text);
   position: relative;
+  cursor: pointer;
 }
 
 .mcq-shell .qbtn.answered {
@@ -387,6 +393,18 @@
 .mcq-shell .qbtn.marked {
   border-color: var(--orange);
   color: var(--orange);
+}
+
+.mcq-shell .qbtn.unavailable {
+  background: var(--card-border);
+  color: var(--card-muted);
+  border-color: var(--card-border);
+  opacity: 0.5;
+}
+
+.mcq-shell .qbtn.unavailable:hover {
+  opacity: 0.8;
+  border-color: var(--card-muted);
 }
 
 .mcq-shell .qbtn.marked .flag-mini {
