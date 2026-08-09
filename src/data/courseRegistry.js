@@ -126,7 +126,11 @@ function buildSubjectEntry(key, subject, index) {
 }
 
 export function useCourseRegistry(courseId) {
-  const { subjects, chapters, mcqs, flashcards } = useAdminStore()
+  const adminState = useAdminStore()
+  const subjects = adminState.allSubjects || adminState.subjects || []
+  const chapters = adminState.allChapters || adminState.chapters || []
+  const mcqs = adminState.allMcqs || adminState.mcqs || []
+  const flashcards = adminState.allFlashcards || adminState.flashcards || []
 
   const courseSubjects = useMemo(() => {
     if (!courseId) return []

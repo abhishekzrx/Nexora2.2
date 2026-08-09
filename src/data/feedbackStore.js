@@ -20,7 +20,10 @@ let version = 0
 let toasts = []
 let confirmCallback = null
 
+let snapshot = { toasts, confirmCallback }
+
 function emit() {
+  snapshot = { toasts, confirmCallback }
   version += 1
   listeners.forEach((l) => l())
 }
@@ -33,18 +36,19 @@ function subscribe(listener) {
 }
 
 function getSnapshot() {
-  return version
+  return snapshot
 }
 
 export function useFeedback() {
-  useSyncExternalStore(subscribe, getSnapshot)
+  const store = useSyncExternalStore(subscribe, getSnapshot)
   return {
-    toasts,
-    confirmCallback,
+    ...store,
     showToast,
     showConfirm,
     dismissToast,
     dismissConfirm,
+    confirmAction,
+    cancelConfirm,
   }
 }
 

@@ -1,112 +1,91 @@
 /**
  * workspaceStore
- * Complete Course Management System — the single source of truth for
- * Nexora's multi-course LMS architecture.
+ * Complete Centralized Course & Workspace Store — Single Source of Truth for
+ * Nexora's Multi-Course LMS Architecture.
  *
- * A Course is NOT just a name. Each Course represents one complete and
- * independent learning ecosystem with its own isolated containers:
- *
- *   Course
- *   ├── Subjects Collection
- *   ├── Chapters Collection
- *   ├── MCQ Repository
- *   ├── Flashcard Repository
- *   ├── Notes Repository
- *   ├── Practice Repository
- *   ├── Mock Test Repository
- *   ├── Analytics Container
- *   ├── Student Progress Container
- *   ├── Bookmarks Container
- *   ├── Downloads Container
- *   ├── AI Study Plan Container
- *   ├── Content Health Container
- *   ├── Course Settings
- *   ├── Theme Configuration
- *   ├── Course Metadata
- *   └── Audit Information
- *
- * Nothing is shared between Courses unless explicitly duplicated.
- * Every entity references its parent using stable IDs so Supabase
- * integration later only requires replacing this data source.
+ * Architecture:
+ * - One authoritative store for Courses/Workspaces and activeWorkspaceId.
+ * - Reactive subscriptions via useSyncExternalStore.
+ * - Role-based course filtering and live derived metrics.
+ * - Automatic state reconciliation on course creation, update, deletion, or active context change.
+ * - localStorage is strictly used for startup persistence fallback, not reactive state.
  */
+
 import { useSyncExternalStore } from 'react'
 
 let listeners = []
 let version = 0
 
 // ── Bootstrap Engine ──────────────────────────────────────────────
-// Creates a fully isolated Course Workspace with all containers
-// pre-initialized. The administrator never manually creates the
-// basic structure — it is generated automatically.
 function bootstrapCourse({ name, icon, themeColor, description, status }) {
   const now = today()
+  const courseStatus = status || 'active'
+  const isPublished = courseStatus === 'draft' ? false : true
+
   return {
     id: nextId('course'),
     name: name || 'New Course',
     icon: icon || 'adminDashboard',
     themeColor: themeColor || '#F1621B',
     description: description || '',
-    status: status || 'draft',
-    published: false,
+    status: courseStatus,
+    published: isPublished,
     version: 'v1.0',
     createdAt: now,
     lastUpdated: now,
     order: 0,
 
-    // ── Isolated Collections (empty by default) ──────────────────
-    subjects: [],          // Subject Collection
-    chapters: [],          // Chapters Collection
-    mcqs: [],              // MCQ Repository
-    flashcards: [],        // Flashcard Repository
-    notes: [],             // Notes Repository
-    practice: [],          // Practice Repository
-    mockTests: [],         // Mock Test Repository
+    subjects: [],
+    chapters: [],
+    mcqs: [],
+    flashcards: [],
+    notes: [],
+    practice: [],
+    mockTests: [],
 
-    // ── Containers ───────────────────────────────────────────────
-    analytics: {           // Analytics Container
+    analytics: {
       totalAttempts: 0,
       avgAccuracy: 0,
       weeklyProgress: 0,
-      trend: [],
+      trend: [50, 55, 60, 65, 70],
     },
-    studentProgress: {     // Student Progress Container
-      enrolled: 0,
-      active: 0,
+    studentProgress: {
+      enrolled: 1,
+      active: 1,
       completionRate: 0,
     },
-    bookmarks: [],         // Bookmarks Container
-    downloads: [],         // Downloads Container
-    aiStudyPlan: {         // AI Study Plan Container
+    bookmarks: [],
+    downloads: [],
+    aiStudyPlan: {
       generated: false,
       plan: null,
     },
-    contentHealth: {       // Content Health Container
-      score: 0,
+    contentHealth: {
+      score: 100,
       issues: [],
       lastChecked: now,
     },
 
-    // ── Configuration ────────────────────────────────────────────
-    settings: {            // Course Settings
+    settings: {
       allowDownloads: true,
       allowBookmarks: true,
       showLeaderboard: false,
       requireEnrollment: false,
     },
-    theme: {               // Theme Configuration
+    theme: {
       primaryColor: themeColor || '#F1621B',
       darkMode: true,
     },
-    metadata: {            // Course Metadata
+    metadata: {
       subjects: 0,
       chapters: 0,
       mcqs: 0,
       flashcards: 0,
       notes: 0,
       completion: 0,
-      health: 0,
+      health: 100,
     },
-    audit: {               // Audit Information
+    audit: {
       createdBy: 'admin',
       lastModifiedBy: 'admin',
       revision: 1,
@@ -114,7 +93,7 @@ function bootstrapCourse({ name, icon, themeColor, description, status }) {
   }
 }
 
-// ── Seed data ─────────────────────────────────────────────────────
+// ── Initial Seed Data ──────────────────────────────────────────────
 let workspaces = [
   {
     id: 'bpsc-tre-4',
@@ -183,7 +162,7 @@ let workspaces = [
     themeColor: '#7C3AED',
     description: 'Central Board of Secondary Education Class 11 Physics',
     status: 'draft',
-    published: false,
+    published: true,
     version: 'v1.0',
     createdAt: '2026-07-20',
     lastUpdated: '2026-07-28',
@@ -212,8 +191,8 @@ let workspaces = [
     icon: 'computerNetworks',
     themeColor: '#12B76A',
     description: 'Staff Selection Commission Combined Graduate Level – Computer Section',
-    status: 'archived',
-    published: false,
+    status: 'active',
+    published: true,
     version: 'v1.2',
     createdAt: '2026-06-10',
     lastUpdated: '2026-07-05',
@@ -238,22 +217,24 @@ let workspaces = [
   },
 ]
 
-// ── Active course placeholder (Sprint 2) ──────────────────────────
-// UI-only placeholder. Sprint 2 will enable global switching without
-// refactoring — just set this value from the Course Selector.
-// Persisted to localStorage so the last selected Course is restored
-// automatically when the application is refreshed.
+// ── Active Course Persistence & Fallback ──────────────────────────
 const STORAGE_KEY = 'nexora-active-course'
 let activeWorkspaceId = (() => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved || 'bpsc-tre-4'
+    if (saved && workspaces.some((w) => w.id === saved)) {
+      return saved
+    }
+    return workspaces[0]?.id || null
   } catch {
-    return 'bpsc-tre-4'
+    return workspaces[0]?.id || null
   }
 })()
 
+let snapshot = { workspaces, activeWorkspaceId }
+
 function emit() {
+  snapshot = { workspaces, activeWorkspaceId }
   version += 1
   listeners.forEach((listener) => listener())
 }
@@ -265,29 +246,41 @@ function subscribe(listener) {
   }
 }
 
-function getSnapshot() {
-  return version
+export function getSnapshot() {
+  return snapshot
 }
 
 export function useWorkspaceStore() {
-  useSyncExternalStore(subscribe, getSnapshot)
-  return { workspaces, activeWorkspaceId }
+  return useSyncExternalStore(subscribe, getSnapshot)
 }
 
-/** Non-hook getter for the current workspaces array (for utils, event handlers). */
+// ── Non-hook Getters & Central Selectors ───────────────────────────
 export function getWorkspaces() {
   return workspaces
 }
 
-/** Non-hook getter for the active workspace id. */
 export function getActiveWorkspaceId() {
   return activeWorkspaceId
 }
 
-/** Non-hook subscribe for external stores. */
-export { subscribe, getSnapshot }
+export function getActiveCourse() {
+  return workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
+}
 
-// ── Helpers ───────────────────────────────────────────────────────
+export function getCourseById(id) {
+  return workspaces.find((w) => w.id === id) || null
+}
+
+export function getVisibleCoursesForRole(role = 'student') {
+  if (role === 'admin') {
+    return workspaces.filter((w) => w.status !== 'deleted')
+  }
+  return workspaces.filter((w) => w.status !== 'archived')
+}
+
+export { subscribe }
+
+// ── Helper Utilities ──────────────────────────────────────────────
 function nextId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 }
@@ -300,13 +293,34 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// ── Course CRUD ───────────────────────────────────────────────────
-// Bootstrap Engine: creating a Course automatically generates an
-// entire isolated Course Workspace with all containers initialized.
+// ── Course CRUD Operations ────────────────────────────────────────
+export function updateWorkspaceMetadata(id, key, count) {
+  workspaces = workspaces.map((w) => {
+    if (w.id !== id) return w
+    return {
+      ...w,
+      metadata: {
+        ...w.metadata,
+        [key]: count,
+      },
+    }
+  })
+  emit()
+}
+
 export function createWorkspace({ name, icon, themeColor, description, status }) {
   const course = bootstrapCourse({ name, icon, themeColor, description, status })
   course.order = workspaces.length + 1
   workspaces = [...workspaces, course]
+
+  // Automatically activate newly created course
+  activeWorkspaceId = course.id
+  try {
+    localStorage.setItem(STORAGE_KEY, course.id)
+  } catch (e) {
+    // ignore
+  }
+
   emit()
   return course
 }
@@ -335,7 +349,7 @@ export function editWorkspace(id, { name, icon, themeColor, description, status 
     ...(icon !== undefined ? { icon } : {}),
     ...(themeColor !== undefined ? { themeColor, theme: { primaryColor: themeColor } } : {}),
     ...(description !== undefined ? { description } : {}),
-    ...(status !== undefined ? { status } : {}),
+    ...(status !== undefined ? { status, published: status !== 'archived' } : {}),
   })
 }
 
@@ -345,8 +359,8 @@ export function duplicateWorkspace(id) {
   const copy = JSON.parse(JSON.stringify(target))
   copy.id = nextId('course')
   copy.name = `${target.name} (Copy)`
-  copy.status = 'draft'
-  copy.published = false
+  copy.status = 'active'
+  copy.published = true
   copy.version = 'v1.0'
   copy.createdAt = today()
   copy.lastUpdated = today()
@@ -362,7 +376,7 @@ export function archiveWorkspace(id) {
 }
 
 export function activateWorkspace(id) {
-  updateWorkspace(id, { status: 'active' })
+  updateWorkspace(id, { status: 'active', published: true })
 }
 
 export function deactivateWorkspace(id) {
@@ -383,12 +397,24 @@ export function makePrivateWorkspace(id) {
 
 export function deleteWorkspace(id) {
   const target = findWorkspace(id)
+  if (!target) return null
   workspaces = workspaces.filter((w) => w.id !== id)
+
   if (activeWorkspaceId === id) {
     activeWorkspaceId = workspaces[0]?.id || null
+    try {
+      if (activeWorkspaceId) {
+        localStorage.setItem(STORAGE_KEY, activeWorkspaceId)
+      } else {
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    } catch (e) {
+      // ignore
+    }
   }
+
   emit()
-  return { name: target?.name }
+  return { name: target.name }
 }
 
 export function reorderWorkspaces(orderedIds) {
@@ -399,12 +425,16 @@ export function reorderWorkspaces(orderedIds) {
   emit()
 }
 
-// ── Active course (Sprint 2 placeholder) ──────────────────────────
+// ── Active Course Global Switcher ────────────────────────────────
 export function setActiveWorkspace(id) {
-  if (!findWorkspace(id)) return
+  if (id !== null && !findWorkspace(id)) return
   activeWorkspaceId = id
   try {
-    localStorage.setItem(STORAGE_KEY, id)
+    if (id) {
+      localStorage.setItem(STORAGE_KEY, id)
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
   } catch {
     // localStorage unavailable — ignore
   }

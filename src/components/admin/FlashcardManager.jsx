@@ -247,7 +247,7 @@ function PreviewFlashcardCard({ item, index, onUpdate, onRemove }) {
 }
 
 export default function FlashcardManager({ onBack }) {
-  const { activeCourseId } = useWorkspaceStore()
+  const { activeWorkspaceId: activeCourseId } = useWorkspaceStore()
   const subjects = useAdminStore().subjects
   const [form, setForm] = useState({
     subject: '',

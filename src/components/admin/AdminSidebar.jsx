@@ -8,9 +8,7 @@ const NAV_ITEMS = [
   { key: 'dashboard', label: 'DASHBOARD', icon: 'adminDashboard' },
   { key: 'courses', label: 'COURSE MANAGER', icon: 'folder' },
   { key: 'subjects', label: 'SUBJECTS', icon: 'chapters' },
-  { key: 'chapters', label: 'CHAPTERS', icon: 'document' },
-  { key: 'mcqs', label: 'MCQS', icon: 'mcqs' },
-  { key: 'flashcards', label: 'FLASHCARDS', icon: 'flashcardsTab' },
+  { key: 'mcq-injection', label: 'CHAPTER MCQS INJECTION', icon: 'document' },
   { key: 'analytics', label: 'ANALYTICS', icon: 'analyticsTab', disabled: true },
   { key: 'settings', label: 'SETTINGS', icon: 'settings', disabled: true },
 ]
@@ -50,8 +48,20 @@ function AdminSidebar({ activeSection, onNavigate, courseName }) {
           )
         })}
       </div>
+
+      <div className="admin-sidebar-user">
+        <div className="admin-user-avatar">
+          <AppIcon name="profile" size={20} />
+        </div>
+        <div className="admin-user-info">
+          <div className="admin-user-name">Abhi</div>
+          <div className="admin-user-role">Administrator</div>
+        </div>
+        <AppIcon name="chevronDown" size={14} className="admin-user-chevron" />
+      </div>
     </nav>
   )
 }
+
 
 export default AdminSidebar

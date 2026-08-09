@@ -362,7 +362,7 @@ function PreviewMcqCard({ item, index, onUpdate, onRemove }) {
 }
 
 export default function McqManager({ onBack }) {
-  const { activeCourseId } = useWorkspaceStore()
+  const { activeWorkspaceId: activeCourseId } = useWorkspaceStore()
   const subjects = useAdminStore().subjects
   const [form, setForm] = useState({
     subject: '',

@@ -1,20 +1,22 @@
 /**
  * StudentCourseSelector
- * Course selector for the Student Dashboard.
- * Shows only Published courses from the centralized workspaceStore.
+ * Centralized Course selector for Student Dashboard and Header.
+ * Data-bound directly to workspaceStore. Automatically reflects all courses
+ * created, renamed, or updated in the Admin Panel in real time.
  */
 
 import { useState, useRef, useEffect } from 'react'
 import AppIcon from '../ui/AppIcon'
-import { useWorkspaceStore } from '../../data/workspaceStore'
+import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 
-function StudentCourseSelector({ activeCourseId, onSelect }) {
+function StudentCourseSelector({ onSelect }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
-  const { workspaces } = useWorkspaceStore()
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
 
-  const publishedCourses = workspaces.filter((w) => w.published && w.status !== 'archived')
-  const activeCourse = workspaces.find((w) => w.id === activeCourseId)
+  // Filter out archived/deleted courses — all active, draft, and published courses from Admin UI appear here
+  const visibleCourses = workspaces.filter((w) => w.status !== 'archived' && w.status !== 'deleted')
+  const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || visibleCourses[0] || null
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -23,6 +25,12 @@ function StudentCourseSelector({ activeCourseId, onSelect }) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  const handleSelect = (courseId) => {
+    setActiveWorkspace(courseId)
+    if (onSelect) onSelect(courseId)
+    setOpen(false)
+  }
 
   return (
     <div className="student-course-selector" ref={ref}>
@@ -33,19 +41,19 @@ function StudentCourseSelector({ activeCourseId, onSelect }) {
       </button>
       {open && (
         <div className="student-course-dropdown">
-          {publishedCourses.length === 0 ? (
-            <div className="student-course-empty">No published courses available</div>
+          {visibleCourses.length === 0 ? (
+            <div className="student-course-empty">No courses available</div>
           ) : (
-            publishedCourses.map((course) => (
+            visibleCourses.map((course) => (
               <button
                 key={course.id}
                 type="button"
-                className={`student-course-option${course.id === activeCourseId ? ' active' : ''}`}
-                onClick={() => { onSelect(course.id); setOpen(false) }}
+                className={`student-course-option${course.id === activeWorkspaceId ? ' active' : ''}`}
+                onClick={() => handleSelect(course.id)}
               >
                 <span className="student-course-dot" style={{ background: course.themeColor || '#F1621B' }} />
                 <span className="student-course-option-name">{course.name}</span>
-                {course.id === activeCourseId && <AppIcon name="check" size={14} />}
+                {course.id === activeWorkspaceId && <AppIcon name="check" size={14} />}
               </button>
             ))
           )}

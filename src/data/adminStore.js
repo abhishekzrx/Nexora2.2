@@ -19,7 +19,7 @@ import {
   mcqRows,
   flashcardCards,
 } from './adminData'
-import { getActiveWorkspaceId } from './workspaceStore'
+import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, updateWorkspaceMetadata } from './workspaceStore'
 
 let listeners = []
 let version = 0
@@ -28,26 +28,114 @@ let version = 0
 // All seed content belongs to the default active course (bpsc-tre-4).
 const DEFAULT_COURSE_ID = 'bpsc-tre-4'
 
-let subjects = adminSubjects.map((s) => ({
-  ...s,
-  courseId: DEFAULT_COURSE_ID,
-  status: 'active',
-  locked: false,
-  color: '#F1621B',
-  order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
-  stats: s.stats.map((st) => ({ ...st })),
-}))
-let chapters = allChapters.map((c, i) => ({
-  ...c,
-  courseId: DEFAULT_COURSE_ID,
-  status: 'active',
-  locked: false,
-  number: i + 1,
-}))
+let subjects = [
+  ...adminSubjects.map((s) => ({
+    ...s,
+    courseId: DEFAULT_COURSE_ID,
+    status: 'active',
+    locked: false,
+    color: '#F1621B',
+    order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
+    stats: s.stats.map((st) => ({ ...st })),
+  })),
+  {
+    id: 's-cbse12-1',
+    courseId: 'cbse-12-cs',
+    name: 'Python Programming',
+    icon: 'dataStructures',
+    desc: 'Advanced Python functions, data structures, and file handling.',
+    status: 'active',
+    locked: false,
+    color: '#2E5CE6',
+    order: 1,
+    stats: [{ value: '4', label: 'Chapters' }, { value: '50', label: 'MCQs' }, { value: '30', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+  },
+  {
+    id: 's-cbse12-2',
+    courseId: 'cbse-12-cs',
+    name: 'Database Querying (SQL)',
+    icon: 'dbms',
+    desc: 'Relational database management, DDL, DML, and SQL queries.',
+    status: 'active',
+    locked: false,
+    color: '#2E5CE6',
+    order: 2,
+    stats: [{ value: '3', label: 'Chapters' }, { value: '40', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+  },
+  {
+    id: 's-cbse11-1',
+    courseId: 'cbse-11-ph',
+    name: 'Kinematics & Laws of Motion',
+    icon: 'physics',
+    desc: 'Motion in a straight line, vectors, Newton laws, and friction.',
+    status: 'active',
+    locked: false,
+    color: '#7C3AED',
+    order: 1,
+    stats: [{ value: '3', label: 'Chapters' }, { value: '30', label: 'MCQs' }, { value: '20', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+  },
+  {
+    id: 's-ssc-1',
+    courseId: 'ssc-cgl-computer',
+    name: 'Computer Fundamentals',
+    icon: 'computerNetworks',
+    desc: 'Hardware components, operating system basics, and software.',
+    status: 'active',
+    locked: false,
+    color: '#12B76A',
+    order: 1,
+    stats: [{ value: '2', label: 'Chapters' }, { value: '45', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+  },
+]
+
+let chapters = [
+  ...allChapters.map((c, i) => ({
+    ...c,
+    courseId: DEFAULT_COURSE_ID,
+    status: 'active',
+    locked: false,
+    number: i + 1,
+  })),
+  { id: 'c-cbse12-1', courseId: 'cbse-12-cs', subject: 'Python Programming', name: 'Functions & Recursion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
+  { id: 'c-cbse12-2', courseId: 'cbse-12-cs', subject: 'Database Querying (SQL)', name: 'SQL Joins & Grouping', number: 1, status: 'active', mcqs: 20, flashcards: 12, notes: 1 },
+  { id: 'c-cbse11-1', courseId: 'cbse-11-ph', subject: 'Kinematics & Laws of Motion', name: 'Vectors & Projectile Motion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
+  { id: 'c-ssc-1', courseId: 'ssc-cgl-computer', subject: 'Computer Fundamentals', name: 'Hardware & Input Devices', number: 1, status: 'active', mcqs: 25, flashcards: 15, notes: 1 },
+]
 let mcqs = mcqRows.map((m) => ({ ...m, courseId: DEFAULT_COURSE_ID }))
 let flashcards = flashcardCards.map((f) => ({ ...f, courseId: DEFAULT_COURSE_ID }))
 
+let snapshot = {
+  allSubjects: [],
+  allChapters: [],
+  allMcqs: [],
+  allFlashcards: [],
+  subjects: [],
+  chapters: [],
+  mcqs: [],
+  flashcards: [],
+  activeCourseId: null,
+}
+
+function updateSnapshot() {
+  const activeCourseId = getActiveWorkspaceId()
+  snapshot = {
+    allSubjects: subjects,
+    allChapters: chapters,
+    allMcqs: mcqs,
+    allFlashcards: flashcards,
+    subjects: subjects.filter((s) => s.courseId === activeCourseId),
+    chapters: chapters.filter((c) => c.courseId === activeCourseId),
+    mcqs: mcqs.filter((m) => m.courseId === activeCourseId),
+    flashcards: flashcards.filter((f) => f.courseId === activeCourseId),
+    activeCourseId,
+  }
+}
+
+// Initialize snapshot
+updateSnapshot()
+
 function emit() {
+  updateSnapshot()
   version += 1
   listeners.forEach((listener) => listener())
 }
@@ -60,19 +148,32 @@ function subscribe(listener) {
 }
 
 function getSnapshot() {
-  return version
+  return snapshot
 }
 
-export function useAdminStore() {
-  useSyncExternalStore(subscribe, getSnapshot)
-  const activeCourseId = getActiveWorkspaceId()
-  return {
-    subjects: subjects.filter((s) => s.courseId === activeCourseId),
-    chapters: chapters.filter((c) => c.courseId === activeCourseId),
-    mcqs: mcqs.filter((m) => m.courseId === activeCourseId),
-    flashcards: flashcards.filter((f) => f.courseId === activeCourseId),
-    activeCourseId,
+let lastWorkspaces = [...getWorkspaces()]
+
+subscribeWorkspace(() => {
+  const currentWorkspaces = getWorkspaces()
+  const currentIds = new Set(currentWorkspaces.map((w) => w.id))
+  const deletedIds = lastWorkspaces.filter((w) => !currentIds.has(w.id)).map((w) => w.id)
+
+  if (deletedIds.length > 0) {
+    deletedIds.forEach((courseId) => {
+      subjects = subjects.filter((s) => s.courseId !== courseId)
+      chapters = chapters.filter((c) => c.courseId !== courseId)
+      mcqs = mcqs.filter((m) => m.courseId !== courseId)
+      flashcards = flashcards.filter((f) => f.courseId !== courseId)
+    })
+    recomputeAllSubjectStats()
   }
+
+  lastWorkspaces = [...currentWorkspaces]
+  emit()
+})
+
+export function useAdminStore() {
+  return useSyncExternalStore(subscribe, getSnapshot)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -101,12 +202,12 @@ function recomputeAllSubjectStats() {
 }
 
 // ── Subject CRUD ──────────────────────────────────────────────────
-export function addSubject({ name, icon, desc, color, status }) {
-  const courseId = currentCourseId()
-  const courseSubjects = subjects.filter((s) => s.courseId === courseId)
+export function addSubject({ name, icon, desc, color, status, courseId }) {
+  const targetCourseId = courseId || currentCourseId()
+  const courseSubjects = subjects.filter((s) => s.courseId === targetCourseId)
   const subject = {
     id: `s${nextId(subjects)}`,
-    courseId,
+    courseId: targetCourseId,
     name: name || 'New Subject',
     icon: icon || 'chapters',
     desc: desc || '',
@@ -122,8 +223,25 @@ export function addSubject({ name, icon, desc, color, status }) {
     ],
   }
   subjects = [...subjects, subject]
+  updateWorkspaceMetadata(targetCourseId, 'subjects', subjects.filter((s) => s.courseId === targetCourseId).length)
   emit()
   return subject
+}
+
+export function seedDefaultSubjects(courseId) {
+  const targetCourseId = courseId || currentCourseId()
+  const templates = [
+    { name: 'Physics', icon: 'chapters', desc: 'Mechanics, Electromagnetism, and Modern Physics', color: '#2E5CE6' },
+    { name: 'Chemistry', icon: 'document', desc: 'Organic, Inorganic, and Physical Chemistry', color: '#12B76A' },
+    { name: 'Mathematics', icon: 'analyticsTab', desc: 'Calculus, Algebra, Vector & 3D Geometry', color: '#7C3AED' },
+    { name: 'Computer Science', icon: 'mcqs', desc: 'Python Programming, Data Structures, and Networking', color: '#F1621B' },
+  ]
+  templates.forEach((tmpl) => {
+    // Only add if subject with same name doesn't already exist for this course
+    if (!subjects.some((s) => s.courseId === targetCourseId && s.name.toLowerCase() === tmpl.name.toLowerCase())) {
+      addSubject({ ...tmpl, status: 'active', courseId: targetCourseId })
+    }
+  })
 }
 
 export function updateSubject(id, { name, icon, desc, color, status }) {
@@ -160,6 +278,9 @@ export function deleteSubject(id) {
     flashcards = flashcards.filter((f) => !(f.subject === target.name && f.courseId === target.courseId))
   }
   subjects = subjects.filter((s) => s.id !== id)
+  if (target) {
+    updateWorkspaceMetadata(target.courseId, 'subjects', subjects.filter((s) => s.courseId === target.courseId).length)
+  }
   emit()
   return impacted
 }
@@ -178,6 +299,7 @@ export function duplicateSubject(id) {
   }
   copy.stats = copy.stats.map((st) => ({ ...st }))
   subjects = [...subjects, copy]
+  updateWorkspaceMetadata(courseId, 'subjects', subjects.filter((s) => s.courseId === courseId).length)
   emit()
   return copy
 }
@@ -580,6 +702,28 @@ export function injectFlashcards(records) {
   recomputeAllSubjectStats()
   emit()
   return { imported, duplicates, failed, lastSubject, lastChapter }
+}
+
+/**
+ * checkDuplicateMcqs — check for potential duplicate MCQs against existing store.
+ */
+export function checkDuplicateMcqs(records, targetCourseId) {
+  const cId = targetCourseId || currentCourseId()
+  const existingSet = new Set(
+    mcqs.filter((m) => m.courseId === cId).map((m) => m.question.trim().toLowerCase())
+  )
+  return records.filter((r) => r.question && existingSet.has(r.question.trim().toLowerCase()))
+}
+
+/**
+ * checkDuplicateFlashcards — check for potential duplicate Flashcards against existing store.
+ */
+export function checkDuplicateFlashcards(records, targetCourseId) {
+  const cId = targetCourseId || currentCourseId()
+  const existingSet = new Set(
+    flashcards.filter((f) => f.courseId === cId).map((f) => f.front.trim().toLowerCase())
+  )
+  return records.filter((r) => r.front && existingSet.has(r.front.trim().toLowerCase()))
 }
 
 // ── Derived counts for dashboard summary cards ────────────────────

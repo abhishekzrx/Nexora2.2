@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
@@ -423,33 +423,25 @@ function DashboardPage({
   onNavigateAdmin = () => {},
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selectedCourseId, setSelectedCourseId] = useState(() => {
-    try {
-      const saved = localStorage.getItem('nexora-student-course')
-      if (saved) return saved
-    } catch {
-      // ignore
-    }
-    return courseId || null
-  })
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const registry = useContentRegistry()
-  const courseRegistry = useCourseRegistry(selectedCourseId)
-  const { workspaces, activeWorkspaceId: _activeWorkspaceId, setActiveWorkspace: _setActiveWorkspace } = useWorkspaceStore()
+  const courseRegistry = useCourseRegistry(activeWorkspaceId)
   const { isAdmin } = useRoleStore()
 
-  // ── Exam Readiness (mock value — future Supabase integration
-  //    only needs to pass a readiness percentage) ─────────────
-  const readinessScore = 72
+  const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
+  const effectiveCourseId = activeWorkspaceId || activeCourse?.id
+
+  // ── Dynamic Course Metrics ─────────────
+  const readinessScore = activeCourse?.metadata?.completion || activeCourse?.contentHealth?.score || (courseRegistry.subjectCount > 0 ? 72 : 0)
   const readinessLevel = getReadinessLevel(readinessScore)
   const animatedScore = useAnimatedNumber(readinessScore)
+  const totalMcqs = courseRegistry.mcqCount || activeCourse?.metadata?.mcqs || 0
+  const totalFlashcards = courseRegistry.flashcardCount || activeCourse?.metadata?.flashcards || 0
+  const completionRate = activeCourse?.studentProgress?.completionRate || readinessScore || 0
 
-  const activeCourse = workspaces.find((w) => w.id === selectedCourseId) || workspaces[0]
-  const effectiveCourseId = selectedCourseId || activeCourse?.id
-
-  // Derive subject cards from course registry when course selected, else fallback to contentRegistry
+  // Derive subject cards strictly from courseRegistry for activeWorkspaceId
   const subjectCards = useMemo(() => {
-    const source = effectiveCourseId ? courseRegistry : registry
-    return source.subjectsList.slice(0, 4).map((s, i) => {
+    return courseRegistry.subjectsList.slice(0, 4).map((s, i) => {
       const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
       return {
         subjectKey: s.subjectKey,
@@ -463,15 +455,10 @@ function DashboardPage({
         highlight: i === 0,
       }
     })
-  }, [effectiveCourseId, courseRegistry, registry])
+  }, [courseRegistry])
 
   const handleCourseSelect = (id) => {
-    setSelectedCourseId(id)
-    try {
-      localStorage.setItem('nexora-student-course', id)
-    } catch {
-      // ignore
-    }
+    setActiveWorkspace(id)
   }
 
   useEffect(() => {
@@ -604,11 +591,7 @@ function DashboardPage({
             <div>
               <div className="greeting-title">Good Evening, Abhi 👋</div>
               <div className="greeting-sub">{activeCourse?.name || 'Select a Course'}</div>
-              <StudentCourseSelector
-                courses={workspaces.filter((w) => w.published && w.status !== 'archived')}
-                activeCourseId={selectedCourseId}
-                onSelect={handleCourseSelect}
-              />
+              <StudentCourseSelector onSelect={handleCourseSelect} />
               {isAdmin && (
                 <div className="dashboard-role-switch">
                   <RoleSwitch onSwitchToAdmin={onNavigateAdmin} onSwitchToStudent={() => navigate('')} />
@@ -653,10 +636,10 @@ function DashboardPage({
               <div className="goal-copy">
                 <div className="stat-label">Today's Goal</div>
                 <div className="stat-value goal-line">
-                  120 <span>MCQs</span>
+                  {totalMcqs > 0 ? totalMcqs : 120} <span>MCQs</span>
                 </div>
                 <div className="stat-value goal-line">
-                  20 <span>Flashcards</span>
+                  {totalFlashcards > 0 ? totalFlashcards : 20} <span>Flashcards</span>
                 </div>
               </div>
             </div>
@@ -677,10 +660,10 @@ function DashboardPage({
 
           <div className="goal-progress-wrap">
             <div className="goal-progress-track">
-              <div className="goal-progress-fill" />
+              <div className="goal-progress-fill" style={{ width: `${completionRate}%` }} />
             </div>
             <div className="goal-pct">
-              <b>72%</b> Completed
+              <b>{completionRate}%</b> Completed
             </div>
           </div>
 

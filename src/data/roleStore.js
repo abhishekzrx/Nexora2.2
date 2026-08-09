@@ -24,7 +24,26 @@ const ROLES = ['student', 'admin', 'teacher', 'moderator', 'superAdmin']
 
 let activeRole = 'student'
 
+let snapshot = {
+  activeRole,
+  isStudent: activeRole === 'student',
+  isAdmin: activeRole === 'admin',
+  isTeacher: activeRole === 'teacher',
+  isModerator: activeRole === 'moderator',
+  isSuperAdmin: activeRole === 'superAdmin',
+  roles: ROLES,
+}
+
 function emit() {
+  snapshot = {
+    activeRole,
+    isStudent: activeRole === 'student',
+    isAdmin: activeRole === 'admin',
+    isTeacher: activeRole === 'teacher',
+    isModerator: activeRole === 'moderator',
+    isSuperAdmin: activeRole === 'superAdmin',
+    roles: ROLES,
+  }
   version += 1
   listeners.forEach((l) => l())
 }
@@ -37,20 +56,11 @@ function subscribe(listener) {
 }
 
 function getSnapshot() {
-  return version
+  return snapshot
 }
 
 export function useRoleStore() {
-  useSyncExternalStore(subscribe, getSnapshot)
-  return {
-    activeRole,
-    isStudent: activeRole === 'student',
-    isAdmin: activeRole === 'admin',
-    isTeacher: activeRole === 'teacher',
-    isModerator: activeRole === 'moderator',
-    isSuperAdmin: activeRole === 'superAdmin',
-    roles: ROLES,
-  }
+  return useSyncExternalStore(subscribe, getSnapshot)
 }
 
 export function getActiveRole() {
