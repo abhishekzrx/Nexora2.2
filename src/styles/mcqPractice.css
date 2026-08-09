@@ -526,8 +526,10 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--card-text);
-  line-height: 1.4;
+  line-height: 1.45;
   margin-bottom: 18px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .mcq-shell .options {
@@ -539,7 +541,7 @@
 
 .mcq-shell .option {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   border: 1.5px solid var(--card-border);
   border-radius: 12px;
@@ -550,6 +552,8 @@
   text-align: left;
   width: 100%;
   background: var(--card-bg);
+  overflow-wrap: break-word;
+  word-break: break-word;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -567,6 +571,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: 1px;
 }
 
 .mcq-shell .option.selected .radio {
@@ -624,7 +629,10 @@
   border: 1px solid #DCE3FA;
   border-radius: 14px;
   padding: 18px 20px;
+  margin-top: 16px;
   margin-bottom: 20px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .mcq-shell .explanation-title {
@@ -641,6 +649,9 @@
   font-size: 14px;
   color: var(--card-text);
   line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── Question card footer navigation ────────────────────── */

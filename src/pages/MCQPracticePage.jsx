@@ -16,6 +16,9 @@ import PhoneFrame from '../components/layout/PhoneFrame'
 import { useContentRegistry } from '../data/contentRegistry'
 import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
+import { useAdminStore } from '../data/adminStore'
+import { useWorkspaceStore } from '../data/workspaceStore'
+import { slugify } from '../data/courseRegistry'
 
 const questions = [
   {
@@ -148,7 +151,7 @@ const QuestionPanel = memo(function QuestionPanel({
           })}
         </div>
 
-        {reviewMode || selectedOption !== undefined ? (
+        {reviewMode ? (
           <div className="explanation">
             <div className="explanation-title">
               <AppIcon name="lightbulb" size={16} />
@@ -305,13 +308,46 @@ const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, mar
 
 function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit, reviewMode = false }) {
   const registry = useContentRegistry()
+  const adminState = useAdminStore()
+  const { activeWorkspaceId } = useWorkspaceStore()
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
-  const chapterMcqCount = chapter
-    ? Number.parseInt(chapter.meta?.match(/(\d+)\s*MCQs?/i)?.[1] || '20', 10)
-    : 20
-  const totalQuestions = chapterMcqCount || 20
+  const activeQuestions = useMemo(() => {
+    const courseId = activeWorkspaceId
+    const allMcqs = adminState.allMcqs || adminState.mcqs || []
+
+    const filtered = allMcqs.filter((m) => {
+      const matchCourse = !courseId || m.courseId === courseId
+      const matchSubject = !subjectKey || slugify(m.subject) === subjectKey || m.subjectId === subjectKey || m.subject === subjectTitle
+      const matchChapter = !chapter || m.chapterId === chapter.id || m.chapter === chapter.title || m.chapter === chapter.name
+      return matchCourse && matchSubject && matchChapter
+    })
+
+    if (filtered.length > 0) {
+      return filtered.map((m, idx) => {
+        const rawOpts = m.options || [m.optionA, m.optionB, m.optionC, m.optionD].filter(Boolean)
+        const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
+        let correctIdx = 0
+        if (typeof m.correct === 'number') correctIdx = m.correct
+        else if (typeof m.correctAnswer === 'string') {
+          const map = { A: 0, B: 1, C: 2, D: 3 }
+          correctIdx = map[m.correctAnswer.toUpperCase()] ?? 0
+        }
+        return {
+          id: m.id || idx + 1,
+          text: m.question,
+          options: opts,
+          correct: correctIdx,
+          explanation: m.explanation || 'No detailed explanation provided for this question.',
+        }
+      })
+    }
+
+    return questions
+  }, [adminState.allMcqs, adminState.mcqs, activeWorkspaceId, subjectKey, subjectTitle, chapter])
+
+  const totalQuestions = activeQuestions.length
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState(() =>
@@ -333,7 +369,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
   const questionScrollRef = useRef(null)
 
-  const current = questions[currentIndex]
+  const current = activeQuestions[currentIndex] || activeQuestions[0] || questions[0]
   const answeredCount = Object.keys(answers).length
   const markedCount = marked.size
   const notVisitedCount = totalQuestions - visited.size

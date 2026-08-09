@@ -59,19 +59,21 @@ function buildSubjectEntry(key, subject, index) {
     .filter((ch) => !ch.archived)
     .sort((a, b) => (a.number || 0) - (b.number || 0))
     .map((ch, ci) => {
-      const progress = ch.completion && typeof ch.completion === 'number'
-        ? ch.completion
-        : (ch.mcqs > 0 || ch.flashcards > 0)
-          ? Math.min(100, ((ch.mcqs > 0 ? 1 : 0) + (ch.flashcards > 0 ? 1 : 0) + (ch.notes > 0 ? 1 : 0)) * 25)
-          : 0
+      const totalMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (ch.mcqs || 0)
+      const answeredMcqs = typeof ch.answeredMcqs === 'number' ? ch.answeredMcqs : 0
+      
+      const progress = totalMcqs > 0
+        ? Math.min(100, Math.max(0, Math.round((answeredMcqs / totalMcqs) * 100)))
+        : (ch.completion && typeof ch.completion === 'number' ? Math.min(100, Math.max(0, ch.completion)) : 0)
+
       return {
         num: String(ch.number || ci + 1).padStart(2, '0'),
-        title: ch.name,
+        title: ch.name || ch.title || 'Chapter',
         sub: ch.difficulty ? `${ch.difficulty.toUpperCase()} • ${ch.estMinutes || 45} min` : `${ch.status || 'draft'} • ${ch.estMinutes || 45} min`,
         progress,
         pct: `${progress}%`,
-        complete: ch.mcqs > 0 && ch.flashcards > 0 && ch.notes > 0 && ch.status === 'published',
-        meta: `${ch.mcqs || 0} MCQs • ${ch.flashcards || 0} Flashcards`,
+        complete: progress === 100,
+        meta: `${totalMcqs} MCQs • ${ch.flashcards || 0} Flashcards`,
         locked: Boolean(ch.locked),
         status: ch.locked ? 'locked' : ch.status || 'draft',
         id: ch.id,
@@ -158,16 +160,35 @@ export function useCourseRegistry(courseId) {
 
     courseSubjects.forEach((sub, index) => {
       const key = subjectKeyFor(sub.name, sub.id)
-      const subChapters = courseChapters.filter((c) => c.subject === sub.name)
-      const subMcqs = courseMcqs.filter((m) => m.subject === sub.name).length
-      const subFlashcards = courseFlashcards.filter((f) => f.subject === sub.name).length
+      const subChapters = courseChapters.filter(
+        (c) => (c.subject === sub.name || c.subjectId === sub.id || c.subject === sub.id) && c.courseId === courseId
+      )
+      const subMcqs = courseMcqs.filter(
+        (m) => (m.subject === sub.name || m.subjectId === sub.id || m.subject === sub.id) && m.courseId === courseId
+      )
+      const subFlashcards = courseFlashcards.filter(
+        (f) => (f.subject === sub.name || f.subjectId === sub.id || f.subject === sub.id) && f.courseId === courseId
+      )
+
+      const enrichedChapters = subChapters.map((ch) => {
+        const chMcqs = subMcqs.filter(
+          (m) => (m.chapterId === ch.id || m.chapter === ch.name || m.chapter === ch.title)
+        )
+        const totalMcqs = chMcqs.length || ch.mcqs || 0
+        return {
+          ...ch,
+          mcqs: totalMcqs,
+          totalMcqs,
+          flashcards: courseFlashcards.filter((f) => f.chapterId === ch.id || f.chapter === ch.name || f.chapter === ch.title).length || ch.flashcards || 0,
+        }
+      })
 
       const enrichedSubject = {
         ...sub,
-        chapters: subChapters,
-        mcqs: subMcqs,
-        flashcards: subFlashcards,
-        notes: 0,
+        chapters: enrichedChapters,
+        mcqs: subMcqs.length || sub.mcqs || 0,
+        flashcards: subFlashcards.length || sub.flashcards || 0,
+        notes: sub.notes || 0,
       }
 
       catalog[key] = buildSubjectEntry(key, enrichedSubject, index)
