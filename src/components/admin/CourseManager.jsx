@@ -23,6 +23,8 @@ import {
 } from '../../data/workspaceStore'
 import { useAdminStore, addSubject } from '../../data/adminStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
+import { courseService } from '../../services/courseService'
+import { subjectService } from '../../services/subjectService'
 import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
@@ -805,36 +807,46 @@ function CourseManager({ courseName: _courseName }) {
   }, [selectedCourse, allSubjects, allChapters, allMcqs, allFlashcards])
 
   // Handlers
-  const handleCreateCourse = (values) => {
+  const handleCreateCourse = async (values) => {
     try {
-      const course = createWorkspace({ name: values.name.trim(), description: values.description.trim(), status: values.status })
-      if (course && course.id) {
+      const res = await courseService.createCourse({ name: values.name.trim(), description: values.description.trim(), status: values.status })
+      if (res.success && res.data) {
+        const course = res.data
         setActiveWorkspace(course.id)
         setSelectedCourseId(course.id)
         setShowCreate(false)
         showToast({ type: 'success', title: 'Course Created', message: `Workspace "${course.name}" created.` })
+      } else {
+        showToast({ type: 'error', title: 'Error', message: res.error || 'Unable to create course.' })
       }
-    } catch {
-      showToast({ type: 'error', title: 'Error', message: 'Unable to create course.' })
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'Unable to create course.' })
     }
   }
 
-  const handleCreateSubjectUnderSelected = (data) => {
+  const handleCreateSubjectUnderSelected = async (data) => {
     if (!selectedCourse) return
-    addSubject({
-      name: data.name,
-      desc: data.desc,
-      icon: data.icon,
-      color: data.color,
-      status: data.status,
-      courseId: selectedCourse.id,
-    })
-    setShowAddSubjectModal(false)
-    showToast({
-      type: 'success',
-      title: 'Subject Added',
-      message: `"${data.name}" added to "${selectedCourse.name}" successfully.`,
-    })
+    try {
+      const res = await subjectService.createSubject(selectedCourse.id, {
+        name: data.name,
+        desc: data.desc,
+        icon: data.icon,
+        color: data.color,
+        status: data.status,
+      })
+      if (res.success) {
+        setShowAddSubjectModal(false)
+        showToast({
+          type: 'success',
+          title: 'Subject Added',
+          message: `"${data.name}" added to "${selectedCourse.name}" successfully.`,
+        })
+      } else {
+        showToast({ type: 'error', title: 'Error', message: res.error || 'Unable to add subject.' })
+      }
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'Unable to add subject.' })
+    }
   }
 
   const handleSelectCourse = (id) => {

@@ -28,6 +28,7 @@ import {
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
+import { subjectService } from '../../services/subjectService'
 import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
@@ -109,7 +110,7 @@ function CourseSelectorBar({ workspaces, activeCourseId, allSubjects, onSelectCo
 }
 
 /* ── Subject Modal (Create & Edit) ───────────────────────────── */
-function SubjectModal({ initialData, workspaces, activeCourseId, onSave, onClose }) {
+function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSave, onClose }) {
   const isEditing = Boolean(initialData && initialData.id)
   const [courseId, setCourseId] = useState(initialData?.courseId || activeCourseId)
   const [name, setName] = useState(initialData?.name || '')
@@ -123,7 +124,7 @@ function SubjectModal({ initialData, workspaces, activeCourseId, onSave, onClose
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!name.trim() || !courseId) return
+    if (!name.trim() || !courseId || isSaving) return
     onSave({
       id: initialData?.id,
       courseId,
@@ -238,11 +239,11 @@ function SubjectModal({ initialData, workspaces, activeCourseId, onSave, onClose
           </div>
 
           <div className="sm-modal-actions">
-            <Button variant="secondary" type="button" onClick={onClose}>
+            <Button variant="secondary" type="button" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
-              {isEditing ? 'Save Changes' : 'Create Subject'}
+            <Button variant="primary" type="submit" disabled={isSaving}>
+              {isSaving ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Subject')}
             </Button>
           </div>
         </form>
@@ -821,34 +822,42 @@ function SubjectManager({ courseName, onNavigate }) {
     setShowSubjectModal(true)
   }
 
-  const handleSaveSubject = (data) => {
+  const [isSavingSubject, setIsSavingSubject] = useState(false)
+
+  const handleSaveSubject = async (data) => {
     const targetCourse = workspaces.find((w) => w.id === data.courseId)
-    if (data.id) {
-      updateSubject(data.id, data)
-      showToast({ type: 'success', title: 'Subject Updated', message: `"${data.name}" updated successfully.` })
-    } else {
-      const newSubject = addSubject({
-        name: data.name,
-        desc: data.desc,
-        icon: data.icon,
-        color: data.color,
-        status: data.status,
-        locked: data.locked,
-        courseId: data.courseId,
-      })
-      if (newSubject && newSubject.id) {
-        setSelectedSubjectId(newSubject.id)
+    setIsSavingSubject(true)
+    try {
+      if (data.id) {
+        const res = await subjectService.updateSubject(data.id, data)
+        if (res.success) {
+          showToast({ type: 'success', title: 'Subject Updated', message: `"${data.name}" updated successfully.` })
+          setShowSubjectModal(false)
+        } else {
+          showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update subject.' })
+        }
+      } else {
+        const res = await subjectService.createSubject(data.courseId, data)
+        if (res.success && res.data) {
+          if (data.courseId !== activeWorkspaceId) {
+            setActiveWorkspace(data.courseId)
+          }
+          setSelectedSubjectId(res.data.id)
+          showToast({
+            type: 'success',
+            title: 'Subject Created',
+            message: `"${data.name}" created under "${targetCourse?.name || 'Course'}" successfully.`,
+          })
+          setShowSubjectModal(false)
+        } else {
+          showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create subject.' })
+        }
       }
-      if (data.courseId !== activeWorkspaceId) {
-        setActiveWorkspace(data.courseId)
-      }
-      showToast({
-        type: 'success',
-        title: 'Subject Created',
-        message: `"${data.name}" created under "${targetCourse?.name || 'Course'}" successfully.`,
-      })
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+    } finally {
+      setIsSavingSubject(false)
     }
-    setShowSubjectModal(false)
   }
 
   const handleImportStarter = () => {
@@ -1029,6 +1038,7 @@ function SubjectManager({ courseName, onNavigate }) {
           initialData={editingSubject}
           workspaces={workspaces}
           activeCourseId={activeCourse.id}
+          isSaving={isSavingSubject}
           onSave={handleSaveSubject}
           onClose={() => setShowSubjectModal(false)}
         />

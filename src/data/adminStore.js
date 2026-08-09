@@ -339,21 +339,23 @@ export function getDeleteSubjectImpact(id) {
 }
 
 // ── Chapter CRUD ──────────────────────────────────────────────────
-export function addChapter({ subject, name, desc, number }) {
-  const courseId = currentCourseId()
-  const courseChapters = chapters.filter((c) => c.courseId === courseId)
+export function addChapter(data) {
+  const targetCourseId = data.courseId || currentCourseId()
+  const courseChapters = chapters.filter((c) => c.courseId === targetCourseId)
   const chapter = {
-    id: nextId(chapters),
-    courseId,
-    name: name || 'New Chapter',
-    subject: subject || 'Computer Networks',
-    desc: desc || '',
-    mcqs: 0,
-    flashcards: 0,
-    status: 'active',
-    statusText: 'Active',
-    locked: false,
-    number: number ? Number(number) : courseChapters.length + 1,
+    id: data.id || `c-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    courseId: targetCourseId,
+    subjectId: data.subjectId || data.subject || 'Computer Networks',
+    subject: data.subject || data.subjectId || 'Computer Networks',
+    name: data.name || 'New Chapter',
+    desc: data.desc || '',
+    mcqs: data.mcqs || 0,
+    flashcards: data.flashcards || 0,
+    notes: data.notes || 0,
+    status: data.status || 'active',
+    statusText: data.status === 'disabled' ? 'Disabled' : 'Active',
+    locked: Boolean(data.locked),
+    number: data.number ? Number(data.number) : courseChapters.length + 1,
   }
   chapters = [...chapters, chapter]
   recomputeAllSubjectStats()
@@ -361,15 +363,15 @@ export function addChapter({ subject, name, desc, number }) {
   return chapter
 }
 
-export function updateChapter(id, { subject, name, desc, number }) {
+export function updateChapter(id, patch) {
   chapters = chapters.map((chapter) => {
     if (chapter.id !== id) return chapter
     return {
       ...chapter,
-      name: name || chapter.name,
-      subject: subject || chapter.subject,
-      desc: desc ?? chapter.desc,
-      number: number ? Number(number) : chapter.number,
+      ...patch,
+      ...(patch.name ? { name: patch.name } : {}),
+      ...(patch.subject ? { subject: patch.subject, subjectId: patch.subject } : {}),
+      ...(patch.number ? { number: Number(patch.number) } : {}),
     }
   })
   recomputeAllSubjectStats()
@@ -704,6 +706,8 @@ export function injectFlashcards(records) {
   return { imported, duplicates, failed, lastSubject, lastChapter }
 }
 
+export { injectMcqs as injectMcqsIntoStore, injectFlashcards as injectFlashcardsIntoStore }
+
 /**
  * checkDuplicateMcqs — check for potential duplicate MCQs against existing store.
  */
@@ -752,6 +756,16 @@ export function getChaptersBySubject(subjectName) {
   return chapters
     .filter((c) => c.subject === subjectName && c.courseId === courseId)
     .sort((a, b) => a.number - b.number)
+}
+
+export function getChaptersBySubjectAndCourse(subjectId, courseId) {
+  return chapters.filter((c) => (c.subjectId === subjectId || c.subject === subjectId) && c.courseId === courseId)
+}
+
+export function getMcqsByChapterAndCourse(chapterId, subjectId, courseId) {
+  return mcqs.filter(
+    (m) => (m.chapterId === chapterId || m.chapter === chapterId) && m.courseId === courseId
+  )
 }
 
 // ── Chapter ordering (reorder) ────────────────────────────────────

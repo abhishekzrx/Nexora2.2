@@ -26,6 +26,7 @@ import {
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
+import { mcqService } from '../../services/mcqService'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
@@ -239,10 +240,15 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
   }
 
   // Backend Injection Handler
-  const handlePerformInjection = () => {
+  const handlePerformInjection = async () => {
     if (injectionStatus === 'injecting') return // Prevent double click / duplicate requests
     if (!currentPayload || (Array.isArray(currentPayload) && currentPayload.length === 0)) {
       showToast({ type: 'warning', title: 'No Payload', message: 'Please generate or paste content first.' })
+      return
+    }
+
+    if (!selectedCourseId || !activeSubject || !activeChapter) {
+      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Please select a valid Course, Subject, and Chapter.' })
       return
     }
 
@@ -250,70 +256,37 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     setInjectionStatus('injecting')
     setInjectionError(null)
 
-    setTimeout(() => {
-      // Check if context changed while processing
+    try {
+      const res = await mcqService.injectMcqs(
+        selectedCourseId,
+        activeSubject.id || activeSubject.name,
+        activeChapter.id || activeChapter.name,
+        currentPayload,
+        contentMode,
+        { subjectName: activeSubject.name, chapterName: activeChapter.name }
+      )
+
       if (reqId !== currentRequestIdRef.current) return
 
-      try {
-        if (contentMode === 'mcqs') {
-          const records = currentPayload.map((m) => ({
-            ...m,
-            subject: activeSubject.name,
-            chapter: activeChapter.name,
-            optionA: m.options?.[0] || 'Option A',
-            optionB: m.options?.[1] || 'Option B',
-            optionC: m.options?.[2] || 'Option C',
-            optionD: m.options?.[3] || 'Option D',
-            correctAnswer: m.correct || 'A',
-          }))
-          const res = injectMcqs(records)
-
-          if (reqId !== currentRequestIdRef.current) return
-
-          if (res && res.imported > 0) {
-            setInjectionStatus('success')
-            setInjectionResult(res)
-            showToast({
-              type: 'success',
-              title: 'MCQs Injected!',
-              message: `Successfully added ${res.imported} MCQs to "${activeChapter.name}".`,
-            })
-          } else {
-            setInjectionStatus('error')
-            setInjectionError('Backend returned 0 imported records.')
-            showToast({ type: 'error', title: 'Injection Failed', message: 'No records were imported.' })
-          }
-        } else {
-          const records = currentPayload.map((f) => ({
-            ...f,
-            subject: activeSubject.name,
-            chapter: activeChapter.name,
-          }))
-          const res = injectFlashcards(records)
-
-          if (reqId !== currentRequestIdRef.current) return
-
-          if (res && res.imported > 0) {
-            setInjectionStatus('success')
-            setInjectionResult(res)
-            showToast({
-              type: 'success',
-              title: 'Flashcards Injected!',
-              message: `Successfully added ${res.imported} Flashcards to "${activeChapter.name}".`,
-            })
-          } else {
-            setInjectionStatus('error')
-            setInjectionError('Backend returned 0 imported records.')
-            showToast({ type: 'error', title: 'Injection Failed', message: 'No records were imported.' })
-          }
-        }
-      } catch (err) {
-        if (reqId !== currentRequestIdRef.current) return
+      if (res.success) {
+        setInjectionStatus('success')
+        setInjectionResult(res)
+        showToast({
+          type: 'success',
+          title: contentMode === 'mcqs' ? 'MCQs Injected!' : 'Flashcards Injected!',
+          message: `Successfully added ${res.count || currentPayload.length} items to "${activeChapter.name}".`,
+        })
+      } else {
         setInjectionStatus('error')
-        setInjectionError(err?.message || 'Backend injection failed.')
-        showToast({ type: 'error', title: 'Injection Failed', message: err?.message || 'Error executing injection.' })
+        setInjectionError(res.error || 'Backend injection failed.')
+        showToast({ type: 'error', title: 'Injection Failed', message: res.error || 'No records were imported.' })
       }
-    }, 500)
+    } catch (err) {
+      if (reqId !== currentRequestIdRef.current) return
+      setInjectionStatus('error')
+      setInjectionError(err?.message || 'Backend injection failed.')
+      showToast({ type: 'error', title: 'Injection Failed', message: err?.message || 'Error executing injection.' })
+    }
   }
 
   // ── 6. Store Search & Modal State ─────────────────────────────────
