@@ -350,11 +350,27 @@ function MiniCard({ theme, icon, title, value, tone, sub, action, onClick, child
 }
 
 function SubjectCard({ subject, onSelect }) {
+  const handleCardClick = () => {
+    onSelect(subject.subjectKey)
+  }
+
+  const handleContinueClick = (e) => {
+    e.stopPropagation()
+    onSelect(subject.subjectKey)
+  }
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={`subject-card${subject.highlight ? ' highlight' : ''}`}
-      onClick={() => onSelect(subject.subjectKey)}
+      onClick={handleCardClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleCardClick()
+        }
+      }}
     >
       <div className="subject-card-header">
         <div className={`subject-icon ${subject.iconClass}`}>
@@ -391,14 +407,11 @@ function SubjectCard({ subject, onSelect }) {
       <button
         type="button"
         className="subject-continue"
-        onClick={(e) => {
-          e.stopPropagation()
-          onSelect(subject.subjectKey)
-        }}
+        onClick={handleContinueClick}
       >
         Continue <AppIcon name="arrowForward" size={13} />
       </button>
-    </button>
+    </div>
   )
 }
 

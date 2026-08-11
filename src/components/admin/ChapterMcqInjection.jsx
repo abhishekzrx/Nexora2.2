@@ -17,12 +17,8 @@ import {
   useAdminStore,
   addMcq,
   updateMcq,
-  deleteMcq,
   addFlashcard,
   updateFlashcard,
-  deleteFlashcard,
-  injectMcqs,
-  injectFlashcards,
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
@@ -161,26 +157,14 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     flashLanguage,
   ])
 
-  const handleCopyPromptIcon = useCallback(() => {
-    navigator.clipboard.writeText(generatedPromptText)
-    showToast({
-      type: 'success',
-      title: 'AI Prompt Copied!',
-      message: `Prompt for ${contentMode.toUpperCase()} copied to clipboard.`,
-    })
-  }, [generatedPromptText, contentMode])
-
   // ── 5. Injection State Lifecycle & Request Isolation ──────────────────────
   const [injectionStatus, setInjectionStatus] = useState('idle') // 'idle' | 'ready' | 'injecting' | 'success' | 'error'
   const [injectionError, setInjectionError] = useState(null)
   const [injectionResult, setInjectionResult] = useState(null)
   const [currentPayload, setCurrentPayload] = useState(null)
-  const [isGenerating, setIsGenerating] = useState(false)
 
-  // Request Isolation Token: Discard stale async responses if context changes
   const currentRequestIdRef = useRef(0)
 
-  // Context Identity: courseId + subjectName + chapterName + contentMode
   useEffect(() => {
     currentRequestIdRef.current++
     setInjectionStatus('idle')
@@ -189,55 +173,67 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     setCurrentPayload(null)
   }, [selectedCourseId, selectedSubjectName, selectedChapterName, contentMode])
 
-  // Generator Handler
-  const handleGenerateContent = () => {
-    if (!activeSubject || !activeChapter) {
-      showToast({ type: 'warning', title: 'Selection Required', message: 'Please select Course, Subject, and Chapter.' })
-      return
-    }
+  // ── Copy Prompt & JSON Handlers ─────────────────────────────────
+  const [copied, setCopied] = useState(false)
+  const [jsonError, setJsonError] = useState(null)
 
-    setIsGenerating(true)
-    setTimeout(() => {
-      let generated = []
-      if (contentMode === 'mcqs') {
-        for (let i = 1; i <= finalQuantity; i++) {
-          generated.push({
-            id: `gen-mcq-${i}`,
-            question: `[${targetExam || 'General'}] Q#${i}: In ${activeSubject.name} (${activeChapter.name}), which concept represents ${conceptFocus || 'core principles'}?`,
-            options: [
-              `Option A: Primary mechanism of ${activeChapter.name}`,
-              `Option B: High-yield application of key formulas`,
-              `Option C: Common student misconception distractor`,
-              `Option D: Theoretical boundary condition`,
-            ],
-            correct: i % 4 === 0 ? 'A' : i % 4 === 1 ? 'B' : i % 4 === 2 ? 'C' : 'D',
-            difficulty: mcqDifficulty === 'Mixed' ? (i % 2 === 0 ? 'Hard' : 'Medium') : mcqDifficulty,
-            explanation: `Step-by-step reasoning for Q#${i}: Option ${(i % 4) + 1} is correct according to ${activeChapter.name} standards.`,
-          })
-        }
-      } else {
-        for (let i = 1; i <= finalQuantity; i++) {
-          generated.push({
-            id: `gen-card-${i}`,
-            front: `[${flashDeckName || 'Core Deck'}] Card #${i}: What is the core definition of key concept #${i} in ${activeChapter.name}?`,
-            back: `Detailed explanation #${i}: High-yield facts and key diagnostic criteria for ${activeSubject.name}.`,
-          })
-        }
+  const handleCopyPrompt = useCallback(() => {
+    navigator.clipboard.writeText(generatedPromptText)
+    setCopied(true)
+    showToast({
+      type: 'success',
+      title: '✓ Prompt Copied',
+      message: `Prompt for ${contentMode.toUpperCase()} copied to clipboard.`,
+    })
+    setTimeout(() => setCopied(false), 2000)
+  }, [generatedPromptText, contentMode])
+
+  const handleJsonLoad = useCallback((raw) => {
+    try {
+      const parsed = JSON.parse(raw)
+      let mcqItems = []
+      let flashItems = []
+
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          if (item.front && item.back) flashItems.push(item)
+          else if (item.question) mcqItems.push(item)
+        })
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        if (Array.isArray(parsed.mcqs)) mcqItems = [...parsed.mcqs]
+        if (Array.isArray(parsed.flashcards)) flashItems = [...parsed.flashcards]
       }
 
-      setIsGenerating(false)
-      setCurrentPayload(generated)
-      setInjectionStatus('ready')
-      setInjectionError(null)
-      setInjectionResult(null)
+      const activePayload = contentMode === 'mcqs' ? mcqItems : flashItems
+      if (activePayload.length > 0) {
+        setCurrentPayload(activePayload)
+        setInjectionStatus('ready')
+        setInjectionError(null)
+        setInjectionResult(null)
+        setJsonError(null)
+        showToast({
+          type: 'success',
+          title: 'JSON Payload Loaded!',
+          message: `Loaded ${activePayload.length} items. Click "Inject" to confirm.`,
+        })
+      } else {
+        const err = `JSON does not contain ${contentMode} payload.`
+        setJsonError(err)
+        showToast({ type: 'warning', title: 'No matching items', message: err })
+      }
+    } catch (err) {
+      const errMsg = err.message
+      setJsonError(errMsg)
+      showToast({ type: 'warning', title: 'Invalid JSON', message: errMsg })
+    }
+  }, [contentMode])
 
-      showToast({
-        type: 'success',
-        title: 'Content Generated!',
-        message: `Generated ${finalQuantity} ${contentMode.toUpperCase()} payload ready for injection.`,
-      })
-    }, 400)
-  }
+  const handlePaste = useCallback((e) => {
+    const text = e.clipboardData.getData('text')
+    if (text) {
+      handleJsonLoad(text)
+    }
+  }, [handleJsonLoad])
 
   // Backend Injection Handler
   const handlePerformInjection = async () => {
@@ -290,68 +286,15 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
   }
 
   // ── 6. Store Search & Modal State ─────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [editingItem, setEditingItem] = useState(null)
+  const [editingItem, _setEditingItem] = useState(null)
 
   // MCQ Modal Form
   const [mcqModalForm, setMcqModalForm] = useState({ question: '', options: ['', '', '', ''], correct: 0, difficulty: 'Medium' })
   // Flashcard Modal Form
   const [flashModalForm, setFlashModalForm] = useState({ front: '', back: '' })
 
-  const filteredMcqs = useMemo(() => {
-    if (!searchQuery.trim()) return chapterMcqs
-    const q = searchQuery.toLowerCase()
-    return chapterMcqs.filter((m) => m.question.toLowerCase().includes(q))
-  }, [chapterMcqs, searchQuery])
 
-  const filteredFlashcards = useMemo(() => {
-    if (!searchQuery.trim()) return chapterFlashcards
-    const q = searchQuery.toLowerCase()
-    return chapterFlashcards.filter((f) => f.front.toLowerCase().includes(q) || f.back.toLowerCase().includes(q))
-  }, [chapterFlashcards, searchQuery])
-
-  // JSON Import Modal State
-  const [showJsonModal, setShowJsonModal] = useState(false)
-  const [jsonText, setJsonText] = useState('')
-
-  const handleImportJson = () => {
-    try {
-      const parsed = JSON.parse(jsonText)
-      let mcqItems = []
-      let flashItems = []
-
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item) => {
-          if (item.front && item.back) flashItems.push(item)
-          else if (item.question) mcqItems.push(item)
-        })
-      } else if (typeof parsed === 'object' && parsed !== null) {
-        if (Array.isArray(parsed.mcqs)) mcqItems = [...parsed.mcqs]
-        if (Array.isArray(parsed.flashcards)) flashItems = [...parsed.flashcards]
-      }
-
-      const activePayload = contentMode === 'mcqs' ? mcqItems : flashItems
-      if (activePayload.length > 0) {
-        setCurrentPayload(activePayload)
-        setInjectionStatus('ready')
-        setInjectionError(null)
-        setInjectionResult(null)
-        showToast({
-          type: 'success',
-          title: 'JSON Payload Loaded!',
-          message: `Loaded ${activePayload.length} items. Click "Inject" to confirm.`,
-        })
-      } else {
-        showToast({ type: 'warning', title: 'No matching items', message: `JSON does not contain ${contentMode} payload.` })
-      }
-
-      setShowJsonModal(false)
-      setJsonText('')
-    } catch (err) {
-      showToast({ type: 'warning', title: 'Invalid JSON', message: err.message })
-    }
-  }
 
   return (
     <div className="chapter-mcq-injection-shell">
@@ -486,25 +429,16 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               </div>
             </div>
 
-            {/* Quick Action Icons: Copy Prompt Icon Button + JSON Import */}
-            <div className="quick-icon-actions">
-              <button
-                type="button"
-                className="icon-action-btn"
-                title="Copy AI System Prompt"
-                onClick={handleCopyPromptIcon}
-              >
-                <AppIcon name="copy" size={16} />
-              </button>
-              <button
-                type="button"
-                className="icon-action-btn"
-                title="Paste / Drop JSON Payload"
-                onClick={() => setShowJsonModal(true)}
-              >
-                <AppIcon name="add" size={16} />
-              </button>
-            </div>
+            {/* Copy Prompt Button */}
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleCopyPrompt}
+              className="copy-prompt-btn"
+            >
+              <AppIcon name={copied ? "check" : "copy"} size={16} />
+              {copied ? '✓ Prompt Copied' : 'Copy Prompt'}
+            </Button>
           </div>
 
           {/* Mode Switcher: MCQs vs Flashcards */}
@@ -617,21 +551,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
             </div>
           </div>
 
-          {/* Primary Action Button */}
-          <div className="prompt-submit-bar">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={isGenerating || !activeChapter}
-              onClick={handleGenerateContent}
-              className="generate-btn-full"
-            >
-              <AppIcon name="add" size={18} />
-              {isGenerating
-                ? 'Generating...'
-                : `Generate ${finalQuantity} ${contentMode.toUpperCase()}`}
-            </Button>
-          </div>
+
         </div>
 
         {/* ── RIGHT DIV: DYNAMIC INJECTION STATUS CARD WORKSPACE ── */}
@@ -645,7 +565,8 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
             error={injectionError}
             result={injectionResult}
             onInject={handlePerformInjection}
-            onGenerate={handleGenerateContent}
+            jsonError={jsonError}
+            onPaste={handlePaste}
           />
         </div>
       </div>
@@ -805,41 +726,6 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
         </div>
       )}
 
-      {/* ── JSON PASTE MODAL ── */}
-      {showJsonModal && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-card">
-            <div className="admin-modal-header">
-              <h3>Import JSON Payload into "{activeChapter?.name}"</h3>
-              <button type="button" className="close-modal-btn" onClick={() => setShowJsonModal(false)}>
-                <AppIcon name="close" size={18} />
-              </button>
-            </div>
-
-            <div className="admin-modal-form">
-              <div className="form-field">
-                <label className="form-lbl">Paste JSON Data</label>
-                <textarea
-                  className="admin-textarea-sm"
-                  rows="8"
-                  placeholder='{ "mcqs": [...], "flashcards": [...] }'
-                  value={jsonText}
-                  onChange={(e) => setJsonText(e.target.value)}
-                />
-              </div>
-
-              <div className="admin-modal-footer">
-                <Button variant="secondary" onClick={() => setShowJsonModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleImportJson}>
-                  Load JSON Payload
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

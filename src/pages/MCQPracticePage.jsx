@@ -98,6 +98,9 @@ const QuestionPanel = memo(function QuestionPanel({
   _theme,
   examMode,
   isMobile,
+  animKey,
+  animPhase,
+  animDir,
 }) {
   return (
     <div className={`question-panel${examMode && isMobile ? ' exam-mode' : ''}`}>
@@ -124,44 +127,52 @@ const QuestionPanel = memo(function QuestionPanel({
       </div>
 
       <div className="question-scroll" ref={scrollRef}>
-        <div className="question-text">{question.text}</div>
+        {/* Animated transition layer — keyed so it remounts on each
+            question change and replays the enter animation. Only one
+            question is ever rendered at a time. */}
+        <div
+          key={animKey}
+          className={`question-anim q-anim-${animPhase} q-dir-${animDir}`}
+        >
+          <div className="question-text">{question.text}</div>
 
-        <div className="options">
-          {question.options.map((option, optionIndex) => {
-            const isSelected = selectedOption === optionIndex
-            const reviewClass = reviewMode
-              ? optionIndex === question.correct
-                ? ' review-correct'
-                : isSelected
-                  ? ' review-wrong'
-                  : ''
-              : ''
-            return (
-              <button
-                key={option}
-                type="button"
-                className={`option${isSelected ? ' selected' : ''}${reviewClass}`}
-                onClick={() => onSelectOption(optionIndex)}
-                disabled={reviewMode}
-              >
-                <div className="radio">
-                  {isSelected ? <div className="radio-dot" /> : null}
-                </div>
-                {String.fromCharCode(65 + optionIndex)}. {option}
-              </button>
-            )
-          })}
-        </div>
-
-        {reviewMode ? (
-          <div className="explanation">
-            <div className="explanation-title">
-              <AppIcon name="lightbulb" size={16} />
-              Explanation:
-            </div>
-            <div className="explanation-text">{question.explanation}</div>
+          <div className="options">
+            {question.options.map((option, optionIndex) => {
+              const isSelected = selectedOption === optionIndex
+              const reviewClass = reviewMode
+                ? optionIndex === question.correct
+                  ? ' review-correct'
+                  : isSelected
+                    ? ' review-wrong'
+                    : ''
+                : ''
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  className={`option${isSelected ? ' selected' : ''}${reviewClass}`}
+                  onClick={() => onSelectOption(optionIndex)}
+                  disabled={reviewMode}
+                >
+                  <div className="radio">
+                    {isSelected ? <div className="radio-dot" /> : null}
+                  </div>
+                  {String.fromCharCode(65 + optionIndex)}. {option}
+                </button>
+              )
+            })}
           </div>
-        ) : null}
+
+          {reviewMode ? (
+            <div className="explanation">
+              <div className="explanation-title">
+                <AppIcon name="lightbulb" size={16} />
+                Explanation:
+              </div>
+              <div className="explanation-text">{question.explanation}</div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Internal question navigation footer */}
@@ -338,14 +349,37 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const subjectTitle = subject?.title || 'Subject'
 
   const [dbQuestions, setDbQuestions] = useState([])
+  const [mcqError, setMcqError] = useState(null)
 
   useEffect(() => {
     let isMounted = true
+    let abortController = null
+
     async function loadRemoteMcqs() {
+      // Clear stale data immediately when context changes
+      setDbQuestions([])
+      setMcqError(null)
+
       if (!activeWorkspaceId) return
+
+      // Guard: require valid IDs. Never query with a name/slug.
+      const subjectId = subject?.subjectId || subjectKey
+      const chapterId = chapter?.id
+
+      if (!chapterId) {
+        if (import.meta.env.DEV) {
+          console.warn('[MCQPracticePage] No valid chapter ID — skipping Supabase query.', {
+            activeWorkspaceId,
+            subjectId,
+            chapterObject: chapter,
+          })
+        }
+        return
+      }
+
+      abortController = new AbortController()
+
       try {
-        const subjectId = subject?.subjectId || subjectKey
-        const chapterId = chapter?.id || chapter?.title || chapter?.name
         const res = await mcqService.getMcqs(
           activeWorkspaceId,
           subjectId,
@@ -353,7 +387,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           subjectTitle,
           chapter?.title || chapter?.name || ''
         )
-        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
+
+        // Ignore response if this request was aborted or component unmounted
+        if (!isMounted || abortController.signal.aborted) return
+
+        // STATE A: success + data
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           const mapped = res.data.map((m, idx) => {
             const rawOpts = m.options || [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD].filter(Boolean)
             const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
@@ -373,13 +412,38 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             }
           })
           setDbQuestions(mapped)
+          setMcqError(null)
+          return
         }
+
+        // STATE B: success + zero records (genuine empty)
+        if (res.success) {
+          setDbQuestions([])
+          setMcqError(null)
+          return
+        }
+
+        // STATE C: query failure
+        setDbQuestions([])
+        setMcqError(res.error || 'Failed to load MCQs from database')
       } catch (err) {
-        console.warn('Failed to fetch remote Supabase MCQs:', err)
+        if (!isMounted || abortController?.signal.aborted) return
+        const message = err.message || 'Network request failed'
+        if (import.meta.env.DEV) {
+          console.warn('[MCQPracticePage] MCQ load error:', message)
+        }
+        setDbQuestions([])
+        setMcqError(message)
       }
     }
+
     loadRemoteMcqs()
-    return () => { isMounted = false }
+    return () => {
+      isMounted = false
+      if (abortController) {
+        abortController.abort()
+      }
+    }
   }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
 
   const activeQuestions = useMemo(() => {
@@ -439,9 +503,20 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const [examMode, setExamMode] = useState(false)
   const [isMobile, setIsMobile] = useState(getIsMobile)
 
+  // ── Question transition state ──────────────────────────────
+  // `currentIndex` is the navigation target; `displayed` is the question
+  // currently shown. Animating out the old, then swapping to the new keeps
+  // only ONE question rendered at a time and guarantees the final selected
+  // question always lands — even on rapid clicks (the effect cleanup clears
+  // any pending swap timer).
+  const [displayed, setDisplayed] = useState(0)
+  const [phase, setPhase] = useState('in')
+  const [dir, setDir] = useState('next')
+  const directionRef = useRef('next')
+
   const questionScrollRef = useRef(null)
 
-  const current = activeQuestions[currentIndex] || activeQuestions[0] || questions[0]
+  const current = activeQuestions[displayed] || activeQuestions[0] || questions[0]
   const answeredCount = Object.keys(answers).length
   const markedCount = marked.size
   const notVisitedCount = Math.max(0, totalGridSize - visited.size)
@@ -480,6 +555,45 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     return () => clearInterval(id)
   }, [timerOn])
 
+  // Drive the question change transition: animate the current question out,
+  // then swap to the target and animate it in. Reduced-motion users skip the
+  // delay entirely. Only one question is ever in the DOM at a time.
+  useEffect(() => {
+    if (currentIndex === displayed) return undefined
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduceMotion) {
+      setDisplayed(currentIndex)
+      setPhase('in')
+      return undefined
+    }
+    setPhase('out')
+    const t = setTimeout(() => {
+      setDisplayed(currentIndex)
+      setPhase('in')
+    }, 180)
+    return () => clearTimeout(t)
+  }, [currentIndex, displayed])
+
+  // Reset the scroll position whenever the displayed question changes.
+  useEffect(() => {
+    if (questionScrollRef.current) {
+      questionScrollRef.current.scrollTop = 0
+    }
+  }, [displayed])
+
+  // Starting a fresh practice session clears any result left over from a
+  // previous test so the Results Page can never show stale data before the
+  // new submission happens.
+  useEffect(() => {
+    if (!reviewMode) {
+      testSession.result = null
+      testSession.questions = null
+    }
+  }, [reviewMode])
+
   const formattedTime = useMemo(() => {
     const h = Math.floor(secondsLeft / 3600)
     const m = Math.floor((secondsLeft % 3600) / 60)
@@ -489,27 +603,29 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
   const selectOption = useCallback((optionIndex) => {
     if (reviewMode) return
-    setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }))
-  }, [currentIndex, reviewMode])
+    setAnswers((prev) => ({ ...prev, [displayed]: optionIndex }))
+  }, [displayed, reviewMode])
 
   const toggleMark = useCallback(() => {
     if (reviewMode) return
     setMarked((prev) => {
       const next = new Set(prev)
-      if (next.has(currentIndex)) {
-        next.delete(currentIndex)
+      if (next.has(displayed)) {
+        next.delete(displayed)
       } else {
-        next.add(currentIndex)
+        next.add(displayed)
       }
       return next
     })
-  }, [currentIndex, reviewMode])
+  }, [displayed, reviewMode])
 
-  const goTo = useCallback((index) => {
+  const goTo = useCallback((index, direction = 'fade') => {
     if (index >= availableCount) {
       handleUnavailableClick(index + 1)
       return
     }
+    directionRef.current = direction
+    setDir(direction)
     setCurrentIndex(index)
     setVisited((prev) => new Set(prev).add(index))
     requestAnimationFrame(() => {
@@ -520,12 +636,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [availableCount, handleUnavailableClick])
 
   const goPrev = useCallback(() => {
-    goTo(Math.max(0, currentIndex - 1))
+    goTo(Math.max(0, currentIndex - 1), 'prev')
   }, [currentIndex, goTo])
 
   const goNext = useCallback(() => {
     if (currentIndex + 1 < availableCount) {
-      goTo(currentIndex + 1)
+      goTo(currentIndex + 1, 'next')
     } else {
       handleUnavailableClick(currentIndex + 2)
     }
@@ -576,12 +692,52 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }
 
   const handleSubmit = () => {
+    // Authoritative evaluation of the submitted session. All result fields
+    // on the Results Page are derived from this single source so every
+    // section (stats, charts, rings) stays consistent.
+    const questionList = activeQuestions.map((q) => ({
+      id: q.id,
+      correct: q.correct,
+      text: q.text,
+      options: q.options,
+      explanation: q.explanation,
+    }))
+    let correctCount = 0
+    let incorrectCount = 0
+    let attemptedCount = 0
+    questionList.forEach((q, idx) => {
+      const chosen = answers[idx]
+      if (chosen === undefined || chosen === null) return
+      attemptedCount += 1
+      if (chosen === q.correct) correctCount += 1
+      else incorrectCount += 1
+    })
+    const totalCount = questionList.length
+    const unansweredCount = totalCount - attemptedCount
+    const score = correctCount
+    const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0
+    const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0
+
     testSession.subjectKey = subjectKey
     testSession.chapter = chapter
     testSession.answers = { ...answers }
     testSession.marked = new Set(marked)
     testSession.visited = new Set(visited)
+    testSession.questions = questionList
     testSession.mode = 'practice'
+    const initialSeconds = 29 * 60 + 45
+    testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
+    testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
+    testSession.result = {
+      total: totalCount,
+      attempted: attemptedCount,
+      correct: correctCount,
+      incorrect: incorrectCount,
+      unanswered: unansweredCount,
+      score,
+      percentage,
+      accuracy,
+    }
     onSubmit?.()
   }
 
@@ -641,6 +797,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         </header>
 
         <main className="content">
+          {mcqError && (
+            <div className="mcq-error-banner" role="alert">
+              <AppIcon name="warning" size={18} />
+              <div>
+                <strong>Unable to load MCQs</strong>
+                <span>{mcqError}</span>
+              </div>
+              <button type="button" className="mcq-error-dismiss" onClick={() => setMcqError(null)} aria-label="Dismiss">
+                <AppIcon name="close" size={16} />
+              </button>
+            </div>
+          )}
+
           {/* Hide summary bar and sidebar in mobile exam mode */}
           {!(examMode && isMobile) && (
             <SummaryBar
@@ -668,20 +837,23 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
             <QuestionPanel
               question={current}
-              questionNumber={currentIndex + 1}
+              questionNumber={displayed + 1}
               totalQuestions={availableCount}
-              selectedOption={answers[currentIndex]}
+              selectedOption={answers[displayed]}
               onSelectOption={selectOption}
               onToggleMark={toggleMark}
               onPrev={goPrev}
               onNext={goNext}
-              hasPrev={currentIndex > 0}
-              hasNext={currentIndex < availableCount - 1}
+              hasPrev={displayed > 0}
+              hasNext={displayed < availableCount - 1}
               reviewMode={reviewMode}
               scrollRef={questionScrollRef}
               theme={theme}
               examMode={examMode}
               isMobile={isMobile}
+              animKey={displayed}
+              animPhase={phase}
+              animDir={dir}
             />
           </div>
 

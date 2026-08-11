@@ -3,6 +3,11 @@
  * Reusable test results screen with trophy, stats, overview,
  * strengths/improve, progress trend, and quote.
  * Reproduces htmlresource/test-results.html.
+ *
+ * DATA BINDING:
+ * Every existing field is driven by the authoritative result computed at
+ * submission time and stored on `testSession`. No hardcoded/demo numbers —
+ * the UI simply re-renders with the user's actual responses.
  */
 import '../styles/testResults.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
@@ -11,37 +16,89 @@ import AppIcon from '../components/ui/AppIcon'
 import { useContentRegistry } from '../data/contentRegistry'
 import { testSession } from '../utils/navigation'
 
-const statItems = [
-  { icon: 'check', iconClass: 'icon-correct', value: '15', label: 'Correct' },
-  { icon: 'cross', iconClass: 'icon-incorrect', value: '3', label: 'Incorrect' },
-  { icon: 'remove', iconClass: 'icon-unattempted', value: '2', label: 'Unattempted' },
-  { icon: 'viewList', iconClass: 'icon-total', value: '20', label: 'Total Questions' },
-]
-
-const strengths = [
-  { label: 'OSI Model Layers', score: '9/10' },
-  { label: 'TCP/IP Protocol Suite', score: '8/10' },
-  { label: 'Network Topologies', score: '7/8' },
-  { label: 'IP Addressing', score: '6/7' },
-]
-
-const improvements = [
-  { label: 'Transport Layer Protocols', score: '2/5' },
-  { label: 'Error Detection & Correction', score: '1/4' },
-  { label: 'Routing Algorithms', score: '1/3' },
-]
-
-const trendData = [
-  { label: 'Attempt 1', value: 45 },
-  { label: 'Attempt 2', value: 60 },
-  { label: 'Attempt 3', value: 63 },
-  { label: 'Current', value: 75 },
-]
+function formatTime(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds || 0))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
 
 function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSubjects, subjectKey }) {
   const registry = useContentRegistry()
   const subject = registry.subjectCatalog[subjectKey || testSession.subjectKey] || null
   const subjectTitle = subject?.title || 'Computer Networks'
+
+  // Authoritative result computed at submission. Falls back to a safe
+  // zero-state so the UI never shows NaN/undefined if reached directly.
+  const result = testSession.result || {
+    total: 0,
+    attempted: 0,
+    correct: 0,
+    incorrect: 0,
+    unanswered: 0,
+    score: 0,
+    percentage: 0,
+    accuracy: 0,
+  }
+  const total = result.total || 0
+  const attempted = result.attempted || 0
+  const correct = result.correct || 0
+  const incorrect = result.incorrect || 0
+  const unanswered = result.unanswered || 0
+  const score = result.score || 0
+  const percentage = result.percentage || 0
+  const accuracy = result.accuracy || 0
+
+  // ── Stat grid (Correct / Incorrect / Unattempted / Total) ──
+  const statItems = [
+    { icon: 'check', iconClass: 'icon-correct', value: String(correct), label: 'Correct' },
+    { icon: 'cross', iconClass: 'icon-incorrect', value: String(incorrect), label: 'Incorrect' },
+    { icon: 'remove', iconClass: 'icon-unattempted', value: String(unanswered), label: 'Unattempted' },
+    { icon: 'viewList', iconClass: 'icon-total', value: String(total), label: 'Total Questions' },
+  ]
+
+  // ── Strengths / Improve derived from the actual submitted questions ──
+  const questions = testSession.questions || []
+  const answers = testSession.answers || {}
+  const strengths = []
+  const improvements = []
+  questions.forEach((q, idx) => {
+    const chosen = answers[idx]
+    const shortLabel = (q.text || `Question ${idx + 1}`).length > 34
+      ? `${(q.text || '').slice(0, 34)}…`
+      : (q.text || `Question ${idx + 1}`)
+    if (chosen !== undefined && chosen !== null) {
+      if (chosen === q.correct) {
+        strengths.push({ label: shortLabel, score: 'Correct' })
+      } else {
+        improvements.push({ label: shortLabel, score: 'Incorrect' })
+      }
+    } else {
+      improvements.push({ label: shortLabel, score: 'Unanswered' })
+    }
+  })
+
+  // ── Progress trend from real attempt history ──
+  const history = Array.isArray(testSession.attemptHistory) ? testSession.attemptHistory : []
+  const trendData = history.map((value, i) => ({
+    label: `Attempt ${i + 1}`,
+    value,
+  }))
+  // Always end with the current attempt.
+  trendData.push({ label: 'Current', value: percentage })
+  const prevAttempt = history.length > 1 ? history[history.length - 2] : null
+  const scoreDelta = prevAttempt !== null ? percentage - prevAttempt : null
+
+  // ── Time taken ──
+  const timeTaken = formatTime(testSession.timeTakenSeconds)
+
+  // ── Performance tier text (derived, not hardcoded) ──
+  let performanceTier = 'Keep Practicing 💪'
+  if (percentage >= 90) performanceTier = 'Outstanding! 🏆'
+  else if (percentage >= 75) performanceTier = 'Good 😌'
+  else if (percentage >= 50) performanceTier = 'Fair 🙂'
+  const above70 = percentage >= 70
 
   return (
     <div className="results-shell">
@@ -53,7 +110,7 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
             </button>
             <div className="header-title">
               <h1>Test Submitted! 🎉</h1>
-              <p>{subjectTitle} • 20 Questions</p>
+              <p>{subjectTitle} • {total} Questions</p>
             </div>
           </div>
           <button type="button" className="test-details-btn" disabled>
@@ -70,13 +127,13 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                 <AppIcon name="trophy" size={52} />
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-60px', '--ty': '-70px', '--rot': '-140deg', animationDelay: '0.15s' }}>🎉</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '65px', '--ty': '-60px', '--rot': '160deg', animationDelay: '0.25s' }}>✨</span>
-                <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-70px', '--ty': '40px', '--rot': '90deg', animationDelay: '0.35s' }}>🎊</span>
+                <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-70px', '--ty': '40px', '--rot': '90deg', animationDelay: '0.35s' }}>🎉</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '70px', '--ty': '50px', '--rot': '-90deg', animationDelay: '0.2s' }}>⭐</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '0px', '--ty': '-90px', '--rot': '40deg', animationDelay: '0.4s' }}>🎉</span>
               </div>
               <div className="trophy-title">Great Effort! Keep Going!</div>
-              <div className="score-big">15<span> / 20</span></div>
-              <div className="score-pill">75% Score</div>
+              <div className="score-big">{score}<span> / {total}</span></div>
+              <div className="score-pill">{percentage}% Score</div>
             </div>
 
             <div className="card stats-card anim" style={{ animationDelay: '0.12s' }}>
@@ -97,11 +154,15 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                   <div className="performance-label">Your Performance</div>
                   <div className="above-pill">
                     <AppIcon name="clock" size={12} />
-                    Above 70%
+                    {above70 ? 'Above 70%' : 'Below 70%'}
                   </div>
                 </div>
-                <div className="performance-value">Good 😌</div>
-                <div className="performance-sub">You scored better than <b>68%</b> of learners</div>
+                <div className="performance-value">{performanceTier}</div>
+                <div className="performance-sub">
+                  {attempted > 0
+                    ? `You answered ${attempted} of ${total} questions`
+                    : 'You did not attempt any questions'}
+                </div>
               </div>
             </div>
           </div>
@@ -111,26 +172,44 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
           <div className="overview-grid mb-16">
             <div className="overview-card anim" style={{ animationDelay: '0.18s' }}>
               <h3>Accuracy</h3>
-              <ProgressRing size={96} radius={42} strokeWidth={9} progress={75} trackColor="#EAECF0" fillColor="#12B76A">
-                <div className="ring-value">75%</div>
+              <ProgressRing size={96} radius={42} strokeWidth={9} progress={accuracy} trackColor="#EAECF0" fillColor="#12B76A">
+                <div className="ring-value">{accuracy}%</div>
               </ProgressRing>
-              <div className="overview-delta delta-up">
-                <AppIcon name="trendingUp" size={14} />
-                12%
+              {scoreDelta !== null ? (
+                <div className={`overview-delta ${scoreDelta >= 0 ? 'delta-up' : 'delta-down'}`}>
+                  <AppIcon name={scoreDelta >= 0 ? 'trendingUp' : 'trendingDown'} size={14} />
+                  {Math.abs(scoreDelta)}%
+                </div>
+              ) : (
+                <div className="overview-delta delta-up">
+                  <AppIcon name="trendingUp" size={14} />
+                  0%
+                </div>
+              )}
+              <div className="overview-compare">
+                {prevAttempt !== null ? `vs Last Attempt (${prevAttempt}%)` : 'First attempt'}
               </div>
-              <div className="overview-compare">vs Last Attempt (63%)</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.22s' }}>
               <h3>Score</h3>
-              <ProgressRing size={96} radius={42} strokeWidth={9} progress={75} trackColor="#EDE6FC" fillColor="#7C3AED">
-                <div className="ring-value">15<span>/20</span></div>
+              <ProgressRing size={96} radius={42} strokeWidth={9} progress={percentage} trackColor="#EDE6FC" fillColor="#7C3AED">
+                <div className="ring-value">{score}<span>/{total}</span></div>
               </ProgressRing>
-              <div className="overview-delta delta-up">
-                <AppIcon name="trendingUp" size={14} />
-                3
+              {scoreDelta !== null ? (
+                <div className={`overview-delta ${scoreDelta >= 0 ? 'delta-up' : 'delta-down'}`}>
+                  <AppIcon name={scoreDelta >= 0 ? 'trendingUp' : 'trendingDown'} size={14} />
+                  {Math.abs(scoreDelta)}
+                </div>
+              ) : (
+                <div className="overview-delta delta-up">
+                  <AppIcon name="trendingUp" size={14} />
+                  0
+                </div>
+              )}
+              <div className="overview-compare">
+                {prevAttempt !== null ? `vs Last Attempt (${prevAttempt}%)` : 'First attempt'}
               </div>
-              <div className="overview-compare">vs Last Attempt (12/20)</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.26s' }}>
@@ -138,12 +217,8 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <div className="clock-icon-wrap">
                 <AppIcon name="clock" size={32} />
               </div>
-              <div className="time-value">00:29:45</div>
-              <div className="overview-delta delta-down">
-                <AppIcon name="trendingDown" size={14} />
-                02:15
-              </div>
-              <div className="overview-compare">vs Last Attempt (00:27:30)</div>
+              <div className="time-value">{timeTaken}</div>
+              <div className="overview-compare">Total time for this attempt</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.3s' }}>
@@ -151,13 +226,12 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               <div className="medal-icon-wrap">
                 <AppIcon name="medal" size={40} />
               </div>
-              <div className="rank-value">#28</div>
-              <div className="rank-sub">of 120 Learners</div>
-              <div className="overview-delta delta-up">
-                <AppIcon name="trendingUp" size={14} />
-                15
+              <div className="rank-value">
+                {percentage >= 90 ? '🥇' : percentage >= 75 ? '🥈' : percentage >= 50 ? '🥉' : '—'}
               </div>
-              <div className="overview-compare">vs Last Attempt (#43)</div>
+              <div className="rank-sub">
+                {history.length > 1 ? `of ${history.length} attempts` : 'First attempt'}
+              </div>
             </div>
           </div>
 
@@ -165,17 +239,28 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
           <div className="two-col mb-16">
             <div className="box box-strength anim" style={{ animationDelay: '0.34s' }}>
               <h4>Your Strengths 💪</h4>
-              {strengths.map((item) => (
-                <div className="list-row" key={item.label}>
+              {strengths.length > 0 ? (
+                strengths.map((item) => (
+                  <div className="list-row" key={item.label}>
+                    <div className="list-left">
+                      <span className="dot dot-green">
+                        <AppIcon name="check" size={10} />
+                      </span>
+                      {item.label}
+                    </div>
+                    <span className="list-score">{item.score}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="list-row">
                   <div className="list-left">
                     <span className="dot dot-green">
                       <AppIcon name="check" size={10} />
                     </span>
-                    {item.label}
+                    No correct answers yet
                   </div>
-                  <span className="list-score">{item.score}</span>
                 </div>
-              ))}
+              )}
               <div className="tip-banner tip-green">
                 <AppIcon name="star" size={14} />
                 Keep it up! You're doing great in these topics.
@@ -184,17 +269,28 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
 
             <div className="box box-improve anim" style={{ animationDelay: '0.38s' }}>
               <h4>Topics to Improve 🎯</h4>
-              {improvements.map((item) => (
-                <div className="list-row" key={item.label}>
+              {improvements.length > 0 ? (
+                improvements.map((item) => (
+                  <div className="list-row" key={item.label}>
+                    <div className="list-left">
+                      <span className="dot dot-red">
+                        <AppIcon name="cross" size={10} />
+                      </span>
+                      {item.label}
+                    </div>
+                    <span className="list-score">{item.score}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="list-row">
                   <div className="list-left">
                     <span className="dot dot-red">
                       <AppIcon name="cross" size={10} />
                     </span>
-                    {item.label}
+                    Nothing to improve 🎉
                   </div>
-                  <span className="list-score">{item.score}</span>
                 </div>
-              ))}
+              )}
               <div className="tip-banner tip-red">
                 <AppIcon name="trendingUp" size={14} />
                 Focus on these topics to boost your score in the next attempt.
@@ -211,7 +307,7 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                   const max = 100
                   const height = (point.value / max) * 100
                   return (
-                    <div className="trend-point" key={point.label} style={{ left: `${(index / (trendData.length - 1)) * 100}%`, bottom: `${height}%` }}>
+                    <div className="trend-point" key={point.label} style={{ left: `${(index / Math.max(1, trendData.length - 1)) * 100}%`, bottom: `${height}%` }}>
                       <span className="trend-value">{point.value}%</span>
                       <span className="trend-dot" />
                       <span className="trend-label">{point.label}</span>
@@ -223,8 +319,18 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
             </div>
             <div className="improve-panel">
               <div>
-                <div className="improve-title">You are improving! 🎉</div>
-                <div className="improve-text">Your score has improved by 30% from your first attempt.</div>
+                <div className="improve-title">
+                  {scoreDelta !== null && scoreDelta > 0
+                    ? 'You are improving! 🎉'
+                    : 'Keep going! 💪'}
+                </div>
+                <div className="improve-text">
+                  {scoreDelta !== null && scoreDelta > 0
+                    ? `Your score improved by ${scoreDelta}% from your last attempt.`
+                    : scoreDelta !== null
+                      ? `Your score changed by ${Math.abs(scoreDelta)}% from your last attempt.`
+                      : 'This is your first recorded attempt.'}
+                </div>
               </div>
               <div className="improve-arrow">
                 <AppIcon name="trendingUp" size={30} />

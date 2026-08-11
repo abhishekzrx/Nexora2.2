@@ -201,6 +201,59 @@
   padding: 0 16px;
 }
 
+/* ── MCQ load error banner ───────────────────────────────── */
+
+.mcq-shell .mcq-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #FFF1E6;
+  border: 1px solid #FFB38A;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: #8A3B00;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mcq-shell.theme-dark .mcq-error-banner {
+  background: rgba(255, 122, 26, 0.12);
+  border-color: rgba(255, 122, 26, 0.4);
+  color: #FFB38A;
+}
+
+.mcq-shell .mcq-error-banner strong {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.mcq-shell .mcq-error-banner span {
+  opacity: 0.9;
+}
+
+.mcq-shell .mcq-error-dismiss {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 122, 26, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+  color: #8A3B00;
+  cursor: pointer;
+}
+
+.mcq-shell.theme-dark .mcq-error-dismiss {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFB38A;
+  border-color: rgba(255, 122, 26, 0.35);
+}
+
 /* ── Summary bar ────────────────────────────────────────── */
 
 .mcq-shell .summary-bar {
@@ -357,8 +410,8 @@
 
 .mcq-shell .qgrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
   margin-bottom: 14px;
   max-width: none;
 }
@@ -457,6 +510,10 @@
   flex-direction: column;
   box-shadow: var(--shadow);
   transition: background 0.2s ease, border-color 0.2s ease, border-radius 0.2s ease;
+  /* Stable architecture: the card keeps a consistent footprint so the
+     surrounding layout (nav footer, submit bar) never jumps between
+     questions of different lengths. */
+  min-height: 520px;
 }
 
 .mcq-shell .question-panel.exam-mode {
@@ -519,14 +576,15 @@
   transition: width 0.25s ease;
 }
 
-/* Stable question area: fixed height so the surrounding
-   layout (nav buttons, actions) never shifts between questions. */
+/* Stable question area: the scroll region flexes to fill the card so the
+   surrounding layout (nav footer, submit bar) never shifts between
+   questions of different lengths. Content scrolls internally instead of
+   expanding the whole page. */
 .mcq-shell .question-scroll {
-  height: 420px;
-  overflow-y: auto;
-  margin-bottom: 0;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--card-border) transparent;
 }
@@ -538,6 +596,75 @@
 .mcq-shell .question-scroll::-webkit-scrollbar-thumb {
   background: var(--card-border);
   border-radius: 3px;
+}
+
+/* ── Question transition layer ────────────────────────────
+   A single animated layer carries one question at a time.
+   The old question fades/slides out, then the new one fades/slides in.
+   Keyed remount on question change replays the enter animation. */
+.mcq-shell .question-anim {
+  will-change: transform, opacity;
+}
+
+.mcq-shell .q-anim-in.q-dir-next {
+  animation: qEnterNext 240ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.mcq-shell .q-anim-in.q-dir-prev {
+  animation: qEnterPrev 240ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.mcq-shell .q-anim-in.q-dir-fade {
+  animation: qEnterFade 240ms ease-out both;
+}
+
+.mcq-shell .q-anim-out.q-dir-next {
+  animation: qExitNext 180ms ease-in both;
+}
+
+.mcq-shell .q-anim-out.q-dir-prev {
+  animation: qExitPrev 180ms ease-in both;
+}
+
+.mcq-shell .q-anim-out.q-dir-fade {
+  animation: qExitFade 180ms ease-in both;
+}
+
+@keyframes qEnterNext {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes qEnterPrev {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes qEnterFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qExitNext {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-24px); }
+}
+
+@keyframes qExitPrev {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes qExitFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mcq-shell .q-anim-in,
+  .mcq-shell .q-anim-out {
+    animation: none !important;
+  }
 }
 
 .mcq-shell .question-text {
@@ -840,6 +967,20 @@
   white-space: nowrap;
 }
 
+/* ── Desktop stability ────────────────────────────────────
+   Bound the question card to the viewport so its internal scroll area
+   (flex:1) becomes active — the card structure (header, options, footer)
+   stays fixed while only the content area scrolls. This keeps the MCQ
+   screen feeling like one stable application rather than a layout that
+   resizes with each question's length. */
+@media (min-width: 641px) {
+  .mcq-shell .question-panel {
+    height: calc(100vh - 220px);
+    min-height: 520px;
+    max-height: calc(100vh - 180px);
+  }
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 
 @media (max-width: 640px) {
@@ -853,11 +994,29 @@
   }
 
   .mcq-shell .qgrid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* On mobile the card keeps a stable footprint and only the
+     question area scrolls internally — the whole page no longer
+     expands/contracts with question length. */
+  .mcq-shell .question-panel {
+    min-height: 460px;
   }
 
   .mcq-shell .question-scroll {
-    height: 360px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Submit button stays within reach on mobile regardless of how
+     long the current question is. */
+  .mcq-shell .submit-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-top: 16px;
+    box-shadow: 0 -2px 10px rgba(16, 24, 40, 0.08);
   }
 
   .mcq-shell .nav-buttons {

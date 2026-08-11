@@ -7335,11 +7335,11 @@
   background: #ffffff;
   border: 1px solid #EAECF0;
   border-radius: 16px;
-  padding: 18px 20px;
+  padding: 20px;
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .status-card-header {
@@ -7478,8 +7478,31 @@
 
 .payload-content-box {
   padding: 12px 14px;
+  min-height: 180px;
   max-height: 180px;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+.payload-content-box:focus {
+  outline: none;
+}
+
+.payload-content-box.focused {
+  outline: 2px solid #2E5CE6;
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.hidden-paste-textarea {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  border: 0;
 }
 
 .success-result-message, .error-result-message {
@@ -7510,7 +7533,13 @@
   margin: 2px 0 0 0;
 }
 
-.compact-json-text {
+.payload-json-snippet {
+  min-height: 156px;
+  max-height: 156px;
+  overflow: hidden;
+}
+
+.payload-json-snippet .compact-json-text {
   margin: 0;
   font-family: 'Fira Code', monospace;
   font-size: 11px;
@@ -7522,12 +7551,17 @@
 
 .empty-payload-placeholder {
   text-align: center;
-  padding: 14px;
+  padding: 18px;
   color: #667085;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  cursor: default;
+  border: 2px dashed #D0D5DD;
+  border-radius: 10px;
+  background: #F9FAFB;
+  transition: all 0.15s ease;
 }
 
 .empty-payload-placeholder p {
@@ -7537,6 +7571,13 @@
 
 .status-card-footer {
   margin-top: 2px;
+}
+
+.json-error-text {
+  font-size: 12px;
+  color: #F04438;
+  font-weight: 600;
+  margin-top: 8px;
 }
 
 .inject-action-btn {

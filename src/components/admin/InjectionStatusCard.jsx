@@ -5,13 +5,14 @@
  * Responsibilities:
  * - Displays Chapter Name & Injection Type badge (MCQs vs Flashcards)
  * - Renders Payload Preview container with semantic status borders (Neutral, Green, Red)
- * - Renders status icons (Idle, Loading Spinner, Green Check, Red Cross)
+ * - Accepts JSON via paste in the payload area
  * - Renders dynamic Inject / Retry button with double-click protection
  *
  * All state management, context tracking, and backend injection logic
  * are handled by the parent container component.
  */
 
+import { useState, useRef, useCallback } from 'react'
 import AppIcon from '../ui/AppIcon'
 import Button from '../ui/Button'
 
@@ -19,22 +20,24 @@ export default function InjectionStatusCard({
   chapterName = 'Selected Chapter',
   injectionType = 'MCQs',
   payload = null,
-  status = 'idle', // 'idle' | 'ready' | 'injecting' | 'success' | 'error'
+  status = 'idle',
   error = null,
   result = null,
   onInject,
-  onGenerate,
+  jsonError = null,
+  onPaste,
 }) {
+  const [isFocused, setIsFocused] = useState(false)
+  const hiddenTextareaRef = useRef(null)
+
   const isInjecting = status === 'injecting'
   const isSuccess = status === 'success'
   const isError = status === 'error'
   const isReady = status === 'ready'
   const isIdle = status === 'idle'
 
-  // Derive itemCount from payload
   const itemCount = useMemoPayloadCount(payload)
 
-  // Border & status class
   const borderClass = isSuccess
     ? 'status-success'
     : isError
@@ -44,6 +47,23 @@ export default function InjectionStatusCard({
     : isReady
     ? 'status-ready'
     : 'status-idle'
+
+  const focusPasteArea = useCallback(() => {
+    hiddenTextareaRef.current?.focus()
+  }, [])
+
+  const handleTextareaPaste = useCallback(
+    (e) => {
+      if (onPaste) onPaste(e)
+    },
+    [onPaste],
+  )
+
+  const handleBoxFocus = useCallback(() => setIsFocused(true), [])
+  const handleBoxBlur = useCallback(() => setIsFocused(false), [])
+
+  const handleTextareaFocus = useCallback(() => setIsFocused(true), [])
+  const handleTextareaBlur = useCallback(() => setIsFocused(false), [])
 
   return (
     <div className="injection-status-card">
@@ -67,7 +87,7 @@ export default function InjectionStatusCard({
       </div>
 
       {/* ── Payload & Status Area ── */}
-      <div className={`payload-container ${borderClass}`}>
+      <div className={`payload-container ${borderClass} ${isFocused ? 'focused' : ''}`}>
         {/* Status Header Badge Bar */}
         <div className="payload-status-bar">
           {isSuccess && (
@@ -101,13 +121,32 @@ export default function InjectionStatusCard({
           {isIdle && (
             <div className="status-indicator idle">
               <AppIcon name="help" size={16} />
-              <span>No active payload. Click "Generate" to prepare content.</span>
+              <span>Paste JSON to prepare payload for injection.</span>
             </div>
           )}
         </div>
 
+        {/* Hidden textarea for reliable paste capture */}
+        <textarea
+          ref={hiddenTextareaRef}
+          className="hidden-paste-textarea"
+          onPaste={handleTextareaPaste}
+          onFocus={handleTextareaFocus}
+          onBlur={handleTextareaBlur}
+          readOnly
+        />
+
         {/* Payload Preview Content Box */}
-        <div className="payload-content-box">
+        <div
+          className="payload-content-box"
+          tabIndex={0}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            focusPasteArea()
+          }}
+          onFocus={handleBoxFocus}
+          onBlur={handleBoxBlur}
+        >
           {isSuccess && (
             <div className="success-result-message">
               <AppIcon name="check" size={24} className="big-success-icon" />
@@ -140,14 +179,12 @@ export default function InjectionStatusCard({
                 </pre>
               ) : (
                 <div className="empty-payload-placeholder">
-                  <p>No content generated yet for this chapter.</p>
-                  {onGenerate && (
-                    <Button variant="secondary" size="sm" onClick={onGenerate}>
-                      <AppIcon name="add" size={14} /> Generate {injectionType}
-                    </Button>
-                  )}
+                  <AppIcon name="clipboard" size={28} style={{ color: '#667085', marginBottom: 6 }} />
+                  <p>Paste JSON here</p>
+                  {jsonError && <p className="json-error-text">{jsonError}</p>}
                 </div>
               )}
+              {jsonError && payload && <p className="json-error-text">{jsonError}</p>}
             </div>
           )}
         </div>
@@ -194,3 +231,4 @@ function useMemoPayloadCount(payload) {
   }
   return 1
 }
+

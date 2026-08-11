@@ -7,7 +7,7 @@ import TestResultsPage from './pages/TestResultsPage'
 import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
-import { switchToAdmin, switchToStudent, getActiveRole } from './data/roleStore'
+import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
 import { useWorkspaceStore } from './data/workspaceStore'
 
 /**
@@ -41,12 +41,23 @@ function resolveRoute() {
 function App() {
   const [route, setRoute] = useState(resolveRoute)
   const { activeWorkspaceId } = useWorkspaceStore()
+  const { activeRole } = useRoleStore()
 
   useEffect(() => {
     const onHashChange = () => setRoute(resolveRoute())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  useEffect(() => {
+    if (!route) return
+    if (route.name === 'admin' && activeRole !== 'admin') {
+      switchToAdmin()
+    }
+    if (route.name !== 'admin' && activeRole === 'admin') {
+      switchToStudent()
+    }
+  }, [route, activeRole])
 
   // Unknown / malformed route → fall back to dashboard.
   if (!route) {
@@ -57,15 +68,7 @@ function App() {
   const { name, subjectKey } = route
 
   if (name === 'admin') {
-    if (getActiveRole() !== 'admin') {
-      switchToAdmin()
-    }
     return <AdminPage onBackHome={() => { switchToStudent(); navigate('') }} />
-  }
-
-  // Leaving admin route → ensure role is student
-  if (getActiveRole() === 'admin' && name !== 'admin') {
-    switchToStudent()
   }
 
   if (name === 'subjects') {

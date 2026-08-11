@@ -7,7 +7,6 @@ import { apiService } from './apiService'
 import {
   injectMcqsIntoStore,
   injectFlashcardsIntoStore,
-  getMcqsByChapterAndCourse,
 } from '../data/adminStore'
 
 function mapMcqToPayload(item, courseId, subjectId, chapterId, contextMeta = {}) {
@@ -74,14 +73,79 @@ export const mcqService = {
   },
 
   async getMcqs(courseId, subjectId, chapterId) {
+    // Guard: require all three hierarchy IDs before querying.
+    // Never query with a name/title/slug in place of an ID.
     if (!courseId || !subjectId || !chapterId) {
-      return { success: false, error: 'Course, Subject, and Chapter IDs are required' }
+      const missing = []
+      if (!courseId) missing.push('courseId')
+      if (!subjectId) missing.push('subjectId')
+      if (!chapterId) missing.push('chapterId')
+      return {
+        success: false,
+        error: `Cannot query MCQs without valid IDs: ${missing.join(', ')}. Ensure Course, Subject, and Chapter are selected.`,
+      }
     }
-    const res = await apiService.get(`/mcqs?course_id=eq.${courseId}&subject_id=eq.${subjectId}&chapter_id=eq.${chapterId}`)
-    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-      return { success: true, data: res.data }
+
+    const endpoint = `/mcqs?course_id=eq.${encodeURIComponent(courseId)}&subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
+
+    try {
+      const res = await apiService.get(endpoint)
+
+      // STATE A: Supabase query succeeded and returned records
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (import.meta.env.DEV) {
+          console.log('[mcqService] Supabase MCQs loaded:', {
+            courseId,
+            subjectId,
+            chapterId,
+            count: res.data.length,
+            first: res.data[0] ? {
+              id: res.data[0].id,
+              course_id: res.data[0].course_id,
+              subject_id: res.data[0].subject_id,
+              chapter_id: res.data[0].chapter_id,
+            } : null,
+          })
+        }
+        return { success: true, data: res.data }
+      }
+
+      // STATE B: Supabase query succeeded but returned zero records
+      if (res.success) {
+        if (import.meta.env.DEV) {
+          console.log('[mcqService] Supabase returned 0 MCQs for:', {
+            courseId,
+            subjectId,
+            chapterId,
+            status: res.status,
+          })
+        }
+        return { success: true, data: [] }
+      }
+
+      // STATE C: Supabase query failed (HTTP error or network failure)
+      if (import.meta.env.DEV) {
+        console.warn('[mcqService] Supabase query failed:', {
+          courseId,
+          subjectId,
+          chapterId,
+          error: res.error,
+          status: res.status,
+        })
+      }
+      return { success: false, error: res.error || 'Supabase query failed' }
+    } catch (err) {
+      // Network / unexpected failure
+      if (import.meta.env.DEV) {
+        console.warn('[mcqService] Supabase request exception:', {
+          courseId,
+          subjectId,
+          chapterId,
+          error: err.message,
+        })
+      }
+      return { success: false, error: err.message || 'Network request failed' }
     }
-    return { success: true, data: getMcqsByChapterAndCourse(chapterId, subjectId, courseId) }
   },
 
   async injectMcqs(courseId, subjectId, chapterId, payload, injectionType = 'mcqs', contextMeta = {}) {
