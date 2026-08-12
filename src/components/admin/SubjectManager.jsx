@@ -346,7 +346,7 @@ function ChapterModal({ subjectName, initialData, onSave, onClose }) {
 }
 
 /* ── Compact Left Subject List Row ───────────────────────────── */
-function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplicate, onDelete, onToggleLock }) {
+function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplicate, onDelete: _onDelete, onToggleLock }) {
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef(null)
 
@@ -442,7 +442,7 @@ function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplic
 }
 
 /* ── Right Selected Subject Analytics & Chapter Workspace Panel ──── */
-function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onEditSubject, onToggleLock }) {
+function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onEditSubject, onToggleLock, activeCourseId }) {
   const [activeTab, setActiveTab] = useState('chapters')
   const [showChapterModal, setShowChapterModal] = useState(false)
   const [editingChapter, setEditingChapter] = useState(null)
@@ -477,36 +477,45 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
   )
 
   const handleSaveChapter = async (data) => {
-  const targetSubject = selectedSubject || subjects.find((s) => s.id === data.subjectId) || subjects[0]
-  if (!targetSubject) return
+    const targetSubject = selectedSubject || subjects.find((s) => s.id === data.subjectId) || subjects[0]
+    if (!targetSubject) return
 
-  try {
-    if (data.id) {
-      const res = await chapterService.updateChapter(data.id, data)
-      if (res.success) {
-        showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
-      } else {
-        showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update chapter.' })
-      }
-    } else {
-      const res = await chapterService.createChapter(data.courseId, targetSubject.id, {
-        name: data.name,
-        desc: data.desc,
-        subjectName: targetSubject.name,
-        number: data.number,
-        status: data.status || 'active',
-      })
-      if (res.success && res.data) {
-        showToast({ type: 'success', title: 'Chapter Added', message: `"${data.name}" added to ${targetSubject.name}.` })
-      } else {
-        showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create chapter.' })
-      }
+    if (!activeCourseId) {
+      showToast({ type: 'error', title: 'Error', message: 'Please select a course.' })
+      return
     }
-    setShowChapterModal(false)
-  } catch (err) {
-    showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+    if (!targetSubject?.id) {
+      showToast({ type: 'error', title: 'Error', message: 'Please select a subject.' })
+      return
+    }
+
+    try {
+      if (data.id) {
+        const res = await chapterService.updateChapter(data.id, data)
+        if (res.success) {
+          showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
+        } else {
+          showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update chapter.' })
+        }
+      } else {
+        const res = await chapterService.createChapter(activeCourseId, targetSubject.id, {
+          name: data.name,
+          desc: data.desc,
+          subjectName: targetSubject.name,
+          number: data.number,
+          status: data.status || 'active',
+        })
+        if (res.success && res.data) {
+          showToast({ type: 'success', title: 'Chapter Added', message: `"${data.name}" added to ${targetSubject.name}.` })
+        } else {
+          showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create chapter.' })
+        }
+      }
+      setShowChapterModal(false)
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+    }
   }
-}
 
 const handleDeleteChapter = async (ch) => {
   const impact = getDeleteChapterImpact(ch.id)
@@ -1058,6 +1067,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
               flashcards={flashcards}
               onEditSubject={handleOpenEdit}
               onToggleLock={toggleSubjectLock}
+              activeCourseId={activeCourse?.id}
             />
           </div>
         </div>
