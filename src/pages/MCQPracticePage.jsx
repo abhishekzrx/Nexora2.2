@@ -18,9 +18,7 @@ import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
 import { showToast } from '../data/feedbackStore'
 import { mcqService } from '../services/mcqService'
-import { useAdminStore } from '../data/adminStore'
 import { useWorkspaceStore } from '../data/workspaceStore'
-import { slugify } from '../data/courseRegistry'
 
 const questions = [
   {
@@ -343,37 +341,33 @@ const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, mar
 
 function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit, reviewMode = false }) {
   const registry = useContentRegistry()
-  const adminState = useAdminStore()
   const { activeWorkspaceId } = useWorkspaceStore()
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
   const [dbQuestions, setDbQuestions] = useState([])
   const [mcqError, setMcqError] = useState(null)
+  const [loadingMcqs, setLoadingMcqs] = useState(false)
 
   useEffect(() => {
     let isMounted = true
     let abortController = null
 
     async function loadRemoteMcqs() {
-      // Clear stale data immediately when context changes
       setDbQuestions([])
       setMcqError(null)
+      setLoadingMcqs(true)
 
-      if (!activeWorkspaceId) return
+      if (!activeWorkspaceId) {
+        setLoadingMcqs(false)
+        return
+      }
 
-      // Guard: require valid IDs. Never query with a name/slug.
       const subjectId = subject?.subjectId || subjectKey
       const chapterId = chapter?.id
 
       if (!chapterId) {
-        if (import.meta.env.DEV) {
-          console.warn('[MCQPracticePage] No valid chapter ID — skipping Supabase query.', {
-            activeWorkspaceId,
-            subjectId,
-            chapterObject: chapter,
-          })
-        }
+        setLoadingMcqs(false)
         return
       }
 
@@ -388,10 +382,8 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           chapter?.title || chapter?.name || ''
         )
 
-        // Ignore response if this request was aborted or component unmounted
         if (!isMounted || abortController.signal.aborted) return
 
-        // STATE A: success + data
         if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           const mapped = res.data.map((m, idx) => {
             const rawOpts = m.options || [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD].filter(Boolean)
@@ -413,19 +405,13 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           })
           setDbQuestions(mapped)
           setMcqError(null)
-          return
-        }
-
-        // STATE B: success + zero records (genuine empty)
-        if (res.success) {
+        } else if (res.success) {
           setDbQuestions([])
           setMcqError(null)
-          return
+        } else {
+          setDbQuestions([])
+          setMcqError(res.error || 'Failed to load MCQs from database')
         }
-
-        // STATE C: query failure
-        setDbQuestions([])
-        setMcqError(res.error || 'Failed to load MCQs from database')
       } catch (err) {
         if (!isMounted || abortController?.signal.aborted) return
         const message = err.message || 'Network request failed'
@@ -434,6 +420,10 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         }
         setDbQuestions([])
         setMcqError(message)
+      } finally {
+        if (isMounted && !abortController?.signal.aborted) {
+          setLoadingMcqs(false)
+        }
       }
     }
 
@@ -447,40 +437,18 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
 
   const activeQuestions = useMemo(() => {
+    if (loadingMcqs) return []
     if (dbQuestions.length > 0) return dbQuestions
 
-    const courseId = activeWorkspaceId
-    const allMcqs = adminState.allMcqs || adminState.mcqs || []
-
-    const filtered = allMcqs.filter((m) => {
-      const matchCourse = !courseId || m.courseId === courseId
-      const matchSubject = !subjectKey || slugify(m.subject) === subjectKey || m.subjectId === subjectKey || m.subject === subjectTitle
-      const matchChapter = !chapter || m.chapterId === chapter.id || m.chapter === chapter.title || m.chapter === chapter.name
-      return matchCourse && matchSubject && matchChapter
-    })
-
-    if (filtered.length > 0) {
-      return filtered.map((m, idx) => {
-        const rawOpts = m.options || [m.optionA, m.optionB, m.optionC, m.optionD].filter(Boolean)
-        const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
-        let correctIdx = 0
-        if (typeof m.correct === 'number') correctIdx = m.correct
-        else if (typeof m.correctAnswer === 'string') {
-          const map = { A: 0, B: 1, C: 2, D: 3 }
-          correctIdx = map[m.correctAnswer.toUpperCase()] ?? 0
-        }
-        return {
-          id: m.id || idx + 1,
-          text: m.question,
-          options: opts,
-          correct: correctIdx,
-          explanation: m.explanation || 'No detailed explanation provided for this question.',
-        }
-      })
+    if (mcqError) {
+      if (import.meta.env.DEV) {
+        console.warn('[MCQPracticePage] MCQ load error:', mcqError)
+      }
+      return []
     }
 
-    return questions
-  }, [dbQuestions, adminState.allMcqs, adminState.mcqs, activeWorkspaceId, subjectKey, subjectTitle, chapter])
+    return []
+  }, [dbQuestions, mcqError, loadingMcqs])
 
   const totalGridSize = 20
   const availableCount = activeQuestions.length

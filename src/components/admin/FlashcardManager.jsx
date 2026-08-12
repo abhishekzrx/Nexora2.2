@@ -5,9 +5,10 @@
 import { useMemo, useState, useCallback } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
-import { useAdminStore, injectFlashcards, getChaptersBySubject } from '../../data/adminStore'
+import { useAdminStore, getChaptersBySubject } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
+import { mcqService } from '../../services/mcqService'
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard']
 
@@ -273,18 +274,45 @@ export default function FlashcardManager({ onBack }) {
     setPreview((prev) => prev.filter((item) => item.id !== id))
   }, [])
 
-  const handleInject = useCallback(() => {
+  const handleInject = useCallback(async () => {
     if (preview.length === 0) return
     const records = preview.map(({ id: _id, ...rest }) => rest)
-    const result = injectFlashcards(records)
-    showToast({
-      type: 'success',
-      title: 'Flashcards Injected',
-      message: `${result.imported} Flashcards Injected` + (result.duplicates > 0 ? ` | ${result.duplicates} duplicates skipped` : '') + (result.failed > 0 ? ` | ${result.failed} failed` : ''),
-      duration: 4000,
-    })
+    const subject = subjects.find((s) => s.name === form.subject)
+    const chapter = getChaptersBySubject(form.subject).find((c) => c.name === form.chapter)
+    const courseId = activeCourseId
+    const subjectId = subject?.id || form.subject
+    const chapterId = chapter?.id || form.chapter
+
+    try {
+      const res = await mcqService.injectMcqs(courseId, subjectId, chapterId, records, 'flashcards', {
+        subjectName: form.subject,
+        chapterName: form.chapter,
+      })
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'Flashcards Injected',
+          message: `${res.count || records.length} Flashcards Injected`,
+          duration: 4000,
+        })
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Injection Failed',
+          message: res.error || 'Unable to inject flashcards.',
+          duration: 4000,
+        })
+      }
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Injection Failed',
+        message: err.message || 'An unexpected error occurred.',
+        duration: 4000,
+      })
+    }
     setPreview([])
-  }, [preview])
+  }, [preview, form.subject, form.chapter, subjects, activeCourseId])
 
   return (
     <div className="flashcard-manager-shell">

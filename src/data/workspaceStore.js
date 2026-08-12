@@ -12,6 +12,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
+import { courseService } from '../services/courseService'
 
 let listeners = []
 let version = 0
@@ -93,145 +94,190 @@ function bootstrapCourse({ name, icon, themeColor, description, status }) {
   }
 }
 
-// ── Initial Seed Data ──────────────────────────────────────────────
-let workspaces = [
-  {
-    id: 'bpsc-tre-4',
-    name: 'BPSC TRE 4.0 – Computer Science',
-    icon: 'adminDashboard',
-    themeColor: '#F1621B',
-    description: 'Bihar Public Service Commission Teacher Recruitment Exam 4.0',
-    status: 'active',
-    published: true,
-    version: 'v2.3',
-    createdAt: '2026-07-01',
-    lastUpdated: '2026-08-06',
-    order: 1,
-    subjects: [],
-    chapters: [],
-    mcqs: [],
-    flashcards: [],
-    notes: [],
-    practice: [],
-    mockTests: [],
-    analytics: { totalAttempts: 128, avgAccuracy: 72, weeklyProgress: 18, trend: [60, 65, 68, 70, 72, 71, 74] },
-    studentProgress: { enrolled: 45, active: 32, completionRate: 72 },
-    bookmarks: [],
-    downloads: [],
-    aiStudyPlan: { generated: true, plan: { focus: 'COA', dailyTarget: 120 } },
-    contentHealth: { score: 85, issues: [], lastChecked: '2026-08-06' },
-    settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
-    theme: { primaryColor: '#F1621B', darkMode: true },
-    metadata: { subjects: 4, chapters: 7, mcqs: 120, flashcards: 80, notes: 8, completion: 72, health: 85 },
-    audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 12 },
-  },
-  {
-    id: 'cbse-12-cs',
-    name: 'CBSE Class 12 – Computer Science',
-    icon: 'computer',
-    themeColor: '#2E5CE6',
-    description: 'Central Board of Secondary Education Class 12 Computer Science',
-    status: 'active',
-    published: true,
-    version: 'v1.8',
-    createdAt: '2026-07-15',
-    lastUpdated: '2026-08-03',
-    order: 2,
-    subjects: [],
-    chapters: [],
-    mcqs: [],
-    flashcards: [],
-    notes: [],
-    practice: [],
-    mockTests: [],
-    analytics: { totalAttempts: 86, avgAccuracy: 65, weeklyProgress: 12, trend: [50, 55, 58, 60, 62, 64, 65] },
-    studentProgress: { enrolled: 28, active: 19, completionRate: 45 },
-    bookmarks: [],
-    downloads: [],
-    aiStudyPlan: { generated: true, plan: { focus: 'SQL', dailyTarget: 80 } },
-    contentHealth: { score: 62, issues: ['No Notes in Normalization'], lastChecked: '2026-08-03' },
-    settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
-    theme: { primaryColor: '#2E5CE6', darkMode: true },
-    metadata: { subjects: 3, chapters: 12, mcqs: 200, flashcards: 150, notes: 15, completion: 45, health: 62 },
-    audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 8 },
-  },
-  {
-    id: 'cbse-11-ph',
-    name: 'CBSE Class 11 – Physics',
-    icon: 'physics',
-    themeColor: '#7C3AED',
-    description: 'Central Board of Secondary Education Class 11 Physics',
-    status: 'draft',
-    published: true,
-    version: 'v1.0',
-    createdAt: '2026-07-20',
-    lastUpdated: '2026-07-28',
-    order: 3,
-    subjects: [],
-    chapters: [],
-    mcqs: [],
-    flashcards: [],
-    notes: [],
-    practice: [],
-    mockTests: [],
-    analytics: { totalAttempts: 0, avgAccuracy: 0, weeklyProgress: 0, trend: [] },
-    studentProgress: { enrolled: 0, active: 0, completionRate: 0 },
-    bookmarks: [],
-    downloads: [],
-    aiStudyPlan: { generated: false, plan: null },
-    contentHealth: { score: 35, issues: ['No MCQs', 'No Flashcards', 'No Notes'], lastChecked: '2026-07-28' },
-    settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
-    theme: { primaryColor: '#7C3AED', darkMode: true },
-    metadata: { subjects: 1, chapters: 5, mcqs: 60, flashcards: 40, notes: 3, completion: 18, health: 35 },
-    audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 3 },
-  },
-  {
-    id: 'ssc-cgl-computer',
-    name: 'SSC CGL – Computer',
-    icon: 'computerNetworks',
-    themeColor: '#12B76A',
-    description: 'Staff Selection Commission Combined Graduate Level – Computer Section',
-    status: 'active',
-    published: true,
-    version: 'v1.2',
-    createdAt: '2026-06-10',
-    lastUpdated: '2026-07-05',
-    order: 4,
-    subjects: [],
-    chapters: [],
-    mcqs: [],
-    flashcards: [],
-    notes: [],
-    practice: [],
-    mockTests: [],
-    analytics: { totalAttempts: 42, avgAccuracy: 58, weeklyProgress: 0, trend: [50, 52, 55, 58] },
-    studentProgress: { enrolled: 15, active: 0, completionRate: 30 },
-    bookmarks: [],
-    downloads: [],
-    aiStudyPlan: { generated: false, plan: null },
-    contentHealth: { score: 48, issues: ['No Notes'], lastChecked: '2026-07-05' },
-    settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
-    theme: { primaryColor: '#12B76A', darkMode: true },
-    metadata: { subjects: 2, chapters: 8, mcqs: 90, flashcards: 55, notes: 5, completion: 30, health: 48 },
-    audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 5 },
-  },
-]
+// ── Initial Seed Data (kept for development reference, not auto-loaded) ──
+function getSeedWorkspaces() {
+  return [
+    {
+      id: 'bpsc-tre-4',
+      name: 'BPSC TRE 4.0 – Computer Science',
+      icon: 'adminDashboard',
+      themeColor: '#F1621B',
+      description: 'Bihar Public Service Commission Teacher Recruitment Exam 4.0',
+      status: 'active',
+      published: true,
+      version: 'v2.3',
+      createdAt: '2026-07-01',
+      lastUpdated: '2026-08-06',
+      order: 1,
+      subjects: [],
+      chapters: [],
+      mcqs: [],
+      flashcards: [],
+      notes: [],
+      practice: [],
+      mockTests: [],
+      analytics: { totalAttempts: 128, avgAccuracy: 72, weeklyProgress: 18, trend: [60, 65, 68, 70, 72, 71, 74] },
+      studentProgress: { enrolled: 45, active: 32, completionRate: 72 },
+      bookmarks: [],
+      downloads: [],
+      aiStudyPlan: { generated: true, plan: { focus: 'COA', dailyTarget: 120 } },
+      contentHealth: { score: 85, issues: [], lastChecked: '2026-08-06' },
+      settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
+      theme: { primaryColor: '#F1621B', darkMode: true },
+      metadata: { subjects: 4, chapters: 7, mcqs: 120, flashcards: 80, notes: 8, completion: 72, health: 85 },
+      audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 12 },
+    },
+    {
+      id: 'cbse-12-cs',
+      name: 'CBSE Class 12 – Computer Science',
+      icon: 'computer',
+      themeColor: '#2E5CE6',
+      description: 'Central Board of Secondary Education Class 12 Computer Science',
+      status: 'active',
+      published: true,
+      version: 'v1.8',
+      createdAt: '2026-07-15',
+      lastUpdated: '2026-08-03',
+      order: 2,
+      subjects: [],
+      chapters: [],
+      mcqs: [],
+      flashcards: [],
+      notes: [],
+      practice: [],
+      mockTests: [],
+      analytics: { totalAttempts: 86, avgAccuracy: 65, weeklyProgress: 12, trend: [50, 55, 58, 60, 62, 64, 65] },
+      studentProgress: { enrolled: 28, active: 19, completionRate: 45 },
+      bookmarks: [],
+      downloads: [],
+      aiStudyPlan: { generated: true, plan: { focus: 'SQL', dailyTarget: 80 } },
+      contentHealth: { score: 62, issues: ['No Notes in Normalization'], lastChecked: '2026-08-03' },
+      settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
+      theme: { primaryColor: '#2E5CE6', darkMode: true },
+      metadata: { subjects: 3, chapters: 12, mcqs: 200, flashcards: 150, notes: 15, completion: 45, health: 62 },
+      audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 8 },
+    },
+    {
+      id: 'cbse-11-ph',
+      name: 'CBSE Class 11 – Physics',
+      icon: 'physics',
+      themeColor: '#7C3AED',
+      description: 'Central Board of Secondary Education Class 11 Physics',
+      status: 'draft',
+      published: true,
+      version: 'v1.0',
+      createdAt: '2026-07-20',
+      lastUpdated: '2026-07-28',
+      order: 3,
+      subjects: [],
+      chapters: [],
+      mcqs: [],
+      flashcards: [],
+      notes: [],
+      practice: [],
+      mockTests: [],
+      analytics: { totalAttempts: 0, avgAccuracy: 0, weeklyProgress: 0, trend: [] },
+      studentProgress: { enrolled: 0, active: 0, completionRate: 0 },
+      bookmarks: [],
+      downloads: [],
+      aiStudyPlan: { generated: false, plan: null },
+      contentHealth: { score: 35, issues: ['No MCQs', 'No Flashcards', 'No Notes'], lastChecked: '2026-07-28' },
+      settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
+      theme: { primaryColor: '#7C3AED', darkMode: true },
+      metadata: { subjects: 1, chapters: 5, mcqs: 60, flashcards: 40, notes: 3, completion: 18, health: 35 },
+      audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 3 },
+    },
+    {
+      id: 'ssc-cgl-computer',
+      name: 'SSC CGL – Computer',
+      icon: 'computerNetworks',
+      themeColor: '#12B76A',
+      description: 'Staff Selection Commission Combined Graduate Level – Computer Section',
+      status: 'active',
+      published: true,
+      version: 'v1.2',
+      createdAt: '2026-06-10',
+      lastUpdated: '2026-07-05',
+      order: 4,
+      subjects: [],
+      chapters: [],
+      mcqs: [],
+      flashcards: [],
+      notes: [],
+      practice: [],
+      mockTests: [],
+      analytics: { totalAttempts: 42, avgAccuracy: 58, weeklyProgress: 0, trend: [50, 52, 55, 58] },
+      studentProgress: { enrolled: 15, active: 0, completionRate: 30 },
+      bookmarks: [],
+      downloads: [],
+      aiStudyPlan: { generated: false, plan: null },
+      contentHealth: { score: 48, issues: ['No Notes'], lastChecked: '2026-07-05' },
+      settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
+      theme: { primaryColor: '#12B76A', darkMode: true },
+      metadata: { subjects: 2, chapters: 8, mcqs: 90, flashcards: 55, notes: 5, completion: 30, health: 48 },
+      audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 5 },
+    },
+  ]
+}
+
+// ── State ──────────────────────────────────────────────────────
+let workspaces = []
+let activeWorkspaceId = null
+let snapshot = { workspaces: [], activeWorkspaceId: null }
+
+// ── Hydration ──────────────────────────────────────────────────
+let hydrationPromise = null
+
+export async function hydrateWorkspacesFromSupabase() {
+  if (hydrationPromise) return hydrationPromise
+  hydrationPromise = (async () => {
+    try {
+      const res = await courseService.getCourses()
+      if (res.success && Array.isArray(res.data)) {
+        workspaces = res.data
+      }
+
+      const savedId = (() => {
+        try {
+          return localStorage.getItem(STORAGE_KEY)
+        } catch {
+          return null
+        }
+      })()
+
+      if (savedId && workspaces.some((w) => w.id === savedId)) {
+        activeWorkspaceId = savedId
+      } else if (workspaces.length > 0) {
+        activeWorkspaceId = workspaces[0].id
+        try {
+          localStorage.setItem(STORAGE_KEY, workspaces[0].id)
+        } catch {
+          // ignore
+        }
+      } else {
+        activeWorkspaceId = null
+        try {
+          localStorage.removeItem(STORAGE_KEY)
+        } catch {
+          // ignore
+        }
+      }
+
+      snapshot = { workspaces, activeWorkspaceId }
+      emit()
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn('[workspaceStore] hydrateWorkspacesFromSupabase failed:', err)
+      }
+    } finally {
+      hydrationPromise = null
+    }
+  })()
+  return hydrationPromise
+}
 
 // ── Active Course Persistence & Fallback ──────────────────────────
 const STORAGE_KEY = 'nexora-active-course'
-let activeWorkspaceId = (() => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && workspaces.some((w) => w.id === saved)) {
-      return saved
-    }
-    return workspaces[0]?.id || null
-  } catch {
-    return workspaces[0]?.id || null
-  }
-})()
-
-let snapshot = { workspaces, activeWorkspaceId }
 
 function emit() {
   snapshot = { workspaces, activeWorkspaceId }
@@ -308,12 +354,20 @@ export function updateWorkspaceMetadata(id, key, count) {
   emit()
 }
 
-export function createWorkspace({ name, icon, themeColor, description, status }) {
+export function createWorkspace({ name, icon, themeColor, description, status, id }) {
+  const providedId = id
   const course = bootstrapCourse({ name, icon, themeColor, description, status })
+  if (providedId) {
+    course.id = providedId
+  }
   course.order = workspaces.length + 1
-  workspaces = [...workspaces, course]
+  const existingIndex = workspaces.findIndex((w) => w.id === course.id)
+  if (existingIndex >= 0) {
+    workspaces = workspaces.map((w, idx) => (idx === existingIndex ? course : w))
+  } else {
+    workspaces = [...workspaces, course]
+  }
 
-  // Automatically activate newly created course
   activeWorkspaceId = course.id
   try {
     localStorage.setItem(STORAGE_KEY, course.id)

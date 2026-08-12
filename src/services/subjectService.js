@@ -8,7 +8,6 @@ import {
   addSubject,
   updateSubject as updateSubjectInStore,
   deleteSubject as deleteSubjectFromStore,
-  getSubjectsByCourse,
 } from '../data/adminStore'
 
 function mapRowToSubject(row) {
@@ -17,13 +16,13 @@ function mapRowToSubject(row) {
     id: row.id,
     courseId: row.course_id || row.courseId,
     name: row.name,
-    icon: row.icon || 'chapters',
-    desc: row.desc_text || row.desc || '',
+    icon: row.icon_type || 'chapters',
+    desc: row.description || '',
     color: row.color || '#F1621B',
     status: row.status || 'active',
-    locked: Boolean(row.locked),
-    order: row.order || 1,
-    stats: row.stats || [
+    locked: false,
+    order: 1,
+    stats: [
       { value: '0', label: 'Chapters' },
       { value: '0', label: 'MCQs' },
       { value: '0', label: 'Flashcards' },
@@ -32,16 +31,28 @@ function mapRowToSubject(row) {
   }
 }
 
+function toSlug(name, suffix) {
+  const base = (name || 'subject')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'subject'
+  return suffix ? `${base}-${suffix}` : base
+}
+
 function mapSubjectToPayload(payload, courseId) {
+  const slug = toSlug(payload.name, Date.now())
+  const isValidUuid = payload.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.id)
   return {
-    id: payload.id || `s-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: isValidUuid ? payload.id : crypto.randomUUID(),
     course_id: courseId || payload.courseId,
     name: payload.name,
-    icon: payload.icon || 'chapters',
-    desc_text: payload.desc || '',
+    description: payload.desc || '',
+    icon_type: payload.icon || 'chapters',
     color: payload.color || '#F1621B',
     status: payload.status || 'active',
-    locked: Boolean(payload.locked),
+    slug,
+    difficulty: payload.difficulty || 2,
   }
 }
 
@@ -49,11 +60,10 @@ export const subjectService = {
   async getSubjects(courseId) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
     const res = await apiService.get(`/subjects?course_id=eq.${courseId}`)
-    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-      const mapped = res.data.map(mapRowToSubject)
-      return { success: true, data: mapped }
+    if (res.success && Array.isArray(res.data)) {
+      return { success: true, data: res.data.map(mapRowToSubject) }
     }
-    return { success: true, data: getSubjectsByCourse(courseId) }
+    return { success: false, error: res.error || 'Failed to fetch subjects from database' }
   },
 
   async getSubject(subjectId) {
@@ -62,7 +72,7 @@ export const subjectService = {
     if (res.success && Array.isArray(res.data) && res.data.length > 0) {
       return { success: true, data: mapRowToSubject(res.data[0]) }
     }
-    return { success: false, error: 'Subject not found' }
+    return { success: false, error: res.error || 'Subject not found in database' }
   },
 
   async createSubject(courseId, payload) {
@@ -72,45 +82,50 @@ export const subjectService = {
     const dbPayload = mapSubjectToPayload(payload, courseId)
     const res = await apiService.post('/subjects', dbPayload)
 
-    const rawRecord = res.success && res.data ? (Array.isArray(res.data) ? res.data[0] : res.data) : null
-    const mapped = rawRecord ? mapRowToSubject(rawRecord) : null
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to create subject in database' }
+    }
 
-    // Synchronous central store registration for immediate UI sync
-    const createdInStore = addSubject({
-      id: mapped?.id || dbPayload.id,
-      courseId,
-      name: payload.name,
-      icon: payload.icon,
-      desc: payload.desc,
-      color: payload.color,
-      status: payload.status,
-      locked: payload.locked,
-    })
+    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
+    const mapped = mapRowToSubject(rawRecord)
 
-    return { success: true, data: mapped || createdInStore }
+    addSubject(mapped)
+
+    return { success: true, data: mapped }
   },
 
   async updateSubject(subjectId, patch) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
     const dbPatch = {
       ...(patch.name ? { name: patch.name } : {}),
-      ...(patch.desc !== undefined ? { desc_text: patch.desc } : {}),
-      ...(patch.icon ? { icon: patch.icon } : {}),
+      ...(patch.desc !== undefined ? { description: patch.desc } : {}),
+      ...(patch.icon ? { icon_type: patch.icon } : {}),
       ...(patch.color ? { color: patch.color } : {}),
       ...(patch.status ? { status: patch.status } : {}),
-      ...(patch.locked !== undefined ? { locked: Boolean(patch.locked) } : {}),
     }
 
     const res = await apiService.patch(`/subjects?id=eq.${subjectId}`, dbPatch)
-    updateSubjectInStore(subjectId, patch)
 
-    const rawRecord = res.success && res.data ? (Array.isArray(res.data) ? res.data[0] : res.data) : null
-    return { success: true, data: rawRecord ? mapRowToSubject(rawRecord) : { id: subjectId, ...patch } }
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to update subject in database' }
+    }
+
+    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
+    const mapped = mapRowToSubject(rawRecord)
+
+    updateSubjectInStore(subjectId, mapped)
+
+    return { success: true, data: mapped }
   },
 
   async deleteSubject(subjectId) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
     const res = await apiService.delete(`/subjects?id=eq.${subjectId}`)
+
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to delete subject from database' }
+    }
+
     deleteSubjectFromStore(subjectId)
     return { success: true, data: { id: subjectId } }
   },

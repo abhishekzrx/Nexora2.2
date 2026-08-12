@@ -5,9 +5,10 @@
 import { useMemo, useState, useCallback } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
-import { useAdminStore, injectMcqs, getChaptersBySubject } from '../../data/adminStore'
+import { useAdminStore, getChaptersBySubject } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
+import { mcqService } from '../../services/mcqService'
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard']
 const LANGUAGES = ['English', 'Hindi']
@@ -415,18 +416,45 @@ export default function McqManager({ onBack }) {
     setShowConfirmInject(true)
   }, [preview.length])
 
-  const confirmInject = useCallback(() => {
+  const confirmInject = useCallback(async () => {
     setShowConfirmInject(false)
     const records = preview.map(({ id: _id, ...rest }) => rest)
-    const result = injectMcqs(records)
-    showToast({
-      type: 'success',
-      title: 'MCQs Injected',
-      message: `${result.imported} MCQs Injected` + (result.duplicates > 0 ? ` | ${result.duplicates} duplicates skipped` : '') + (result.failed > 0 ? ` | ${result.failed} failed` : ''),
-      duration: 4000,
-    })
+    const subject = subjects.find((s) => s.name === form.subject)
+    const chapter = getChaptersBySubject(form.subject).find((c) => c.name === form.chapter)
+    const courseId = activeCourseId
+    const subjectId = subject?.id || form.subject
+    const chapterId = chapter?.id || form.chapter
+
+    try {
+      const res = await mcqService.injectMcqs(courseId, subjectId, chapterId, records, 'mcqs', {
+        subjectName: form.subject,
+        chapterName: form.chapter,
+      })
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'MCQs Injected',
+          message: `${res.count || records.length} MCQs Injected`,
+          duration: 4000,
+        })
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Injection Failed',
+          message: res.error || 'Unable to inject MCQs.',
+          duration: 4000,
+        })
+      }
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Injection Failed',
+        message: err.message || 'An unexpected error occurred.',
+        duration: 4000,
+      })
+    }
     setPreview([])
-  }, [preview])
+  }, [preview, form.subject, form.chapter, subjects, activeCourseId])
 
   return (
     <div className="mcq-manager-shell">

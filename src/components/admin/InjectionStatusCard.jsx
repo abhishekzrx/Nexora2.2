@@ -3,42 +3,43 @@
  * Pure presentational UI component for rendering the compact Injection Status Card.
  *
  * Responsibilities:
- * - Displays Chapter Name & Injection Type badge (MCQs vs Flashcards)
- * - Renders Payload Preview container with semantic status borders (Neutral, Green, Red)
- * - Accepts JSON via paste in the payload area
- * - Renders dynamic Inject / Retry button with double-click protection
- *
- * All state management, context tracking, and backend injection logic
- * are handled by the parent container component.
+ * - Displays Chapter Name & Chapter Description
+ * - Renders editable JSON textarea with paste, drag/drop, and file picker support
+ * - Shows validation state: empty / valid / invalid with item count
+ * - Renders dynamic Inject / Retry button
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
 import AppIcon from '../ui/AppIcon'
 import Button from '../ui/Button'
 
 export default function InjectionStatusCard({
   chapterName = 'Selected Chapter',
+  chapterDescription = '',
   injectionType = 'MCQs',
-  payload = null,
-  status = 'idle',
-  error = null,
-  result = null,
-  onInject,
+  jsonText = '',
+  onJsonChange,
+  jsonStatus = 'empty',
   jsonError = null,
-  onPaste,
+  jsonItemCount = 0,
+  status = 'idle',
+  error: _error = null,
+  result: _result = null,
+  onInject,
+  onClearJson,
 }) {
-  const [isFocused, setIsFocused] = useState(false)
-  const hiddenTextareaRef = useRef(null)
+  const textareaRef = useRef(null)
 
   const isInjecting = status === 'injecting'
   const isSuccess = status === 'success'
   const isError = status === 'error'
   const isReady = status === 'ready'
-  const isIdle = status === 'idle'
 
-  const itemCount = useMemoPayloadCount(payload)
-
-  const borderClass = isSuccess
+  const borderClass = jsonStatus === 'valid'
+    ? 'status-valid'
+    : jsonStatus === 'invalid'
+    ? 'status-invalid'
+    : isSuccess
     ? 'status-success'
     : isError
     ? 'status-error'
@@ -48,30 +49,28 @@ export default function InjectionStatusCard({
     ? 'status-ready'
     : 'status-idle'
 
-  const focusPasteArea = useCallback(() => {
-    hiddenTextareaRef.current?.focus()
-  }, [])
-
-  const handleTextareaPaste = useCallback(
+  const handleTextareaChange = useCallback(
     (e) => {
-      if (onPaste) onPaste(e)
+      if (onJsonChange) onJsonChange(e.target.value)
     },
-    [onPaste],
+    [onJsonChange],
   )
 
-  const handleBoxFocus = useCallback(() => setIsFocused(true), [])
-  const handleBoxBlur = useCallback(() => setIsFocused(false), [])
-
-  const handleTextareaFocus = useCallback(() => setIsFocused(true), [])
-  const handleTextareaBlur = useCallback(() => setIsFocused(false), [])
+  const handleClear = useCallback(() => {
+    if (onClearJson) onClearJson()
+    textareaRef.current?.focus()
+  }, [onClearJson])
 
   return (
     <div className="injection-status-card">
-      {/* ── Card Header: Chapter Title & Type Badge ── */}
+      {/* Card Header */}
       <div className="status-card-header">
         <div className="chapter-title-block">
           <span className="chapter-title-label">Target Chapter</span>
           <h3 className="chapter-title-text">{chapterName}</h3>
+          {chapterDescription && (
+            <span className="chapter-desc-text">{chapterDescription}</span>
+          )}
         </div>
         <span className={`injection-type-badge ${injectionType.toLowerCase()}`}>
           {injectionType === 'MCQs' ? (
@@ -86,14 +85,14 @@ export default function InjectionStatusCard({
         </span>
       </div>
 
-      {/* ── Payload & Status Area ── */}
-      <div className={`payload-container ${borderClass} ${isFocused ? 'focused' : ''}`}>
+      {/* Payload & Status Area */}
+      <div className={`payload-container ${borderClass}`}>
         {/* Status Header Badge Bar */}
         <div className="payload-status-bar">
           {isSuccess && (
             <div className="status-indicator success">
               <AppIcon name="check" size={16} className="status-icon success-icon" />
-              <span>Injection Confirmed (Backend Success)</span>
+              <span>Injection Confirmed</span>
             </div>
           )}
 
@@ -114,88 +113,64 @@ export default function InjectionStatusCard({
           {isReady && (
             <div className="status-indicator ready">
               <AppIcon name="document" size={16} />
-              <span>Payload Ready ({itemCount} {injectionType})</span>
+              <span>Payload Ready ({jsonItemCount} {injectionType})</span>
             </div>
           )}
 
-          {isIdle && (
+          {jsonStatus === 'valid' && !isReady && !isSuccess && (
+            <div className="status-indicator valid">
+              <AppIcon name="check" size={16} />
+              <span>Valid JSON — {jsonItemCount} {injectionType} detected</span>
+            </div>
+          )}
+
+          {jsonStatus === 'invalid' && !isSuccess && !isReady && (
+            <div className="status-indicator invalid">
+              <AppIcon name="close" size={16} />
+              <span>Invalid JSON — {jsonError || 'Please provide valid JSON.'}</span>
+            </div>
+          )}
+
+          {jsonStatus === 'empty' && !isSuccess && !isError && !isReady && (
             <div className="status-indicator idle">
               <AppIcon name="help" size={16} />
-              <span>Paste JSON to prepare payload for injection.</span>
+              <span>Paste JSON here or drop a JSON file</span>
             </div>
           )}
         </div>
 
-        {/* Hidden textarea for reliable paste capture */}
-        <textarea
-          ref={hiddenTextareaRef}
-          className="hidden-paste-textarea"
-          onPaste={handleTextareaPaste}
-          onFocus={handleTextareaFocus}
-          onBlur={handleTextareaBlur}
-          readOnly
-        />
+        {/* JSON Input Area */}
+        <div className="json-input-area">
+          <textarea
+            ref={textareaRef}
+            className="json-textarea"
+            placeholder="Paste JSON here or drop a JSON file..."
+            value={jsonText}
+            onChange={handleTextareaChange}
+            spellCheck={false}
+          />
 
-        {/* Payload Preview Content Box */}
-        <div
-          className="payload-content-box"
-          tabIndex={0}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            focusPasteArea()
-          }}
-          onFocus={handleBoxFocus}
-          onBlur={handleBoxBlur}
-        >
-          {isSuccess && (
-            <div className="success-result-message">
-              <AppIcon name="check" size={24} className="big-success-icon" />
-              <div className="message-text">
-                <strong>Successfully Injected!</strong>
-                <p>
-                  Injected {result?.imported ?? itemCount} {injectionType} into "{chapterName}". Course store & metrics updated.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {isError && (
-            <div className="error-result-message">
-              <AppIcon name="close" size={24} className="big-error-icon" />
-              <div className="message-text">
-                <strong>Injection Error</strong>
-                <p>{error || 'Backend injection failed. Payload preserved for retry.'}</p>
-              </div>
-            </div>
-          )}
-
-          {!isSuccess && !isError && (
-            <div className="payload-json-snippet">
-              {payload ? (
-                <pre className="compact-json-text">
-                  {typeof payload === 'string'
-                    ? payload
-                    : JSON.stringify(payload, null, 2).slice(0, 450) + (JSON.stringify(payload).length > 450 ? '...\n}' : '')}
-                </pre>
-              ) : (
-                <div className="empty-payload-placeholder">
-                  <AppIcon name="clipboard" size={28} style={{ color: '#667085', marginBottom: 6 }} />
-                  <p>Paste JSON here</p>
-                  {jsonError && <p className="json-error-text">{jsonError}</p>}
-                </div>
-              )}
-              {jsonError && payload && <p className="json-error-text">{jsonError}</p>}
-            </div>
-          )}
+          <div className="json-input-actions">
+            {jsonText && (
+              <button
+                type="button"
+                className="json-action-btn json-clear-btn"
+                onClick={handleClear}
+                title="Clear JSON"
+              >
+                <AppIcon name="close" size={15} /> Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Card Footer: Inject / Retry Button ── */}
+      {/* Card Footer: Inject Button */}
       <div className="status-card-footer">
         <Button
           variant="primary"
           size="lg"
-          disabled={isInjecting || isIdle || (!payload && !isError)}
+          disabled={isInjecting || isSuccess || (jsonStatus !== 'valid' && !isError)}
           onClick={onInject}
           className={`inject-action-btn ${isError ? 'retry-mode' : isSuccess ? 'success-mode' : ''}`}
         >
@@ -221,14 +196,3 @@ export default function InjectionStatusCard({
     </div>
   )
 }
-
-function useMemoPayloadCount(payload) {
-  if (!payload) return 0
-  if (Array.isArray(payload)) return payload.length
-  if (typeof payload === 'object') {
-    if (Array.isArray(payload.mcqs)) return payload.mcqs.length
-    if (Array.isArray(payload.flashcards)) return payload.flashcards.length
-  }
-  return 1
-}
-

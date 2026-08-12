@@ -474,7 +474,7 @@ function AdminDashboard({ activeSection, onNavigate }) {
 
   // Derive counts dynamically from active course
   const counts = useMemo(() => {
-    if (!activeWorkspaceId) return { subjects: 4, chapters: 18, mcqs: 420, flashcards: 185 }
+    if (!activeWorkspaceId) return { subjects: 0, chapters: 0, mcqs: 0, flashcards: 0 }
     const subList = allSubjects && allSubjects.length > 0 ? allSubjects : subjects
     const chapList = allChapters && allChapters.length > 0 ? allChapters : chapters
     const mcqList = allMcqs && allMcqs.length > 0 ? allMcqs : mcqs
@@ -486,10 +486,10 @@ function AdminDashboard({ activeSection, onNavigate }) {
     const cFlashcards = flashList.filter((f) => f.courseId === activeWorkspaceId)
 
     return {
-      subjects: cSubjects.length || (activeWorkspaceId === 'bpsc-tre-4' ? 4 : activeWorkspaceId === 'cbse-12-cs' ? 4 : 0),
-      chapters: cChapters.length || (activeWorkspaceId === 'bpsc-tre-4' ? 18 : activeWorkspaceId === 'cbse-12-cs' ? 12 : 0),
-      mcqs: cMcqs.length || (activeWorkspaceId === 'bpsc-tre-4' ? 420 : activeWorkspaceId === 'cbse-12-cs' ? 200 : 0),
-      flashcards: cFlashcards.length || (activeWorkspaceId === 'bpsc-tre-4' ? 185 : activeWorkspaceId === 'cbse-12-cs' ? 150 : 0),
+      subjects: cSubjects.length,
+      chapters: cChapters.length,
+      mcqs: cMcqs.length,
+      flashcards: cFlashcards.length,
     }
   }, [activeWorkspaceId, subjects, chapters, mcqs, flashcards, allSubjects, allChapters, allMcqs, allFlashcards])
 

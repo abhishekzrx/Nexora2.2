@@ -13,22 +13,15 @@ import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import {
   useAdminStore,
-  addSubject,
-  updateSubject,
-  deleteSubject,
   duplicateSubject,
-  setSubjectStatus,
   toggleSubjectLock,
   getDeleteSubjectImpact,
   seedDefaultSubjects,
-  addChapter,
-  updateChapter,
-  deleteChapter,
-  getDeleteChapterImpact,
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 import { subjectService } from '../../services/subjectService'
+import { chapterService } from '../../services/chapterService'
 import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
@@ -119,13 +112,15 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
   const [color, setColor] = useState(initialData?.color || '#F1621B')
   const [status, setStatus] = useState(initialData?.status || 'active')
   const [locked, setLocked] = useState(initialData?.locked || false)
+  const [creationError, setCreationError] = useState('')
 
   const selectedCourse = workspaces.find((w) => w.id === courseId)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setCreationError('')
     if (!name.trim() || !courseId || isSaving) return
-    onSave({
+    const result = await onSave({
       id: initialData?.id,
       courseId,
       name: name.trim(),
@@ -135,6 +130,9 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
       status,
       locked,
     })
+    if (!result?.success) {
+      setCreationError(result?.error || 'Failed to save subject.')
+    }
   }
 
   return (
@@ -237,6 +235,13 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
               </label>
             </div>
           </div>
+
+          {creationError && (
+            <div className="sm-modal-error">
+              <AppIcon name="error" size={14} />
+              <span>{creationError}</span>
+            </div>
+          )}
 
           <div className="sm-modal-actions">
             <Button variant="secondary" type="button" onClick={onClose} disabled={isSaving}>
@@ -368,10 +373,14 @@ function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplic
         { icon: 'help', label: 'MCQs', value: impact.mcqs },
         { icon: 'flashcardsTab', label: 'Flashcards', value: impact.flashcards },
       ],
-      onConfirm: () => {
-        onDelete(subject.id)
-        showToast({ type: 'success', title: 'Subject Deleted', message: `"${subject.name}" deleted.` })
+      onConfirm: async () => {
         dismissConfirm()
+        const res = await subjectService.deleteSubject(subject.id)
+        if (res.success) {
+          showToast({ type: 'success', title: 'Subject Deleted', message: `"${subject.name}" deleted.` })
+        } else {
+          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete subject from database.' })
+        }
       },
       onCancel: dismissConfirm,
     })
@@ -467,39 +476,63 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
     ) || 75,
   )
 
-  const handleSaveChapter = (data) => {
+  const handleSaveChapter = async (data) => {
+  const targetSubject = selectedSubject || subjects.find((s) => s.id === data.subjectId) || subjects[0]
+  if (!targetSubject) return
+
+  try {
     if (data.id) {
-      updateChapter(data.id, data)
-      showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
+      const res = await chapterService.updateChapter(data.id, data)
+      if (res.success) {
+        showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
+      } else {
+        showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update chapter.' })
+      }
     } else {
-      addChapter({
-        subject: selectedSubject.name,
+      const res = await chapterService.createChapter(data.courseId, targetSubject.id, {
         name: data.name,
         desc: data.desc,
+        subjectName: targetSubject.name,
         number: data.number,
+        status: data.status || 'active',
       })
-      showToast({ type: 'success', title: 'Chapter Added', message: `"${data.name}" added to ${selectedSubject.name}.` })
+      if (res.success && res.data) {
+        showToast({ type: 'success', title: 'Chapter Added', message: `"${data.name}" added to ${targetSubject.name}.` })
+      } else {
+        showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create chapter.' })
+      }
     }
     setShowChapterModal(false)
+  } catch (err) {
+    showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
   }
+}
 
-  const handleDeleteChapter = (ch) => {
-    const impact = getDeleteChapterImpact(ch.id)
-    showConfirm({
-      title: `Delete Chapter "${ch.name}"?`,
-      message: `Are you sure you want to remove this chapter?`,
-      impact: [
-        { icon: 'help', label: 'MCQs', value: impact.mcqs },
-        { icon: 'flashcardsTab', label: 'Flashcards', value: impact.flashcards },
-      ],
-      onConfirm: () => {
-        deleteChapter(ch.id)
-        showToast({ type: 'success', title: 'Chapter Deleted', message: `"${ch.name}" deleted.` })
-        dismissConfirm()
-      },
-      onCancel: dismissConfirm,
-    })
-  }
+const handleDeleteChapter = async (ch) => {
+  const impact = getDeleteChapterImpact(ch.id)
+  showConfirm({
+    title: `Delete Chapter "${ch.name}"?`,
+    message: 'Are you sure you want to remove this chapter?',
+    impact: [
+      { icon: 'help', label: 'MCQs', value: impact.mcqs },
+      { icon: 'flashcardsTab', label: 'Flashcards', value: impact.flashcards },
+    ],
+    onConfirm: async () => {
+      try {
+        const res = await chapterService.deleteChapter(ch.id)
+        if (res.success) {
+          showToast({ type: 'success', title: 'Chapter Deleted', message: `"${ch.name}" deleted.` })
+        } else {
+          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete chapter.' })
+        }
+      } catch (err) {
+        showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+      }
+      dismissConfirm()
+    },
+    onCancel: dismissConfirm,
+  })
+}
 
   return (
     <div className="sm-analytics-panel sm-subject-card-panel">
@@ -720,13 +753,13 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
 }
 
 /* ── Main SubjectManager Component ────────────────────────────── */
-function SubjectManager({ courseName, onNavigate }) {
+function SubjectManager({ courseName: _courseName, onNavigate }) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { subjects, chapters, mcqs, flashcards, allSubjects } = useAdminStore()
 
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [sortBy, setSortBy] = useState('order')
+  const [filterStatus, _setFilterStatus] = useState('all')
+  const [sortBy, _setSortBy] = useState('order')
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState(null)
   const [selectedSubjectId, setSelectedSubjectId] = useState(null)
@@ -833,9 +866,9 @@ function SubjectManager({ courseName, onNavigate }) {
         if (res.success) {
           showToast({ type: 'success', title: 'Subject Updated', message: `"${data.name}" updated successfully.` })
           setShowSubjectModal(false)
-        } else {
-          showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update subject.' })
+          return { success: true }
         }
+        return { success: false, error: res.error || 'Unable to update subject.' }
       } else {
         const res = await subjectService.createSubject(data.courseId, data)
         if (res.success && res.data) {
@@ -849,12 +882,12 @@ function SubjectManager({ courseName, onNavigate }) {
             message: `"${data.name}" created under "${targetCourse?.name || 'Course'}" successfully.`,
           })
           setShowSubjectModal(false)
-        } else {
-          showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create subject.' })
+          return { success: true }
         }
+        return { success: false, error: res.error || 'Unable to create subject.' }
       }
     } catch (err) {
-      showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+      return { success: false, error: err.message || 'An unexpected error occurred.' }
     } finally {
       setIsSavingSubject(false)
     }
@@ -1010,7 +1043,6 @@ function SubjectManager({ courseName, onNavigate }) {
                   onSelect={(id) => setSelectedSubjectId(id)}
                   onEdit={handleOpenEdit}
                   onDuplicate={duplicateSubject}
-                  onDelete={deleteSubject}
                   onToggleLock={toggleSubjectLock}
                 />
               ))}

@@ -1,16 +1,8 @@
 /**
  * adminStore
- * Mutable in-memory store for the Admin Content Management System.
- * No backend — purely local mock data with full CRUD operations.
- *
- * Course-Centric Architecture:
- * Every content entity (Subject, Chapter, MCQ, Flashcard) belongs to
- * a Course via `courseId`. The active Course acts as the working
- * context — all CRUD operations automatically scope to it.
- *
- * Components subscribe via useAdminStore() and re-render automatically
- * whenever any CRUD operation mutates the store, so all counters and
- * related UI stay in sync without a page refresh.
+ *Mutable in-memory cache for the Admin Content Management System.
+ * Supabase is the authoritative source; local state is refreshed from
+ * successful DB responses so the UI stays in sync without a reload.
  */
 import { useSyncExternalStore } from 'react'
 import {
@@ -20,89 +12,106 @@ import {
   flashcardCards,
 } from './adminData'
 import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, updateWorkspaceMetadata } from './workspaceStore'
+import { subjectService } from '../services/subjectService'
+import { chapterService } from '../services/chapterService'
+import { mcqService } from '../services/mcqService'
 
 let listeners = []
 let version = 0
 
-// ── Seed state from adminData ─────────────────────────────────────
-// All seed content belongs to the default active course (bpsc-tre-4).
 const DEFAULT_COURSE_ID = 'bpsc-tre-4'
 
-let subjects = [
-  ...adminSubjects.map((s) => ({
-    ...s,
-    courseId: DEFAULT_COURSE_ID,
-    status: 'active',
-    locked: false,
-    color: '#F1621B',
-    order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
-    stats: s.stats.map((st) => ({ ...st })),
-  })),
-  {
-    id: 's-cbse12-1',
-    courseId: 'cbse-12-cs',
-    name: 'Python Programming',
-    icon: 'dataStructures',
-    desc: 'Advanced Python functions, data structures, and file handling.',
-    status: 'active',
-    locked: false,
-    color: '#2E5CE6',
-    order: 1,
-    stats: [{ value: '4', label: 'Chapters' }, { value: '50', label: 'MCQs' }, { value: '30', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
-  },
-  {
-    id: 's-cbse12-2',
-    courseId: 'cbse-12-cs',
-    name: 'Database Querying (SQL)',
-    icon: 'dbms',
-    desc: 'Relational database management, DDL, DML, and SQL queries.',
-    status: 'active',
-    locked: false,
-    color: '#2E5CE6',
-    order: 2,
-    stats: [{ value: '3', label: 'Chapters' }, { value: '40', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
-  },
-  {
-    id: 's-cbse11-1',
-    courseId: 'cbse-11-ph',
-    name: 'Kinematics & Laws of Motion',
-    icon: 'physics',
-    desc: 'Motion in a straight line, vectors, Newton laws, and friction.',
-    status: 'active',
-    locked: false,
-    color: '#7C3AED',
-    order: 1,
-    stats: [{ value: '3', label: 'Chapters' }, { value: '30', label: 'MCQs' }, { value: '20', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
-  },
-  {
-    id: 's-ssc-1',
-    courseId: 'ssc-cgl-computer',
-    name: 'Computer Fundamentals',
-    icon: 'computerNetworks',
-    desc: 'Hardware components, operating system basics, and software.',
-    status: 'active',
-    locked: false,
-    color: '#12B76A',
-    order: 1,
-    stats: [{ value: '2', label: 'Chapters' }, { value: '45', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
-  },
-]
+function getSeedSubjects() {
+  return [
+    ...adminSubjects.map((s) => ({
+      ...s,
+      courseId: DEFAULT_COURSE_ID,
+      status: 'active',
+      locked: false,
+      color: '#F1621B',
+      order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
+      stats: s.stats.map((st) => ({ ...st })),
+    })),
+    {
+      id: 's-cbse12-1',
+      courseId: 'cbse-12-cs',
+      name: 'Python Programming',
+      icon: 'dataStructures',
+      desc: 'Advanced Python functions, data structures, and file handling.',
+      status: 'active',
+      locked: false,
+      color: '#2E5CE6',
+      order: 1,
+      stats: [{ value: '4', label: 'Chapters' }, { value: '50', label: 'MCQs' }, { value: '30', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+    },
+    {
+      id: 's-cbse12-2',
+      courseId: 'cbse-12-cs',
+      name: 'Database Querying (SQL)',
+      icon: 'dbms',
+      desc: 'Relational database management, DDL, DML, and SQL queries.',
+      status: 'active',
+      locked: false,
+      color: '#2E5CE6',
+      order: 2,
+      stats: [{ value: '3', label: 'Chapters' }, { value: '40', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+    },
+    {
+      id: 's-cbse11-1',
+      courseId: 'cbse-11-ph',
+      name: 'Kinematics & Laws of Motion',
+      icon: 'physics',
+      desc: 'Motion in a straight line, vectors, Newton laws, and friction.',
+      status: 'active',
+      locked: false,
+      color: '#7C3AED',
+      order: 1,
+      stats: [{ value: '3', label: 'Chapters' }, { value: '30', label: 'MCQs' }, { value: '20', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+    },
+    {
+      id: 's-ssc-1',
+      courseId: 'ssc-cgl-computer',
+      name: 'Computer Fundamentals',
+      icon: 'computerNetworks',
+      desc: 'Hardware components, operating system basics, and software.',
+      status: 'active',
+      locked: false,
+      color: '#12B76A',
+      order: 1,
+      stats: [{ value: '2', label: 'Chapters' }, { value: '45', label: 'MCQs' }, { value: '25', label: 'Flashcards' }, { value: 'Active', label: 'Status' }],
+    },
+  ]
+}
 
-let chapters = [
-  ...allChapters.map((c, i) => ({
-    ...c,
-    courseId: DEFAULT_COURSE_ID,
-    status: 'active',
-    locked: false,
-    number: i + 1,
-  })),
-  { id: 'c-cbse12-1', courseId: 'cbse-12-cs', subject: 'Python Programming', name: 'Functions & Recursion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
-  { id: 'c-cbse12-2', courseId: 'cbse-12-cs', subject: 'Database Querying (SQL)', name: 'SQL Joins & Grouping', number: 1, status: 'active', mcqs: 20, flashcards: 12, notes: 1 },
-  { id: 'c-cbse11-1', courseId: 'cbse-11-ph', subject: 'Kinematics & Laws of Motion', name: 'Vectors & Projectile Motion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
-  { id: 'c-ssc-1', courseId: 'ssc-cgl-computer', subject: 'Computer Fundamentals', name: 'Hardware & Input Devices', number: 1, status: 'active', mcqs: 25, flashcards: 15, notes: 1 },
-]
-let mcqs = mcqRows.map((m) => ({ ...m, courseId: DEFAULT_COURSE_ID }))
-let flashcards = flashcardCards.map((f) => ({ ...f, courseId: DEFAULT_COURSE_ID }))
+function getSeedChapters() {
+  return [
+    ...allChapters.map((c, i) => ({
+      ...c,
+      courseId: DEFAULT_COURSE_ID,
+      status: 'active',
+      locked: false,
+      number: i + 1,
+    })),
+    { id: 'c-cbse12-1', courseId: 'cbse-12-cs', subject: 'Python Programming', name: 'Functions & Recursion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
+    { id: 'c-cbse12-2', courseId: 'cbse-12-cs', subject: 'Database Querying (SQL)', name: 'SQL Joins & Grouping', number: 1, status: 'active', mcqs: 20, flashcards: 12, notes: 1 },
+    { id: 'c-cbse11-1', courseId: 'cbse-11-ph', subject: 'Kinematics & Laws of Motion', name: 'Vectors & Projectile Motion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
+    { id: 'c-ssc-1', courseId: 'ssc-cgl-computer', subject: 'Computer Fundamentals', name: 'Hardware & Input Devices', number: 1, status: 'active', mcqs: 25, flashcards: 15, notes: 1 },
+  ]
+}
+
+function getSeedMcqs() {
+  return mcqRows.map((m) => ({ ...m, courseId: DEFAULT_COURSE_ID }))
+}
+
+function getSeedFlashcards() {
+  return flashcardCards.map((f) => ({ ...f, courseId: DEFAULT_COURSE_ID }))
+}
+
+// ── State ──────────────────────────────────────────────────────
+let subjects = []
+let chapters = []
+let mcqs = []
+let flashcards = []
 
 let snapshot = {
   allSubjects: [],
@@ -114,6 +123,46 @@ let snapshot = {
   mcqs: [],
   flashcards: [],
   activeCourseId: null,
+}
+
+let hydrationPromise = null
+
+export async function hydrateAdminStoreFromSupabase() {
+  if (hydrationPromise) return hydrationPromise
+  hydrationPromise = (async () => {
+    try {
+      const activeCourseId = getActiveWorkspaceId()
+      const [subjectsRes, chaptersRes, mcqsRes, flashcardsRes] = await Promise.all([
+        activeCourseId ? subjectService.getSubjects(activeCourseId) : Promise.resolve({ success: true, data: [] }),
+        activeCourseId ? chapterService.getChapters(activeCourseId, '') : Promise.resolve({ success: true, data: [] }),
+        activeCourseId ? mcqService.getMcqs(activeCourseId, '', '') : Promise.resolve({ success: true, data: [] }),
+        activeCourseId ? mcqService.getFlashcards(activeCourseId, '', '') : Promise.resolve({ success: true, data: [] }),
+      ])
+
+      if (subjectsRes.success && Array.isArray(subjectsRes.data)) {
+        subjects = subjectsRes.data
+      }
+      if (chaptersRes.success && Array.isArray(chaptersRes.data)) {
+        chapters = chaptersRes.data
+      }
+      if (mcqsRes.success && Array.isArray(mcqsRes.data)) {
+        mcqs = mcqsRes.data
+      }
+      if (flashcardsRes.success && Array.isArray(flashcardsRes.data)) {
+        flashcards = flashcardsRes.data
+      }
+
+      updateSnapshot()
+      emit()
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn('[adminStore] hydrateAdminStoreFromSupabase failed:', err)
+      }
+    } finally {
+      hydrationPromise = null
+    }
+  })()
+  return hydrationPromise
 }
 
 function updateSnapshot() {
@@ -152,6 +201,7 @@ function getSnapshot() {
 }
 
 let lastWorkspaces = [...getWorkspaces()]
+let lastActiveCourseId = getActiveWorkspaceId()
 
 subscribeWorkspace(() => {
   const currentWorkspaces = getWorkspaces()
@@ -166,6 +216,15 @@ subscribeWorkspace(() => {
       flashcards = flashcards.filter((f) => f.courseId !== courseId)
     })
     recomputeAllSubjectStats()
+  }
+
+  const currentActiveCourseId = getActiveWorkspaceId()
+  if (currentActiveCourseId !== lastActiveCourseId) {
+    lastActiveCourseId = currentActiveCourseId
+    if (currentActiveCourseId) {
+      hydrationPromise = null
+      hydrateAdminStoreFromSupabase()
+    }
   }
 
   lastWorkspaces = [...currentWorkspaces]
@@ -777,5 +836,34 @@ export function saveChapterOrder(subjectName, orderedChapters) {
     const newNumber = orderMap.get(chapter.id)
     return newNumber ? { ...chapter, number: newNumber } : chapter
   })
+  emit()
+}
+
+export function replaceSubjects(newSubjects) {
+  subjects = Array.isArray(newSubjects) ? newSubjects : []
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function replaceChapters(newChapters) {
+  chapters = Array.isArray(newChapters) ? newChapters : []
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function replaceMcqs(newMcqs) {
+  mcqs = Array.isArray(newMcqs) ? newMcqs : []
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function replaceFlashcards(newFlashcards) {
+  flashcards = Array.isArray(newFlashcards) ? newFlashcards : []
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function replaceWorkspaces(newWorkspaces) {
+  workspaces = Array.isArray(newWorkspaces) ? newWorkspaces : []
   emit()
 }

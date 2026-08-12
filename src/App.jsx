@@ -9,6 +9,8 @@ import AdminPage from './pages/AdminPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
 import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
 import { useWorkspaceStore } from './data/workspaceStore'
+import { hydrateWorkspacesFromSupabase } from './data/workspaceStore'
+import { hydrateAdminStoreFromSupabase } from './data/adminStore'
 
 /**
  * Resolve the current hash into a route descriptor.
@@ -58,6 +60,24 @@ function App() {
       switchToStudent()
     }
   }, [route, activeRole])
+
+  useEffect(() => {
+    async function bootstrap() {
+      try {
+        await Promise.all([
+          hydrateWorkspacesFromSupabase(),
+          hydrateAdminStoreFromSupabase(),
+        ])
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('[App] Supabase hydration failed:', err)
+        }
+      }
+    }
+
+    bootstrap()
+    return () => {}
+  }, [])
 
   // Unknown / malformed route → fall back to dashboard.
   if (!route) {

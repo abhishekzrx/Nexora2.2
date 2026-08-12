@@ -8,7 +8,6 @@ import {
   createWorkspace,
   updateWorkspaceMetadata,
   deleteWorkspace as deleteWorkspaceFromStore,
-  getWorkspaces,
 } from '../data/workspaceStore'
 
 function mapRowToCourse(row) {
@@ -46,11 +45,11 @@ function mapCourseToPayload(payload) {
 export const courseService = {
   async getCourses() {
     const res = await apiService.get('/courses')
-    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res.success && Array.isArray(res.data)) {
       const mapped = res.data.map(mapRowToCourse)
       return { success: true, data: mapped }
     }
-    return { success: true, data: getWorkspaces() }
+    return { success: false, error: res.error || 'Failed to fetch courses from database' }
   },
 
   async getCourse(courseId) {
@@ -59,7 +58,7 @@ export const courseService = {
     if (res.success && Array.isArray(res.data) && res.data.length > 0) {
       return { success: true, data: mapRowToCourse(res.data[0]) }
     }
-    return { success: false, error: 'Course not found' }
+    return { success: false, error: res.error || 'Course not found in database' }
   },
 
   async createCourse(payload) {
@@ -68,18 +67,16 @@ export const courseService = {
     const dbPayload = mapCourseToPayload(payload)
     const res = await apiService.post('/courses', dbPayload)
 
-    const rawRecord = res.success && res.data ? (Array.isArray(res.data) ? res.data[0] : res.data) : null
-    const mapped = rawRecord ? mapRowToCourse(rawRecord) : null
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to create course in database' }
+    }
 
-    // Synchronous central store update
-    const createdInStore = createWorkspace({
-      id: mapped?.id || dbPayload.id,
-      name: payload.name,
-      description: payload.description,
-      status: payload.status,
-    })
+    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
+    const mapped = mapRowToCourse(rawRecord)
 
-    return { success: true, data: mapped || createdInStore }
+    createWorkspace(mapped)
+
+    return { success: true, data: mapped }
   },
 
   async updateCourse(courseId, patch) {
@@ -94,17 +91,28 @@ export const courseService = {
 
     const res = await apiService.patch(`/courses?id=eq.${courseId}`, dbPatch)
 
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to update course in database' }
+    }
+
+    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
+    const mapped = mapRowToCourse(rawRecord)
+
     if (patch.name) {
       updateWorkspaceMetadata(courseId, 'name', patch.name)
     }
 
-    const rawRecord = res.success && res.data ? (Array.isArray(res.data) ? res.data[0] : res.data) : null
-    return { success: true, data: rawRecord ? mapRowToCourse(rawRecord) : { id: courseId, ...patch } }
+    return { success: true, data: mapped }
   },
 
   async deleteCourse(courseId) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
     const res = await apiService.delete(`/courses?id=eq.${courseId}`)
+
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to delete course from database' }
+    }
+
     deleteWorkspaceFromStore(courseId)
     return { success: true, data: { id: courseId } }
   },

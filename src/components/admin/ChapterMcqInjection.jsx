@@ -3,10 +3,10 @@
  * Organized Admin Content & Injection Workspace with InjectionStatusCard.
  *
  * Architecture:
- * - Top Container: Cascading Context (Course -> Subject -> Chapter) + Live Chapter Statistics (MCQs, Flashcards, Notes, Health)
+ * - Top Container: Cascading Context (Course -> Subject -> Chapter) + Live Chapter Statistics
  * - Below Main 2-Column Split:
- *   - LEFT DIV: Fixed Architecture Generator Panel (Identical structural layout for MCQs & Flashcards, blank inputs with placeholders)
- *   - RIGHT DIV: InjectionStatusCard (Context-bound lifecycle status, JSON preview, green/red status outlines, retry logic) + Live Chapter Content List
+ *   - LEFT DIV: Content Generator with advanced prompt options
+ *   - RIGHT DIV: InjectionStatusCard (JSON input, validation, injection)
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -25,6 +25,11 @@ import { showToast } from '../../data/feedbackStore'
 import { mcqService } from '../../services/mcqService'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
+
+const QUESTION_TYPES = ['Conceptual', 'Numerical', 'Application-based', 'Mixed']
+const COGNITIVE_LEVELS = ['Recall', 'Understanding', 'Application', 'Analysis', 'Mixed']
+const EXAM_PATTERNS = ['Previous-year style', 'Competitive exam', 'Board exam', 'Custom']
+const LANGUAGE_STYLES = ['Simple', 'Academic', 'Exam-oriented']
 
 export default function ChapterMcqInjection() {
   const adminState = useAdminStore()
@@ -66,6 +71,14 @@ export default function ChapterMcqInjection() {
     return currentChapters.find((c) => c.name === selectedChapterName) || currentChapters[0] || null
   }, [currentChapters, selectedChapterName])
 
+  const chapterDescription = useMemo(() => {
+    if (!activeChapter) return ''
+    const found = adminState.allChapters.find(
+      (c) => c.name === activeChapter.name && c.courseId === selectedCourseId
+    )
+    return found?.desc || ''
+  }, [adminState.allChapters, activeChapter, selectedCourseId])
+
   // ── 2. Top Right Statistics Metrics ──────────────────────────────
   const chapterMcqs = useMemo(() => {
     if (!activeSubject || !activeChapter) return []
@@ -98,67 +111,100 @@ export default function ChapterMcqInjection() {
   }, [chapterMcqs, chapterFlashcards])
 
   // ── 3. Content Mode State: 'mcqs' vs 'flashcards' ────────────────
-  const [contentMode, setContentMode] = useState('mcqs') // 'mcqs' | 'flashcards'
+  const [contentMode, setContentMode] = useState('mcqs')
 
-  // ── 4. Unified Fixed Architecture Parameters (Blank default inputs) ─
+  // ── 4. Generator Parameters ─────────────────────────────────────
   const [mcqCount, setMcqCount] = useState(20)
   const [flashCount, setFlashCount] = useState(15)
   const [mcqDifficulty, setMcqDifficulty] = useState('Medium')
   const [flashDifficulty, setFlashDifficulty] = useState('Medium')
   const [mcqLanguage, setMcqLanguage] = useState('English')
   const [flashLanguage, setFlashLanguage] = useState('English')
-  const [targetExam, setTargetExam] = useState('') // Starts BLANK as requested
-  const [flashDeckName, setFlashDeckName] = useState('') // Starts BLANK as requested
-  const [conceptFocus, setConceptFocus] = useState('') // Starts BLANK with placeholder "Generate MCQs/Flashcards..."
+  const [targetExam, setTargetExam] = useState('')
+  const [flashDeckName, setFlashDeckName] = useState('')
+  const [conceptFocus, setConceptFocus] = useState('')
+
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [questionType, setQuestionType] = useState('Mixed')
+  const [cognitiveLevel, setCognitiveLevel] = useState('Mixed')
+  const [topicFocus, setTopicFocus] = useState('')
+  const [examPattern, setExamPattern] = useState('')
+  const [explanationRequired, setExplanationRequired] = useState('Yes')
+  const [negativeMarking, setNegativeMarking] = useState('')
+  const [languageStyle, setLanguageStyle] = useState('Academic')
+  const [specialInstructions, setSpecialInstructions] = useState('')
 
   const finalQuantity = useMemo(() => {
     return contentMode === 'mcqs' ? mcqCount : flashCount
   }, [contentMode, mcqCount, flashCount])
 
-  // System Prompt Construction (Hidden from view, available via Copy Icon)
-  const generatedPromptText = useMemo(() => {
-    const courseTitle = selectedCourse?.name || 'Selected Course'
-    const subjectTitle = activeSubject?.name || 'Selected Subject'
-    const chapterTitle = activeChapter?.name || 'Selected Chapter'
+  const courseTitle = selectedCourse?.name || 'Selected Course'
+  const subjectTitle = activeSubject?.name || 'Selected Subject'
+  const chapterTitle = activeChapter?.name || 'Selected Chapter'
 
+  const generatedPromptText = useMemo(() => {
     if (contentMode === 'mcqs') {
       return `SYSTEM PROMPT: Senior Curriculum Specialist
 Target Context:
 - Course: ${courseTitle}
 - Subject: ${subjectTitle}
 - Chapter: ${chapterTitle}
-- Quantity: ${finalQuantity} MCQs
-- Difficulty: ${mcqDifficulty} | Language: ${mcqLanguage}
-${targetExam ? `- Target Exam: ${targetExam}\n` : ''}${conceptFocus ? `- Focus Concepts: ${conceptFocus}\n` : ''}
-FORMAT: Return ONLY a valid JSON array or object with keys "question", "options" (array of 4), "correct" (A/B/C/D), "difficulty", and "explanation".`
-    } else {
-      return `SYSTEM PROMPT: Senior Flashcard Specialist
+- Chapter Description: ${chapterDescription || 'N/A'}
+- Content Type: MCQs
+- Quantity: ${finalQuantity}
+- Difficulty: ${mcqDifficulty}
+- Language: ${mcqLanguage}
+- Exam Benchmark: ${targetExam || 'N/A'}
+- Question Type: ${questionType}
+- Cognitive Level: ${cognitiveLevel}
+- Topic Focus: ${topicFocus || 'N/A'}
+- Exam Pattern: ${examPattern || 'N/A'}
+- Explanation Required: ${explanationRequired}
+- Negative Marking: ${negativeMarking || 'N/A'}
+- Language Style: ${languageStyle}
+- Special Instructions: ${specialInstructions || 'N/A'}
+FORMAT: Return ONLY a valid JSON array with keys "question", "options" (array of 4), "correct" (A/B/C/D), "difficulty", and "explanation".`
+    }
+
+    return `SYSTEM PROMPT: Senior Flashcard Specialist
 Target Context:
 - Course: ${courseTitle}
 - Subject: ${subjectTitle}
 - Chapter: ${chapterTitle}
-- Quantity: ${finalQuantity} Flashcards
-${flashDeckName ? `- Deck Name: ${flashDeckName}\n` : ''}- Difficulty: ${flashDifficulty} | Language: ${flashLanguage}
-${conceptFocus ? `- Instructions: ${conceptFocus}\n` : ''}
+- Chapter Description: ${chapterDescription || 'N/A'}
+- Content Type: Flashcards
+- Quantity: ${finalQuantity}
+- Difficulty: ${flashDifficulty}
+- Language: ${flashLanguage}
+- Deck Name: ${flashDeckName || 'N/A'}
+- Language Style: ${languageStyle}
+- Special Instructions: ${specialInstructions || 'N/A'}
 FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
-    }
   }, [
     contentMode,
-    selectedCourse,
-    activeSubject,
-    activeChapter,
+    courseTitle,
+    subjectTitle,
+    chapterTitle,
+    chapterDescription,
     finalQuantity,
     mcqDifficulty,
     mcqLanguage,
     targetExam,
-    conceptFocus,
+    questionType,
+    cognitiveLevel,
+    topicFocus,
+    examPattern,
+    explanationRequired,
+    negativeMarking,
+    languageStyle,
+    specialInstructions,
     flashDeckName,
     flashDifficulty,
     flashLanguage,
   ])
 
   // ── 5. Injection State Lifecycle & Request Isolation ──────────────────────
-  const [injectionStatus, setInjectionStatus] = useState('idle') // 'idle' | 'ready' | 'injecting' | 'success' | 'error'
+  const [injectionStatus, setInjectionStatus] = useState('idle')
   const [injectionError, setInjectionError] = useState(null)
   const [injectionResult, setInjectionResult] = useState(null)
   const [currentPayload, setCurrentPayload] = useState(null)
@@ -173,9 +219,84 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     setCurrentPayload(null)
   }, [selectedCourseId, selectedSubjectName, selectedChapterName, contentMode])
 
-  // ── Copy Prompt & JSON Handlers ─────────────────────────────────
+  // ── 6. JSON State & Handlers ─────────────────────────────────
   const [copied, setCopied] = useState(false)
+  const [jsonText, setJsonText] = useState('')
+  const [jsonStatus, setJsonStatus] = useState('empty')
   const [jsonError, setJsonError] = useState(null)
+  const [jsonItemCount, setJsonItemCount] = useState(0)
+
+  const validateAndParse = useCallback(
+    (raw) => {
+      try {
+        const parsed = JSON.parse(raw)
+        let mcqItems = []
+        let flashItems = []
+
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            if (item.front && item.back) flashItems.push(item)
+            else if (item.question) mcqItems.push(item)
+          })
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          if (Array.isArray(parsed.mcqs)) mcqItems = [...parsed.mcqs]
+          if (Array.isArray(parsed.flashcards)) flashItems = [...parsed.flashcards]
+        }
+
+        const activeItems = contentMode === 'mcqs' ? mcqItems : flashItems
+        if (activeItems.length > 0) {
+          setJsonStatus('valid')
+          setJsonError(null)
+          setJsonItemCount(activeItems.length)
+          setCurrentPayload(activeItems)
+          setInjectionStatus('ready')
+          setInjectionResult(null)
+          return true
+        }
+
+        setJsonStatus('invalid')
+        setJsonError(`JSON does not contain ${contentMode} payload.`)
+        setJsonItemCount(0)
+        setCurrentPayload(null)
+        return false
+      } catch (err) {
+        setJsonStatus('invalid')
+        setJsonError(err.message)
+        setJsonItemCount(0)
+        setCurrentPayload(null)
+        return false
+      }
+    },
+    [contentMode],
+  )
+
+  const handleJsonChange = useCallback(
+    (text) => {
+      setJsonText(text)
+      if (!text.trim()) {
+        setJsonStatus('empty')
+        setJsonError(null)
+        setJsonItemCount(0)
+        setCurrentPayload(null)
+        setInjectionStatus('idle')
+        return
+      }
+      validateAndParse(text)
+    },
+    [validateAndParse],
+  )
+
+  useEffect(() => {
+    if (!jsonText.trim()) {
+      setJsonStatus('empty')
+      setJsonError(null)
+      setJsonItemCount(0)
+      setCurrentPayload(null)
+      setInjectionStatus('idle')
+      return
+    }
+    validateAndParse(jsonText)
+  }, [jsonText, validateAndParse])
 
   const handleCopyPrompt = useCallback(() => {
     navigator.clipboard.writeText(generatedPromptText)
@@ -188,63 +309,47 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     setTimeout(() => setCopied(false), 2000)
   }, [generatedPromptText, contentMode])
 
-  const handleJsonLoad = useCallback((raw) => {
-    try {
-      const parsed = JSON.parse(raw)
-      let mcqItems = []
-      let flashItems = []
+  const handleClearJson = useCallback(() => {
+    setJsonText('')
+    setJsonStatus('empty')
+    setJsonError(null)
+    setJsonItemCount(0)
+    setCurrentPayload(null)
+    setInjectionStatus('idle')
+  }, [])
 
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item) => {
-          if (item.front && item.back) flashItems.push(item)
-          else if (item.question) mcqItems.push(item)
-        })
-      } else if (typeof parsed === 'object' && parsed !== null) {
-        if (Array.isArray(parsed.mcqs)) mcqItems = [...parsed.mcqs]
-        if (Array.isArray(parsed.flashcards)) flashItems = [...parsed.flashcards]
-      }
-
-      const activePayload = contentMode === 'mcqs' ? mcqItems : flashItems
-      if (activePayload.length > 0) {
-        setCurrentPayload(activePayload)
-        setInjectionStatus('ready')
-        setInjectionError(null)
-        setInjectionResult(null)
-        setJsonError(null)
-        showToast({
-          type: 'success',
-          title: 'JSON Payload Loaded!',
-          message: `Loaded ${activePayload.length} items. Click "Inject" to confirm.`,
-        })
-      } else {
-        const err = `JSON does not contain ${contentMode} payload.`
-        setJsonError(err)
-        showToast({ type: 'warning', title: 'No matching items', message: err })
-      }
-    } catch (err) {
-      const errMsg = err.message
-      setJsonError(errMsg)
-      showToast({ type: 'warning', title: 'Invalid JSON', message: errMsg })
+  useEffect(() => {
+    if (!jsonText.trim()) {
+      setJsonStatus('empty')
+      setJsonError(null)
+      setJsonItemCount(0)
+      setCurrentPayload(null)
+      setInjectionStatus('idle')
+      return
     }
-  }, [contentMode])
-
-  const handlePaste = useCallback((e) => {
-    const text = e.clipboardData.getData('text')
-    if (text) {
-      handleJsonLoad(text)
-    }
-  }, [handleJsonLoad])
+    validateAndParse(jsonText)
+  }, [jsonText, validateAndParse])
 
   // Backend Injection Handler
   const handlePerformInjection = async () => {
-    if (injectionStatus === 'injecting') return // Prevent double click / duplicate requests
+    if (injectionStatus === 'injecting') return
     if (!currentPayload || (Array.isArray(currentPayload) && currentPayload.length === 0)) {
-      showToast({ type: 'warning', title: 'No Payload', message: 'Please generate or paste content first.' })
+      showToast({ type: 'warning', title: 'No Payload', message: 'Please load valid JSON first.' })
       return
     }
 
     if (!selectedCourseId || !activeSubject || !activeChapter) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Please select a valid Course, Subject, and Chapter.' })
+      return
+    }
+
+    if (activeSubject.courseId !== selectedCourseId) {
+      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Subject does not belong to the selected Course.' })
+      return
+    }
+
+    if (activeChapter.subjectId && activeChapter.subjectId !== activeSubject.id) {
+      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Chapter does not belong to the selected Subject.' })
       return
     }
 
@@ -255,8 +360,8 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     try {
       const res = await mcqService.injectMcqs(
         selectedCourseId,
-        activeSubject.id || activeSubject.name,
-        activeChapter.id || activeChapter.name,
+        activeSubject.id,
+        activeChapter.id,
         currentPayload,
         contentMode,
         { subjectName: activeSubject.name, chapterName: activeChapter.name }
@@ -267,6 +372,11 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
       if (res.success) {
         setInjectionStatus('success')
         setInjectionResult(res)
+        setJsonText('')
+        setJsonStatus('empty')
+        setJsonError(null)
+        setJsonItemCount(0)
+        setCurrentPayload(null)
         showToast({
           type: 'success',
           title: contentMode === 'mcqs' ? 'MCQs Injected!' : 'Flashcards Injected!',
@@ -285,22 +395,17 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     }
   }
 
-  // ── 6. Store Search & Modal State ─────────────────────────────────
+  // ── 7. Store Search & Modal State ─────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, _setEditingItem] = useState(null)
 
-  // MCQ Modal Form
   const [mcqModalForm, setMcqModalForm] = useState({ question: '', options: ['', '', '', ''], correct: 0, difficulty: 'Medium' })
-  // Flashcard Modal Form
   const [flashModalForm, setFlashModalForm] = useState({ front: '', back: '' })
-
-
 
   return (
     <div className="chapter-mcq-injection-shell">
       {/* ── TOP CONTAINER: Context Selectors + Live Chapter Statistics ── */}
       <div className="top-context-stats-container">
-        {/* Left Side of Top Container: Cascading Selectors */}
         <div className="top-selectors-box">
           <div className="top-box-header">
             <AppIcon name="folder" size={18} className="top-header-icon" />
@@ -418,18 +523,17 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
 
       {/* ── MAIN WORKSPACE (2-COLUMN DIV SPLIT) ── */}
       <div className="main-workspace-grid">
-        {/* ── LEFT DIV: FIXED ARCHITECTURE GENERATOR PANEL ── */}
+        {/* ── LEFT DIV: CONTENT GENERATOR PANEL ── */}
         <div className="prompt-builder-left-div">
           <div className="left-card-header">
             <div className="header-title-block">
               <AppIcon name="edit" size={18} className="header-icon" />
               <div>
                 <h3 className="left-card-title">Content Generator</h3>
-                <p className="left-card-sub">Configure options to generate payload for injection.</p>
+                <p className="left-card-sub">Configure options, then copy prompt to generate externally.</p>
               </div>
             </div>
 
-            {/* Copy Prompt Button */}
             <Button
               variant="primary"
               size="md"
@@ -459,8 +563,8 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
             </button>
           </div>
 
-          {/* Unified Fixed Architecture Grid (Identical DOM layout for MCQs & Flashcards) */}
-          <div className="minimal-form-grid">
+          {/* Primary Fields Grid */}
+          <div className="gen-form-grid">
             <div className="form-field">
               <label className="form-lbl">
                 Quantity <span className="req-tag">(Required)</span>
@@ -551,22 +655,136 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
             </div>
           </div>
 
+          {/* Advanced Prompt Options */}
+          <button
+            type="button"
+            className="advanced-toggle"
+            onClick={() => setShowAdvanced((prev) => !prev)}
+          >
+            <AppIcon name={showAdvanced ? "remove" : "add"} size={16} />
+            {showAdvanced ? 'Hide Advanced Prompt Options' : 'Advanced Prompt Options'}
+          </button>
 
+          {showAdvanced && (
+            <div className="advanced-options-grid">
+              <div className="form-field">
+                <label className="form-lbl">Question Type</label>
+                <select
+                  className="admin-select-sm"
+                  value={questionType}
+                  onChange={(e) => setQuestionType(e.target.value)}
+                >
+                  {QUESTION_TYPES.map((q) => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-lbl">Cognitive Level</label>
+                <select
+                  className="admin-select-sm"
+                  value={cognitiveLevel}
+                  onChange={(e) => setCognitiveLevel(e.target.value)}
+                >
+                  {COGNITIVE_LEVELS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-lbl">Exam Pattern</label>
+                <select
+                  className="admin-select-sm"
+                  value={examPattern}
+                  onChange={(e) => setExamPattern(e.target.value)}
+                >
+                  <option value="">None</option>
+                  {EXAM_PATTERNS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-lbl">Explanation Required</label>
+                <select
+                  className="admin-select-sm"
+                  value={explanationRequired}
+                  onChange={(e) => setExplanationRequired(e.target.value)}
+                >
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-lbl">Language Style</label>
+                <select
+                  className="admin-select-sm"
+                  value={languageStyle}
+                  onChange={(e) => setLanguageStyle(e.target.value)}
+                >
+                  {LANGUAGE_STYLES.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label className="form-lbl">Negative Marking</label>
+                <input
+                  type="text"
+                  className="admin-input-sm"
+                  placeholder="e.g. 0.25 marks"
+                  value={negativeMarking}
+                  onChange={(e) => setNegativeMarking(e.target.value)}
+                />
+              </div>
+
+              <div className="form-field full-width">
+                <label className="form-lbl">Topic Focus</label>
+                <input
+                  type="text"
+                  className="admin-input-sm"
+                  placeholder="e.g. TCP/IP, OSI Layers"
+                  value={topicFocus}
+                  onChange={(e) => setTopicFocus(e.target.value)}
+                />
+              </div>
+
+              <div className="form-field full-width">
+                <label className="form-lbl">Special Instructions</label>
+                <textarea
+                  className="admin-textarea-sm"
+                  rows="2"
+                  placeholder="Any additional instructions for the generator..."
+                  value={specialInstructions}
+                  onChange={(e) => setSpecialInstructions(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ── RIGHT DIV: DYNAMIC INJECTION STATUS CARD WORKSPACE ── */}
+        {/* ── RIGHT DIV: INJECTION STATUS CARD WORKSPACE ── */}
         <div className="content-right-div">
-          {/* Reusable InjectionStatusCard Component */}
           <InjectionStatusCard
             chapterName={activeChapter?.name || 'Selected Chapter'}
+            chapterDescription={chapterDescription}
             injectionType={contentMode === 'mcqs' ? 'MCQs' : 'Flashcards'}
+            jsonText={jsonText}
+            onJsonChange={handleJsonChange}
+            jsonStatus={jsonStatus}
+            jsonError={jsonError}
+            jsonItemCount={jsonItemCount}
+            injectionStatus={injectionStatus}
             payload={currentPayload}
-            status={injectionStatus}
             error={injectionError}
             result={injectionResult}
             onInject={handlePerformInjection}
-            jsonError={jsonError}
-            onPaste={handlePaste}
+            onClearJson={handleClearJson}
           />
         </div>
       </div>
@@ -725,7 +943,6 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
           </div>
         </div>
       )}
-
     </div>
   )
 }

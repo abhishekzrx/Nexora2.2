@@ -11,7 +11,6 @@ import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import {
   useWorkspaceStore,
-  createWorkspace,
   renameWorkspace,
   duplicateWorkspace,
   archiveWorkspace,
@@ -21,7 +20,7 @@ import {
   deleteWorkspace,
   setActiveWorkspace,
 } from '../../data/workspaceStore'
-import { useAdminStore, addSubject } from '../../data/adminStore'
+import { useAdminStore } from '../../data/adminStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 import { courseService } from '../../services/courseService'
 import { subjectService } from '../../services/subjectService'
@@ -124,11 +123,16 @@ function AddSubjectUnderCourseModal({ course, onSubmit, onClose }) {
   const [icon, setIcon] = useState('chapters')
   const [color, setColor] = useState('#F1621B')
   const [status, setStatus] = useState('active')
+  const [creationError, setCreationError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setCreationError('')
     if (!name.trim()) return
-    onSubmit({ name: name.trim(), desc: desc.trim(), icon, color, status })
+    const result = await onSubmit({ name: name.trim(), desc: desc.trim(), icon, color, status })
+    if (!result?.success) {
+      setCreationError(result?.error || 'Failed to add subject.')
+    }
   }
 
   return (
@@ -201,6 +205,13 @@ function AddSubjectUnderCourseModal({ course, onSubmit, onClose }) {
               <option value="draft">Draft</option>
             </select>
           </div>
+
+          {creationError && (
+            <div className="cm-modal-error">
+              <AppIcon name="error" size={14} />
+              <span>{creationError}</span>
+            </div>
+          )}
 
           <div className="cm-modal-actions">
             <Button variant="secondary" type="button" onClick={onClose}>
@@ -300,10 +311,14 @@ function CourseListItem({
     showConfirm({
       title: `Delete Course "${course.name}"?`,
       message: 'This will permanently remove this course workspace.',
-      onConfirm: () => {
-        onDelete(course.id)
-        showToast({ type: 'success', title: 'Deleted', message: `"${course.name}" deleted.` })
+      onConfirm: async () => {
         dismissConfirm()
+        const res = await courseService.deleteCourse(course.id)
+        if (res.success) {
+          showToast({ type: 'success', title: 'Deleted', message: `"${course.name}" deleted.` })
+        } else {
+          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete course from database.' })
+        }
       },
       onCancel: dismissConfirm,
     })
@@ -311,7 +326,7 @@ function CourseListItem({
 
   return (
     <div
-      className={`cm-course-list-row${isSelected ? ' selected' : ''}`}
+      className={`cm-course-row-item${isSelected ? ' selected' : ''}`}
       onClick={() => onSelect(course.id)}
     >
       <div className="cm-row-left">
@@ -321,7 +336,7 @@ function CourseListItem({
         >
           <AppIcon name={course.icon || 'folder'} size={15} />
         </span>
-        <span className="cm-row-title" title={course.name}>
+        <span className="cm-row-course-name" title={course.name}>
           {course.name}
         </span>
       </div>
@@ -825,7 +840,7 @@ function CourseManager({ courseName: _courseName }) {
   }
 
   const handleCreateSubjectUnderSelected = async (data) => {
-    if (!selectedCourse) return
+    if (!selectedCourse) return { success: false, error: 'No course selected.' }
     try {
       const res = await subjectService.createSubject(selectedCourse.id, {
         name: data.name,
@@ -841,11 +856,11 @@ function CourseManager({ courseName: _courseName }) {
           title: 'Subject Added',
           message: `"${data.name}" added to "${selectedCourse.name}" successfully.`,
         })
-      } else {
-        showToast({ type: 'error', title: 'Error', message: res.error || 'Unable to add subject.' })
+        return { success: true }
       }
+      return { success: false, error: res.error || 'Unable to add subject.' }
     } catch (err) {
-      showToast({ type: 'error', title: 'Error', message: err.message || 'Unable to add subject.' })
+      return { success: false, error: err.message || 'Unable to add subject.' }
     }
   }
 
