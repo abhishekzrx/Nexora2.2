@@ -372,6 +372,12 @@ function SubjectCard({ subject, onSelect }) {
     onSelect(subject.subjectKey)
   }
 
+  const isHighAcc = subject.accuracy >= 75
+  const isMidAcc = subject.accuracy >= 50
+  const ringColor = subject.hasAttempts
+    ? (isHighAcc ? '#12B76A' : isMidAcc ? '#2E5CE6' : '#F1621B')
+    : '#2E5CE6'
+
   return (
     <div
       role="button"
@@ -396,7 +402,7 @@ function SubjectCard({ subject, onSelect }) {
             strokeWidth={4}
             progress={subject.progress}
             trackColor="#E7EDFD"
-            fillColor="#2E5CE6"
+            fillColor={ringColor}
           >
             <span className="subject-progress-pct">{subject.progress}%</span>
           </ProgressRing>
@@ -404,16 +410,26 @@ function SubjectCard({ subject, onSelect }) {
       </div>
       <div className="subject-name">{subject.title}</div>
 
-      {/* Performance Trend Bar */}
+      {/* Performance Trend Bar reflecting MCQ practice performance */}
       <div className="subject-trend-wrap">
         <div className="subject-trend-header">
-          <span className="subject-trend-lbl">Performance Trend</span>
-          <span className={`subject-trend-val ${subject.progress >= 60 ? 'text-green' : ''}`}>
-            {subject.progress >= 70 ? 'High Mastery' : subject.progress >= 40 ? 'Steady' : 'Building'}
+          <span className="subject-trend-lbl">
+            {subject.hasAttempts ? 'MCQ Performance' : 'Course Progress'}
+          </span>
+          <span className={`subject-trend-val ${subject.hasAttempts && isHighAcc ? 'text-green' : ''}`}>
+            {subject.hasAttempts
+              ? `${subject.accuracy}% Accuracy`
+              : subject.progress >= 70 ? 'High Mastery' : subject.progress >= 40 ? 'Steady' : 'Building'}
           </span>
         </div>
         <div className="subject-trend-track">
-          <div className="subject-trend-fill" style={{ width: `${Math.max(10, subject.progress)}%` }} />
+          <div
+            className="subject-trend-fill"
+            style={{
+              width: `${Math.max(8, subject.progress)}%`,
+              backgroundColor: ringColor
+            }}
+          />
         </div>
       </div>
 
@@ -422,9 +438,9 @@ function SubjectCard({ subject, onSelect }) {
           <AppIcon name="document" size={11} />
           {subject.chapters} Chs
         </span>
-        <span className="subject-stat">
+        <span className={`subject-stat ${subject.hasAttempts ? 'highlight-acc-stat' : ''}`}>
           <AppIcon name="mcqs" size={11} />
-          {subject.mcqs} MCQs
+          {subject.hasAttempts ? `${subject.accuracy}% Acc` : `${subject.mcqs} MCQs`}
         </span>
         <span className="subject-stat">
           <AppIcon name="flashcardsTab" size={11} />
@@ -624,7 +640,44 @@ function DashboardPage({
   const totalFlashcards = courseRegistry.flashcardCount || 0
   const completionRate = readinessScore
 
-  // Derive ALL subject cards from courseRegistry, sorted so the MOST RECENT subject appears at the TOP
+  // Subject performance metrics map calculated from MCQ attempt history
+  const subjectPerformanceMap = useMemo(() => {
+    const map = {}
+    pastAttempts.forEach((att) => {
+      if (att.subjectKey) {
+        if (!map[att.subjectKey]) {
+          map[att.subjectKey] = {
+            attemptsCount: 0,
+            totalCorrect: 0,
+            totalAttempted: 0,
+            latestAccuracy: 0,
+            accuracies: [],
+            lastAttemptTimestamp: 0,
+          }
+        }
+        const item = map[att.subjectKey]
+        item.attemptsCount += 1
+        item.totalCorrect += att.correct || 0
+        item.totalAttempted += att.attempted || att.total || 0
+        item.accuracies.push(att.accuracy !== undefined ? att.accuracy : 0)
+        if ((att.timestamp || 0) >= item.lastAttemptTimestamp) {
+          item.lastAttemptTimestamp = att.timestamp || 0
+          item.latestAccuracy = att.accuracy !== undefined ? att.accuracy : 0
+        }
+      }
+    })
+
+    Object.keys(map).forEach((key) => {
+      const item = map[key]
+      const avg = item.accuracies.length > 0
+        ? Math.round(item.accuracies.reduce((a, b) => a + b, 0) / item.accuracies.length)
+        : 0
+      item.effectiveAccuracy = item.latestAccuracy !== undefined ? item.latestAccuracy : avg
+    })
+    return map
+  }, [pastAttempts])
+
+  // Derive ALL subject cards from courseRegistry, sorted by recent attempt and reflecting real MCQ accuracy
   const subjectCards = useMemo(() => {
     const list = [...(courseRegistry.subjectsList || [])]
     
@@ -638,13 +691,22 @@ function DashboardPage({
 
     return list.map((s, i) => {
       const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
-      const lastTs = subjectLastAttemptMap[s.subjectKey]
+      const perf = subjectPerformanceMap[s.subjectKey] || null
+      const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
+      const accuracyPct = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
+      const lastTs = perf?.lastAttemptTimestamp || subjectLastAttemptMap[s.subjectKey]
+
       return {
         subjectKey: s.subjectKey,
         title: s.title,
         icon: s.icon,
         iconClass: tone.iconClass,
-        progress: s.progress,
+        progress: accuracyPct,
+        accuracy: accuracyPct,
+        hasAttempts,
+        attemptsCount: perf?.attemptsCount || 0,
+        totalCorrect: perf?.totalCorrect || 0,
+        totalAttempted: perf?.totalAttempted || 0,
         chapters: s.counts?.chapters || 0,
         mcqs: s.counts?.mcqs || 0,
         flashcards: s.counts?.flashcards || 0,
@@ -652,7 +714,7 @@ function DashboardPage({
         isRecent: Boolean(lastTs),
       }
     })
-  }, [courseRegistry, subjectLastAttemptMap])
+  }, [courseRegistry, subjectLastAttemptMap, subjectPerformanceMap])
 
   // Recent practice sessions list with Subject Name and Chapter Name
   const recentSessionsList = useMemo(() => {

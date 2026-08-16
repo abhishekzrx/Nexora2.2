@@ -6,6 +6,8 @@ import SideDrawer from './components/layout/SideDrawer'
 import { useCourseRegistry } from './data/courseRegistry'
 import { useWorkspaceStore } from './data/workspaceStore'
 
+import { testSession } from './utils/navigation'
+
 const TONE_MAP = [
   { iconClass: 'icon-orange', pillClass: 'pill-orange', progressClass: 'fill-orange', percentClass: 'pct-orange', arrowClass: 'arrow-orange' },
   { iconClass: 'icon-blue', pillClass: 'pill-blue', progressClass: 'fill-blue', percentClass: 'pct-blue', arrowClass: 'arrow-blue' },
@@ -82,23 +84,83 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
 
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
 
+  const pastAttempts = useMemo(() => {
+    let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    if (memoryAttempts.length === 0) {
+      try {
+        const cached = localStorage.getItem('nexora_recent_mcq_attempts')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed)) memoryAttempts = parsed
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return memoryAttempts
+  }, [testSession.attemptHistoryData])
+
+  const subjectPerformanceMap = useMemo(() => {
+    const map = {}
+    pastAttempts.forEach((att) => {
+      if (att.subjectKey) {
+        if (!map[att.subjectKey]) {
+          map[att.subjectKey] = {
+            attemptsCount: 0,
+            latestAccuracy: 0,
+            accuracies: [],
+            lastAttemptTimestamp: 0,
+          }
+        }
+        const item = map[att.subjectKey]
+        item.attemptsCount += 1
+        item.accuracies.push(att.accuracy !== undefined ? att.accuracy : 0)
+        if ((att.timestamp || 0) >= item.lastAttemptTimestamp) {
+          item.lastAttemptTimestamp = att.timestamp || 0
+          item.latestAccuracy = att.accuracy !== undefined ? att.accuracy : 0
+        }
+      }
+    })
+
+    Object.keys(map).forEach((key) => {
+      const item = map[key]
+      const avg = item.accuracies.length > 0
+        ? Math.round(item.accuracies.reduce((a, b) => a + b, 0) / item.accuracies.length)
+        : 0
+      item.effectiveAccuracy = item.latestAccuracy !== undefined ? item.latestAccuracy : avg
+    })
+    return map
+  }, [pastAttempts])
+
   const subjects = useMemo(() => registry.subjectsList.map((s, i) => {
     const tone = TONE_MAP[i % TONE_MAP.length]
+    const perf = subjectPerformanceMap[s.subjectKey] || null
+    const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
+    const accuracy = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
+
+    const isHighAcc = accuracy >= 75
+    const isMidAcc = accuracy >= 50
+    const pillClass = hasAttempts
+      ? (isHighAcc ? 'pill-green' : isMidAcc ? 'pill-blue' : 'pill-orange')
+      : tone.pillClass
+
     return {
       subjectKey: s.subjectKey,
       title: s.title,
       icon: s.icon,
       iconClass: tone.iconClass,
-      pillClass: tone.pillClass,
-      pillLabel: s.badge || 'MEDIUM',
-      meta: `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
-      progress: s.progress,
-      progressClass: tone.progressClass,
-      percentClass: tone.percentClass,
+      pillClass,
+      pillLabel: hasAttempts ? `${accuracy}% ACCURACY` : (s.badge || 'MEDIUM'),
+      meta: hasAttempts
+        ? `${s.counts.chapters} Chapters • ${accuracy}% MCQ Acc (${perf.attemptsCount} Attempt${perf.attemptsCount > 1 ? 's' : ''})`
+        : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
+      progress: accuracy,
+      progressClass: hasAttempts && isHighAcc ? 'fill-green' : tone.progressClass,
+      percentClass: hasAttempts && isHighAcc ? 'pct-green' : tone.percentClass,
       arrowClass: tone.arrowClass,
       locked: s.locked,
     }
-  }), [registry])
+  }), [registry, subjectPerformanceMap])
 
   const heroStats = useMemo(() => [
     { icon: 'chapters', value: String(registry.subjectCount), label: 'Subjects' },
