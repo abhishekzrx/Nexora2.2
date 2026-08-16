@@ -56,8 +56,11 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   const accuracy = result.accuracy || 0
 
   const poolSize = result.poolSize || total
-  const uniquePracticedTotal = result.uniquePracticedTotal || total
-  const remainingUnpracticed = result.remainingUnpracticed !== undefined ? result.remainingUnpracticed : Math.max(0, poolSize - uniquePracticedTotal)
+  const newlyMasteredCount = result.newlyMasteredCount || 0
+  const totalMastered = result.totalMastered !== undefined ? result.totalMastered : correct
+  const remainingEligible = result.remainingEligible !== undefined ? result.remainingEligible : Math.max(0, poolSize - totalMastered)
+  const uniquePracticedTotal = result.uniquePracticedTotal || totalMastered
+  const remainingUnpracticed = remainingEligible
   const prevAttemptAccuracy = result.prevAttemptAccuracy
   const scoreDelta = result.scoreDelta
 
@@ -68,8 +71,8 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   const statItems = [
     { icon: 'check', iconClass: 'icon-correct', value: String(correct), label: 'Correct' },
     { icon: 'cross', iconClass: 'icon-incorrect', value: String(incorrect), label: 'Incorrect' },
-    { icon: 'remove', iconClass: 'icon-unattempted', value: String(skipped), label: 'Skipped' },
-    { icon: 'viewList', iconClass: 'icon-total', value: String(total), label: 'Session Size' },
+    { icon: 'star', iconClass: 'icon-total', value: String(newlyMasteredCount), label: 'Newly Mastered' },
+    { icon: 'viewList', iconClass: 'icon-unattempted', value: String(remainingEligible), label: 'Remaining' },
   ]
 
   // Strengths / Topics to Improve derived from actual question results

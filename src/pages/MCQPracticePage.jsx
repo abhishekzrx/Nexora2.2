@@ -19,6 +19,16 @@ import { testSession } from '../utils/navigation'
 import { showToast } from '../data/feedbackStore'
 import { mcqService } from '../services/mcqService'
 import { useWorkspaceStore } from '../data/workspaceStore'
+import { getCurrentUserId } from '../services/userService'
+
+function shuffleArray(array) {
+  const arr = [...array]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
 
 const questions = [
   {
@@ -346,15 +356,22 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const subjectTitle = subject?.title || 'Subject'
 
   const [dbQuestions, setDbQuestions] = useState([])
+  const [userProgressMap, setUserProgressMap] = useState(new Map())
   const [mcqError, setMcqError] = useState(null)
   const [loadingMcqs, setLoadingMcqs] = useState(false)
+  const [isReviewModeState, setIsReviewModeState] = useState(reviewMode)
+
+  useEffect(() => {
+    setIsReviewModeState(reviewMode)
+  }, [reviewMode])
 
   useEffect(() => {
     let isMounted = true
     let abortController = null
 
-    async function loadRemoteMcqs() {
+    async function loadRemoteMcqsAndProgress() {
       setDbQuestions([])
+      setUserProgressMap(new Map())
       setMcqError(null)
       setLoadingMcqs(true)
 
@@ -365,23 +382,23 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
       const subjectId = subject?.subjectId || subjectKey
       const chapterId = chapter?.id || null
+      const userId = getCurrentUserId()
 
       abortController = new AbortController()
 
       try {
-        const res = await mcqService.getMcqs(
-          activeWorkspaceId,
-          subjectId,
-          chapterId
-        )
+        const [mcqRes, progressRes] = await Promise.all([
+          mcqService.getMcqs(activeWorkspaceId, subjectId, chapterId),
+          chapterId ? mcqService.getUserProgress(userId, chapterId) : Promise.resolve({ success: true, data: [] }),
+        ])
 
         if (!isMounted || abortController.signal.aborted) return
 
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (mcqRes.success && Array.isArray(mcqRes.data) && mcqRes.data.length > 0) {
           const seenIds = new Set()
           const validList = []
 
-          res.data.forEach((m, idx) => {
+          mcqRes.data.forEach((m, idx) => {
             if (!m) return
             const qId = m.id || `q-${idx + 1}`
             if (seenIds.has(qId)) return
@@ -408,25 +425,40 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               options: opts,
               correct: correctIdx,
               explanation: m.explanation || 'No detailed explanation provided for this question.',
+              chapterId: m.chapter_id || chapterId,
+              subjectId: m.subject_id || subjectId,
             })
           })
 
           setDbQuestions(validList)
+
+          const pMap = new Map()
+          if (progressRes.success && Array.isArray(progressRes.data)) {
+            progressRes.data.forEach((p) => {
+              if (p && p.mcq_id) {
+                pMap.set(p.mcq_id, p)
+              }
+            })
+          }
+          setUserProgressMap(pMap)
           setMcqError(null)
-        } else if (res.success) {
+        } else if (mcqRes.success) {
           setDbQuestions([])
+          setUserProgressMap(new Map())
           setMcqError(null)
         } else {
           setDbQuestions([])
-          setMcqError(res.error || 'Failed to load MCQs from database')
+          setUserProgressMap(new Map())
+          setMcqError(mcqRes.error || 'Failed to load MCQs from database')
         }
       } catch (err) {
         if (!isMounted || abortController?.signal.aborted) return
         const message = err.message || 'Network request failed'
         if (import.meta.env.DEV) {
-          console.warn('[MCQPracticePage] MCQ load error:', message)
+          console.warn('[MCQPracticePage] MCQ/Progress load error:', message)
         }
         setDbQuestions([])
+        setUserProgressMap(new Map())
         setMcqError(message)
       } finally {
         if (isMounted && !abortController?.signal.aborted) {
@@ -435,7 +467,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       }
     }
 
-    loadRemoteMcqs()
+    loadRemoteMcqsAndProgress()
     return () => {
       isMounted = false
       if (abortController) {
@@ -444,70 +476,76 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     }
   }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
 
-  const totalPool = dbQuestions.length
-
-  // Smart Practice Session Selection: Prefer new unpracticed questions first, then fill with practiced if < 20
-  const { activeQuestions, newCount, practicedCount } = useMemo(() => {
-    if (loadingMcqs || totalPool === 0) {
-      return { activeQuestions: [], newCount: 0, practicedCount: 0 }
+  // Practice session pool logic with persistent question retirement & mastery prioritization
+  const { activeQuestions, newCount, practicedCount, masteredCount, totalPool } = useMemo(() => {
+    const poolSize = dbQuestions.length
+    if (loadingMcqs || poolSize === 0) {
+      return { activeQuestions: [], newCount: 0, practicedCount: 0, masteredCount: 0, totalPool: 0 }
     }
 
-    const pastAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
-    const historicalQuestionIds = new Set()
-    pastAttempts.forEach((att) => {
-      if (Array.isArray(att.questionIds)) {
-        att.questionIds.forEach((id) => historicalQuestionIds.add(id))
-      }
-    })
-
-    const unpracticedList = []
-    const practicedList = []
+    const masteredList = []
+    const unseenList = []
+    const incorrectList = []
 
     dbQuestions.forEach((q) => {
-      if (historicalQuestionIds.has(q.id)) {
-        practicedList.push(q)
+      const progress = userProgressMap.get(q.id)
+      const status = progress ? progress.status : 'UNSEEN'
+
+      if (status === 'MASTERED') {
+        masteredList.push(q)
+      } else if (status === 'INCORRECT') {
+        incorrectList.push(q)
       } else {
-        unpracticedList.push(q)
+        unseenList.push(q)
       }
     })
 
-    const targetSize = Math.min(20, totalPool)
-    const selected = []
-
-    // 1. Prefer new/unpracticed questions first
-    const newSelected = unpracticedList.slice(0, targetSize)
-    selected.push(...newSelected)
-
-    // 2. Fill remaining slots with previously practiced questions if needed
-    if (selected.length < targetSize) {
-      const remainingNeeded = targetSize - selected.length
-      const practicedSelected = practicedList.slice(0, remainingNeeded)
-      selected.push(...practicedSelected)
+    if (isReviewModeState) {
+      const reviewList = masteredList.length > 0 ? masteredList : dbQuestions
+      return {
+        activeQuestions: reviewList,
+        newCount: 0,
+        practicedCount: reviewList.length,
+        masteredCount: masteredList.length,
+        totalPool: poolSize,
+      }
     }
 
-    const n = newSelected.length
-    const p = selected.length - n
+    // Normal Practice Mode: Exclude MASTERED, prioritize UNSEEN, then INCORRECT
+    const shuffledUnseen = shuffleArray(unseenList)
+    const shuffledIncorrect = shuffleArray(incorrectList)
+    const eligiblePool = [...shuffledUnseen, ...shuffledIncorrect]
+
+    const targetSize = Math.min(20, eligiblePool.length)
+    const selected = eligiblePool.slice(0, targetSize)
+
+    const sessionUnseenCount = selected.filter((q) => {
+      const p = userProgressMap.get(q.id)
+      return !p || p.status === 'UNSEEN'
+    }).length
 
     return {
       activeQuestions: selected,
-      newCount: n,
-      practicedCount: p,
+      newCount: sessionUnseenCount,
+      practicedCount: selected.length - sessionUnseenCount,
+      masteredCount: masteredList.length,
+      totalPool: poolSize,
     }
-  }, [dbQuestions, totalPool, loadingMcqs])
+  }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState])
 
   const availableCount = activeQuestions.length
   const totalGridSize = availableCount
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState(() =>
-    reviewMode ? { ...testSession.answers } : {},
+    isReviewModeState ? { ...testSession.answers } : {},
   )
   const [marked, setMarked] = useState(() => {
-    if (reviewMode) return new Set(testSession.marked)
+    if (isReviewModeState) return new Set(testSession.marked)
     return new Set()
   })
   const [visited, setVisited] = useState(() => {
-    if (reviewMode) return new Set(testSession.visited)
+    if (isReviewModeState) return new Set(testSession.visited)
     return new Set([0])
   })
   const [timerOn, setTimerOn] = useState(false)
@@ -517,11 +555,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const [isMobile, setIsMobile] = useState(getIsMobile)
 
   // ── Question transition state ──────────────────────────────
-  // `currentIndex` is the navigation target; `displayed` is the question
-  // currently shown. Animating out the old, then swapping to the new keeps
-  // only ONE question rendered at a time and guarantees the final selected
-  // question always lands — even on rapid clicks (the effect cleanup clears
-  // any pending swap timer).
   const [displayed, setDisplayed] = useState(0)
   const [phase, setPhase] = useState('in')
   const [dir, setDir] = useState('next')
@@ -580,9 +613,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     return () => clearInterval(id)
   }, [timerOn, isEvaluating])
 
-  // Drive the question change transition: animate the current question out,
-  // then swap to the target and animate it in. Reduced-motion users skip the
-  // delay entirely. Only one question is ever in the DOM at a time.
   useEffect(() => {
     if (currentIndex === displayed) return undefined
     const reduceMotion =
@@ -602,22 +632,18 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     return () => clearTimeout(t)
   }, [currentIndex, displayed])
 
-  // Reset the scroll position whenever the displayed question changes.
   useEffect(() => {
     if (questionScrollRef.current) {
       questionScrollRef.current.scrollTop = 0
     }
   }, [displayed])
 
-  // Starting a fresh practice session clears any result left over from a
-  // previous test so the Results Page can never show stale data before the
-  // new submission happens.
   useEffect(() => {
-    if (!reviewMode) {
+    if (!isReviewModeState) {
       testSession.result = null
       testSession.questions = null
     }
-  }, [reviewMode])
+  }, [isReviewModeState])
 
   const formattedTime = useMemo(() => {
     const h = Math.floor(secondsLeft / 3600)
@@ -627,12 +653,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [secondsLeft])
 
   const selectOption = useCallback((optionIndex) => {
-    if (reviewMode || isEvaluating) return
+    if (isReviewModeState || isEvaluating) return
     setAnswers((prev) => ({ ...prev, [displayed]: optionIndex }))
-  }, [displayed, reviewMode, isEvaluating])
+  }, [displayed, isReviewModeState, isEvaluating])
 
   const toggleMark = useCallback(() => {
-    if (reviewMode || isEvaluating) return
+    if (isReviewModeState || isEvaluating) return
     setMarked((prev) => {
       const next = new Set(prev)
       if (next.has(displayed)) {
@@ -642,7 +668,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       }
       return next
     })
-  }, [displayed, reviewMode, isEvaluating])
+  }, [displayed, isReviewModeState, isEvaluating])
 
   const goTo = useCallback((index, direction = 'fade') => {
     if (index >= availableCount) {
@@ -673,9 +699,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [currentIndex, availableCount, goTo, handleUnavailableClick])
 
   const toggleTimer = useCallback(() => {
-    if (reviewMode || isEvaluating) return
+    if (isReviewModeState || isEvaluating) return
     setTimerOn((prev) => !prev)
-  }, [reviewMode, isEvaluating])
+  }, [isReviewModeState, isEvaluating])
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
@@ -685,18 +711,76 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     setExamMode((prev) => !prev)
   }, [])
 
-  // Finalize attempt and update session state
-  const finalizeSubmission = useCallback((questionList) => {
+  // Finalize attempt and update persistent user progress in Supabase
+  const finalizeSubmission = useCallback(async (questionList) => {
+    const userId = getCurrentUserId()
+    const chapterId = chapter?.id || dbQuestions[0]?.chapterId || 'ch-default'
+
     let correctCount = 0
     let incorrectCount = 0
     let attemptedCount = 0
+    let newlyMastered = 0
+
+    const progressUpdates = []
+    const newProgressMap = new Map(userProgressMap)
+
     questionList.forEach((q, idx) => {
       const chosen = answers[idx]
       if (chosen === undefined || chosen === null) return
       attemptedCount += 1
-      if (chosen === q.correct) correctCount += 1
-      else incorrectCount += 1
+
+      const existing = userProgressMap.get(q.id) || {
+        attempts: 0,
+        correct_count: 0,
+        incorrect_count: 0,
+        status: 'UNSEEN',
+      }
+
+      const isCorrect = chosen === q.correct
+      if (isCorrect) {
+        correctCount += 1
+        if (existing.status !== 'MASTERED') {
+          newlyMastered += 1
+        }
+      } else {
+        incorrectCount += 1
+      }
+
+      const newStatus = isCorrect ? 'MASTERED' : 'INCORRECT'
+
+      const updatedRecord = {
+        user_id: userId,
+        mcq_id: q.id,
+        chapter_id: q.chapterId || chapterId,
+        status: newStatus,
+        attempts: (existing.attempts || 0) + 1,
+        correct_count: (existing.correct_count || 0) + (isCorrect ? 1 : 0),
+        incorrect_count: (existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
+        last_attempted_at: new Date().toISOString(),
+      }
+
+      progressUpdates.push(updatedRecord)
+      newProgressMap.set(q.id, updatedRecord)
     })
+
+    if (progressUpdates.length > 0) {
+      const saveRes = await mcqService.updateUserProgress(userId, progressUpdates)
+
+      if (!saveRes.success) {
+        setIsEvaluating(false)
+        showToast({
+          type: 'error',
+          title: 'Progress Save Failed',
+          message: saveRes.error || 'Failed to save question progress to database. Questions were not retired.',
+          duration: 5000,
+        })
+        return
+      }
+    }
+
+    // Persisted to database successfully -> Update local component state
+    setUserProgressMap(newProgressMap)
+
     const totalCount = questionList.length
     const unansweredCount = totalCount - attemptedCount
     const score = correctCount
@@ -706,17 +790,15 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     const pastAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
     const prevAttempt = pastAttempts.length > 0 ? pastAttempts[pastAttempts.length - 1] : null
 
-    // Track unique question IDs attempted across sessions
-    const attemptedIdsSet = new Set()
-    pastAttempts.forEach((att) => {
-      if (Array.isArray(att.questionIds)) {
-        att.questionIds.forEach((id) => attemptedIdsSet.add(id))
+    let currentTotalMastered = 0
+    dbQuestions.forEach((q) => {
+      const p = newProgressMap.get(q.id)
+      if (p && p.status === 'MASTERED') {
+        currentTotalMastered += 1
       }
     })
-    questionList.forEach((q) => attemptedIdsSet.add(q.id))
 
-    const uniquePracticedTotal = attemptedIdsSet.size
-    const remainingUnpracticed = Math.max(0, totalPool - uniquePracticedTotal)
+    const remainingEligible = Math.max(0, totalPool - currentTotalMastered)
 
     const currentAttemptRecord = {
       id: `att-${Date.now()}`,
@@ -740,12 +822,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     testSession.marked = new Set(marked)
     testSession.visited = new Set(visited)
     testSession.questions = questionList
-    testSession.mode = 'practice'
+    testSession.mode = isReviewModeState ? 'review' : 'practice'
     const initialSeconds = 29 * 60 + 45
     testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
     testSession.attemptHistoryData = [...pastAttempts, currentAttemptRecord]
-    
+
     testSession.result = {
       total: totalCount,
       attempted: attemptedCount,
@@ -756,17 +838,18 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       percentage,
       accuracy,
       poolSize: totalPool,
-      newCount,
-      practicedCount,
-      uniquePracticedTotal,
-      remainingUnpracticed,
+      newlyMasteredCount: newlyMastered,
+      totalMastered: currentTotalMastered,
+      remainingEligible,
+      remainingUnpracticed: remainingEligible,
+      uniquePracticedTotal: currentTotalMastered + (totalPool - currentTotalMastered),
       prevAttemptAccuracy: prevAttempt ? prevAttempt.accuracy : null,
       scoreDelta: prevAttempt ? accuracy - prevAttempt.accuracy : null,
     }
-    
+
     setIsEvaluating(false)
     onSubmit?.()
-  }, [answers, marked, visited, subjectKey, chapter, secondsLeft, totalPool, newCount, practicedCount, onSubmit])
+  }, [answers, marked, visited, subjectKey, chapter, secondsLeft, totalPool, dbQuestions, userProgressMap, isReviewModeState, onSubmit])
 
   const handleSubmit = () => {
     if (isEvaluating) return
@@ -833,7 +916,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               <AppIcon name="back" size={20} />
             </button>
             <div className="header-title">
-              <h1>{reviewMode ? 'Review Answers' : 'MCQ Practice'}</h1>
+              <h1>{isReviewModeState ? 'Review Answers' : 'MCQ Practice'}</h1>
               <p>{chapter ? `${subjectTitle} • Chapter ${chapter.num || chapter.number || 1}` : subjectTitle}</p>
             </div>
           </div>
@@ -852,7 +935,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               className={`pause-btn${timerOn ? ' timer-active' : ''}`}
               onClick={toggleTimer}
               aria-label={timerOn ? 'Pause timer' : 'Start timer'}
-              disabled={reviewMode || isEvaluating}
+              disabled={isReviewModeState || isEvaluating}
             >
               <AppIcon name={timerOn ? 'pause' : 'timer'} size={16} />
             </button>
@@ -907,17 +990,46 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
                 Go Back
               </button>
             </div>
+          ) : totalPool > 0 && availableCount === 0 && !isReviewModeState ? (
+            <div className="mcq-state-card mastered-completion" style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                You've mastered all available MCQs in this chapter
+              </h2>
+              <p style={{ color: 'var(--text-secondary, #94a3b8)', marginBottom: '24px', maxWidth: '420px', margin: '0 auto 24px' }}>
+                You answered all {totalPool} questions correctly! They have been retired from normal practice.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setIsReviewModeState(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+                >
+                  <AppIcon name="reviewAnswers" size={16} />
+                  Review Mastered Questions
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onBack}
+                  style={{ padding: '10px 20px' }}
+                >
+                  Back to Chapter
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               {/* Pool & Session Info Banner */}
               <div className="pool-info-banner">
                 <div className="pool-info-pill">
                   <span className="pill-dot pool-dot" />
-                  <strong>MCQ Pool:</strong> {totalPool} Questions
+                  <strong>MCQ Pool:</strong> {totalPool} Questions ({masteredCount} Mastered)
                 </div>
                 <div className="pool-info-pill">
                   <span className="pill-dot session-dot" />
-                  <strong>Practice Session:</strong> {availableCount} Questions ({newCount} New, {practicedCount} Practiced)
+                  <strong>{isReviewModeState ? 'Review Session:' : 'Practice Session:'}</strong> {availableCount} Questions ({newCount} Unseen, {practicedCount} Re-attempt)
                 </div>
               </div>
 

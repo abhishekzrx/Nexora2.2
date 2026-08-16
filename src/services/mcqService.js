@@ -220,4 +220,76 @@ export const mcqService = {
       data: insertedRecords,
     }
   },
+
+  async getUserProgress(userId, chapterId) {
+    if (!userId || !chapterId) {
+      return { success: true, data: [] }
+    }
+    try {
+      const res = await apiService.get(
+        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
+      )
+      if (res.success && Array.isArray(res.data)) {
+        return { success: true, data: res.data }
+      }
+
+      // If table doesn't exist yet on Supabase (e.g. 404), fallback to persistent local cache
+      const localCacheKey = `mcq_progress_${userId}_${chapterId}`
+      const cached = localStorage.getItem(localCacheKey)
+      const data = cached ? JSON.parse(cached) : []
+      return { success: true, data, isFallback: true }
+    } catch (err) {
+      return { success: false, error: err.message || 'Failed to fetch MCQ progress' }
+    }
+  },
+
+  async updateUserProgress(userId, progressUpdates) {
+    if (!userId || !Array.isArray(progressUpdates) || progressUpdates.length === 0) {
+      return { success: true, data: [] }
+    }
+    try {
+      const res = await apiService.post(
+        `/mcq_progress?on_conflict=user_id,mcq_id`,
+        progressUpdates,
+        { Prefer: 'resolution=merge-duplicates,return=representation' }
+      )
+
+      // Maintain local fallback cache for robust offline / fallback behavior
+      const chapterGroups = {}
+      progressUpdates.forEach((p) => {
+        const cId = p.chapter_id
+        if (cId) {
+          if (!chapterGroups[cId]) chapterGroups[cId] = []
+          chapterGroups[cId].push(p)
+        }
+      })
+      Object.keys(chapterGroups).forEach((cId) => {
+        const localCacheKey = `mcq_progress_${userId}_${cId}`
+        try {
+          const cachedRaw = localStorage.getItem(localCacheKey)
+          const existing = cachedRaw ? JSON.parse(cachedRaw) : []
+          const existingMap = new Map(existing.map((item) => [item.mcq_id, item]))
+          chapterGroups[cId].forEach((item) => {
+            existingMap.set(item.mcq_id, item)
+          })
+          localStorage.setItem(localCacheKey, JSON.stringify(Array.from(existingMap.values())))
+        } catch {
+          // ignore
+        }
+      })
+
+      if (res.success) {
+        return { success: true, data: res.data }
+      }
+
+      // If Supabase table does not exist yet (e.g. 404 before migration execution), fallback gracefully
+      if (res.error && String(res.error).includes('Could not find the table')) {
+        return { success: true, data: progressUpdates, isFallback: true }
+      }
+
+      return { success: false, error: res.error || 'Failed to update progress in database' }
+    } catch (err) {
+      return { success: false, error: err.message || 'Failed to update progress' }
+    }
+  },
 }
