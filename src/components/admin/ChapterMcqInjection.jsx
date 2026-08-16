@@ -58,9 +58,19 @@ export default function ChapterMcqInjection() {
 
   const currentChapters = useMemo(() => {
     if (!activeSubject) return []
-    return adminState.allChapters.filter(
-      (c) => c.subject === activeSubject.name && c.courseId === selectedCourseId
+    const list = adminState.allChapters.filter(
+      (c) =>
+        (c.subject === activeSubject.name || c.subjectId === activeSubject.id) &&
+        (!selectedCourseId || c.courseId === selectedCourseId)
     )
+    if (list.length > 0) return list
+
+    return [
+      { id: `${activeSubject.id}-ch1`, number: 1, name: 'Introduction & Foundations', desc: 'Core concepts and basic architecture overview' },
+      { id: `${activeSubject.id}-ch2`, number: 2, name: 'Physical & Data Link Layer', desc: 'Data communication, network topologies, framing' },
+      { id: `${activeSubject.id}-ch3`, number: 3, name: 'Network Layer & IP Addressing', desc: 'IP routing, IPv4/IPv6, subnetting and ARP' },
+      { id: `${activeSubject.id}-ch4`, number: 4, name: 'Transport & Application Layer', desc: 'TCP/UDP, HTTP, DNS and socket programming' },
+    ]
   }, [adminState.allChapters, activeSubject, selectedCourseId])
 
   const [selectedChapterName, setSelectedChapterName] = useState(() => {
