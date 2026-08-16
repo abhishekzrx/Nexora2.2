@@ -1036,8 +1036,8 @@ img{
 .subjects-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-bottom:20px;
+  gap:9px;
+  margin-bottom:18px;
 }
 
 .subject-card{
@@ -1045,11 +1045,13 @@ img{
   width:100%;
   background:#fff;
   border:1.5px solid #E0E7FF;
-  border-radius:14px;
-  padding:12px;
+  border-radius:13px;
+  padding:10px 11px;
   text-align:left;
   box-shadow:0 1px 3px rgba(16,24,40,0.06);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transform: scale(0.95);
+  transform-origin: top center;
 }
 
 .subject-card:hover{
