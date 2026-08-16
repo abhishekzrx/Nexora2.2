@@ -568,14 +568,15 @@ img{
   width:52px;
   height:52px;
   border-radius:50%;
-  background:#101828;
-  border:3px solid var(--orange);
+  background:linear-gradient(135deg, #F1621B 0%, #FF8A3D 100%);
+  border:3px solid #FFFFFF;
   display:flex;
   align-items:center;
   justify-content:center;
   color:#fff;
   font-size:20px;
   margin-top:-28px;
+  box-shadow:0 8px 20px rgba(241,98,27,0.45);
 }
 
 @media (min-width: 481px){
