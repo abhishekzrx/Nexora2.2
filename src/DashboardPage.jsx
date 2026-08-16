@@ -908,18 +908,7 @@ function DashboardPage({
             </div>
           </div>
 
-          <div className="header-right">
-            <div className="bell-wrap" aria-hidden="true">
-              <AppIcon name="notifications" size={19} />
-              <span className="bell-badge">3</span>
-            </div>
-            <div className="avatar" aria-hidden="true">
-              <AppIcon name="profile" size={20} />
-            </div>
-            <span className="chevron-down" aria-hidden="true">
-              <AppIcon name="chevronDown" size={12} />
-            </span>
-          </div>
+
         </header>
 
         <main className="content">
