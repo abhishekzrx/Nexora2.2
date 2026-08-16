@@ -247,6 +247,32 @@ export const mcqService = {
     }
   },
 
+  async getAllUserProgress(userId) {
+    if (!userId) {
+      return { success: true, data: [] }
+    }
+    try {
+      const res = await apiService.get(
+        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}`
+      )
+      if (res && res.success) {
+        return {
+          success: true,
+          data: Array.isArray(res.data) ? res.data : [],
+        }
+      }
+      return {
+        success: false,
+        error: res?.error || res?.message || 'Failed to fetch overall MCQ progress',
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to fetch overall MCQ progress',
+      }
+    }
+  },
+
   async updateUserProgress(userId, progressUpdates) {
     if (!userId || !Array.isArray(progressUpdates) || progressUpdates.length === 0) {
       return { success: true, data: [] }

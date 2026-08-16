@@ -59,10 +59,8 @@ function buildSubjectEntry(key, subject, index) {
     .filter((ch) => !ch.archived)
     .sort((a, b) => (a.number || 0) - (b.number || 0))
     .map((ch, ci) => {
-      const rawMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
-      const totalMcqs = rawMcqs === 1000 ? 0 : rawMcqs
-      const rawFlash = typeof ch.totalFlashcards === 'number' ? ch.totalFlashcards : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
-      const totalFlashcards = rawFlash === 1000 ? 0 : rawFlash
+      const totalMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
+      const totalFlashcards = typeof ch.totalFlashcards === 'number' ? ch.totalFlashcards : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
       const answeredMcqs = typeof ch.answeredMcqs === 'number' ? ch.answeredMcqs : 0
       
       const progress = totalMcqs > 0
@@ -177,8 +175,8 @@ export function useCourseRegistry(courseId) {
         const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
         const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
 
-        const totalMcqs = chMcqs.length > 0 ? chMcqs.length : (typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0)
-        const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0)
+        const totalMcqs = chMcqs.length > 0 ? chMcqs.length : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
+        const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
 
         return {
           ...ch,

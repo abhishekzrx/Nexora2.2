@@ -6,6 +6,7 @@
  */
 import ProgressRing from '../ui/ProgressRing'
 import AppIcon from '../ui/AppIcon'
+import { formatCompactNumber } from '../../services/mcqAnalyticsService'
 
 function SubjectHero({ subject }) {
   const counts = subject.counts || {}
@@ -48,7 +49,7 @@ function SubjectHero({ subject }) {
               <AppIcon name="mcqs" size={13} />
             </span>
             <div className="hero-metric-text">
-              <span className="hero-metric-num">{mcqCount}</span>
+              <span className="hero-metric-num">{formatCompactNumber(mcqCount)}</span>
               <span className="hero-metric-label">MCQs</span>
             </div>
           </div>

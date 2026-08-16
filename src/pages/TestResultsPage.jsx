@@ -13,6 +13,7 @@ import ProgressRing from '../components/ui/ProgressRing'
 import AppIcon from '../components/ui/AppIcon'
 import { useContentRegistry } from '../data/contentRegistry'
 import { testSession } from '../utils/navigation'
+import { calculateAccuracy, formatCompactNumber, formatInteger } from '../services/mcqAnalyticsService'
 
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds || 0))

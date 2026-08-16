@@ -10,6 +10,7 @@ import { useCourseRegistry } from './data/courseRegistry'
 import StudentCourseSelector from './components/student/StudentCourseSelector'
 import RoleSwitch from './components/student/RoleSwitch'
 import EmptyCourseState from './components/admin/EmptyCourseState'
+import { formatCompactNumber, formatInteger } from './services/mcqAnalyticsService'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -944,10 +945,10 @@ function DashboardPage({
               <div className="goal-copy">
                 <div className="stat-label">Today's Goal</div>
                 <div className="stat-value goal-line">
-                  {totalMcqs > 0 ? totalMcqs : 120} <span>MCQs</span>
+                  {formatCompactNumber(totalMcqs)} <span>MCQs</span>
                 </div>
                 <div className="stat-value goal-line">
-                  {totalFlashcards > 0 ? totalFlashcards : 20} <span>Flashcards</span>
+                  {formatCompactNumber(totalFlashcards)} <span>Flashcards</span>
                 </div>
               </div>
             </div>

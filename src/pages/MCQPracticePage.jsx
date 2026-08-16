@@ -18,8 +18,9 @@ import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
 import { showToast } from '../data/feedbackStore'
 import { mcqService } from '../services/mcqService'
-import { useWorkspaceStore } from '../data/workspaceStore'
 import { getCurrentUserId, getUserId } from '../services/userService'
+import { calculateAccuracy, calculateChapterMetrics } from '../services/mcqAnalyticsService'
+import { useWorkspaceStore } from '../data/workspaceStore'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -837,6 +838,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       // ignore
     }
 
+    const progressValues = Array.from(newProgressMap.values())
+    const chapterMetrics = calculateChapterMetrics(totalPool, progressValues)
+
     testSession.result = {
       total: totalCount,
       attempted: attemptedCount,
@@ -846,12 +850,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       score,
       percentage,
       accuracy,
-      poolSize: totalPool,
+      totalPool: chapterMetrics.totalMcqs,
+      poolSize: chapterMetrics.totalMcqs,
+      masteredCount: chapterMetrics.masteredMcqs,
+      totalMastered: chapterMetrics.masteredMcqs,
+      incorrectCount: chapterMetrics.incorrectMcqs,
+      unseenCount: chapterMetrics.unseenMcqs,
+      remainingUnmastered: chapterMetrics.remainingUnmastered,
+      remainingEligible: chapterMetrics.remainingUnmastered,
+      remainingUnpracticed: chapterMetrics.remainingUnmastered,
+      uniquePracticedTotal: chapterMetrics.masteredMcqs + chapterMetrics.incorrectMcqs,
+      masteryPercentage: chapterMetrics.masteryPercentage,
+      state: chapterMetrics.state,
       newlyMasteredCount: newlyMastered,
-      totalMastered: currentTotalMastered,
-      remainingEligible,
-      remainingUnpracticed: remainingEligible,
-      uniquePracticedTotal: currentTotalMastered + (totalPool - currentTotalMastered),
       prevAttemptAccuracy: prevAttempt ? prevAttempt.accuracy : null,
       scoreDelta: prevAttempt ? accuracy - prevAttempt.accuracy : null,
     }

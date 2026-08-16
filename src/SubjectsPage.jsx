@@ -8,6 +8,7 @@ import { useWorkspaceStore } from './data/workspaceStore'
 
 import ProgressRing from './components/ui/ProgressRing'
 import { testSession } from './utils/navigation'
+import { formatCompactNumber, formatSubjectDisplay } from './services/mcqAnalyticsService'
 
 const TONE_MAP = [
   { iconClass: 'icon-orange', pillClass: 'pill-orange', progressClass: 'fill-orange', percentClass: 'pct-orange', arrowClass: 'arrow-orange' },
@@ -206,7 +207,7 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
   const heroStats = useMemo(() => [
     { icon: 'chapters', value: String(registry.subjectCount), label: 'Subjects' },
     { icon: 'document', value: String(registry.chapterCount), label: 'Chapters' },
-    { icon: 'target', value: String(registry.mcqCount), label: 'MCQs' },
+    { icon: 'target', value: formatCompactNumber(registry.mcqCount), label: 'MCQs' },
   ], [registry])
 
   const filteredSubjects = subjects.filter((subject) =>
