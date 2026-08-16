@@ -1,4 +1,4 @@
-﻿:root{
+:root{
   --orange:#F1621B;
   --orange-light:#FF8A3D;
   --orange-bg:#FFF1E6;
@@ -1452,8 +1452,181 @@ img{
 /* ── Role Switch ────────────────────────────────────────── */
 
 .dashboard-role-switch {
-   margin-top: 8px;
- }
+  margin-top: 6px;
+}
+
+/* ── Subject Card Performance Trend & Recent Tag ───────────── */
+.subject-trend-wrap {
+  margin-bottom: 10px;
+}
+
+.subject-trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--gray-text);
+  margin-bottom: 4px;
+}
+
+.subject-trend-lbl {
+  font-weight: 600;
+}
+
+.subject-trend-val {
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.subject-trend-val.text-green {
+  color: var(--green);
+}
+
+.subject-trend-track {
+  height: 4.5px;
+  background: #EEF2FF;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.subject-trend-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2E5CE6 0%, #12B76A 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.subject-recent-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-bg);
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  width: fit-content;
+}
+
+/* ── Recent Practice Sessions Section ──────────────────────── */
+.recent-sessions-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.recent-sessions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.recent-sessions-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.recent-sessions-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--purple-bg);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.recent-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--page-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.recent-session-item:hover {
+  background: #fff;
+  border-color: #C7D2FE;
+  transform: translateY(-1px);
+}
+
+.session-item-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-subject-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #101828;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-chapter-name {
+  font-size: 11.5px;
+  color: var(--gray-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.session-score-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.session-score {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.session-acc {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--green);
+}
+
+.session-time {
+  font-size: 10.5px;
+  color: var(--gray-text);
+}
 
  .role-switch-btn {
    display: inline-flex;

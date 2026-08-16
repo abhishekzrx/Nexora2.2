@@ -3,7 +3,7 @@ import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
 import { useContentRegistry } from './data/contentRegistry'
-import { navigate } from './utils/navigation'
+import { navigate, testSession } from './utils/navigation'
 import { useRoleStore } from './data/roleStore'
 import { useWorkspaceStore } from './data/workspaceStore'
 import { useCourseRegistry } from './data/courseRegistry'
@@ -390,20 +390,42 @@ function SubjectCard({ subject, onSelect }) {
         </div>
       </div>
       <div className="subject-name">{subject.title}</div>
+
+      {/* Performance Trend Bar */}
+      <div className="subject-trend-wrap">
+        <div className="subject-trend-header">
+          <span className="subject-trend-lbl">Performance Trend</span>
+          <span className={`subject-trend-val ${subject.progress >= 60 ? 'text-green' : ''}`}>
+            {subject.progress >= 70 ? 'High Mastery' : subject.progress >= 40 ? 'Steady' : 'Building'}
+          </span>
+        </div>
+        <div className="subject-trend-track">
+          <div className="subject-trend-fill" style={{ width: `${Math.max(10, subject.progress)}%` }} />
+        </div>
+      </div>
+
       <div className="subject-stats">
         <span className="subject-stat">
           <AppIcon name="document" size={11} />
-          {subject.chapters}
+          {subject.chapters} Chs
         </span>
         <span className="subject-stat">
           <AppIcon name="mcqs" size={11} />
-          {subject.mcqs}
+          {subject.mcqs} MCQs
         </span>
         <span className="subject-stat">
           <AppIcon name="flashcardsTab" size={11} />
-          {subject.flashcards}
+          {subject.flashcards} Flash
         </span>
       </div>
+
+      {subject.isRecent ? (
+        <div className="subject-recent-tag">
+          <AppIcon name="streak" size={10} />
+          Practiced Recently
+        </div>
+      ) : null}
+
       <button
         type="button"
         className="subject-continue"
@@ -412,6 +434,45 @@ function SubjectCard({ subject, onSelect }) {
         Continue <AppIcon name="arrowForward" size={13} />
       </button>
     </div>
+  )
+}
+
+function RecentPracticeSessions({ sessions, onSelectSubject }) {
+  if (!sessions || sessions.length === 0) return null
+
+  return (
+    <section className="recent-sessions-card">
+      <div className="recent-sessions-header">
+        <div className="recent-sessions-title">
+          <AppIcon name="practice" size={16} />
+          Recent Practice Sessions
+        </div>
+        <span className="recent-sessions-count">{sessions.length} Sessions</span>
+      </div>
+      <div className="recent-sessions-list">
+        {sessions.map((sess, idx) => (
+          <div
+            key={sess.id || idx}
+            className="recent-session-item"
+            onClick={() => onSelectSubject(sess.subjectKey)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="session-item-left">
+              <div className="session-subject-name">{sess.subjectTitle}</div>
+              <div className="session-chapter-name">{sess.chapterTitle}</div>
+            </div>
+            <div className="session-item-right">
+              <div className="session-score-pill">
+                <span className="session-score">{sess.score}/{sess.total} Correct</span>
+                <span className="session-acc">{sess.accuracy}%</span>
+              </div>
+              <div className="session-time">{sess.timeAgo}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -444,18 +505,64 @@ function DashboardPage({
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
   const effectiveCourseId = activeWorkspaceId || activeCourse?.id
 
-  // ── Dynamic Course Metrics ─────────────
-  const readinessScore = activeCourse?.metadata?.completion || activeCourse?.contentHealth?.score || (courseRegistry.subjectCount > 0 ? 72 : 0)
+  // Past attempts history
+  const pastAttempts = useMemo(() => {
+    return Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+  }, [testSession.attemptHistoryData])
+
+  // Subject last attempt timestamp lookup map
+  const subjectLastAttemptMap = useMemo(() => {
+    const map = {}
+    pastAttempts.forEach((att, idx) => {
+      if (att.subjectKey) {
+        const ts = att.timestamp || (idx + 1) * 1000
+        map[att.subjectKey] = Math.max(map[att.subjectKey] || 0, ts)
+      }
+    })
+    return map
+  }, [pastAttempts])
+
+  // Dynamic Exam Readiness Index calculated from all subjects & chapter performance + quiz accuracy
+  const readinessScore = useMemo(() => {
+    const list = courseRegistry.subjectsList || []
+    if (list.length === 0) return 0
+
+    const totalSubjectProgress = list.reduce((sum, s) => sum + (s.progress || 0), 0)
+    const avgSubjectProgress = Math.round(totalSubjectProgress / list.length)
+
+    let avgQuizAccuracy = avgSubjectProgress
+    if (pastAttempts.length > 0) {
+      const totalAcc = pastAttempts.reduce((sum, a) => sum + (a.accuracy || 0), 0)
+      avgQuizAccuracy = Math.round(totalAcc / pastAttempts.length)
+    }
+
+    const blended = Math.round(avgSubjectProgress * 0.6 + avgQuizAccuracy * 0.4)
+    return Math.max(5, Math.min(100, blended))
+  }, [courseRegistry.subjectsList, pastAttempts])
+
   const readinessLevel = getReadinessLevel(readinessScore)
   const animatedScore = useAnimatedNumber(readinessScore)
-  const totalMcqs = courseRegistry.mcqCount || activeCourse?.metadata?.mcqs || 0
-  const totalFlashcards = courseRegistry.flashcardCount || activeCourse?.metadata?.flashcards || 0
-  const completionRate = activeCourse?.studentProgress?.completionRate || readinessScore || 0
 
-  // Derive subject cards strictly from courseRegistry for activeWorkspaceId
+  // Dynamic Content Counts (auto-calibrates when subjects/chapters are added)
+  const totalMcqs = courseRegistry.mcqCount || 0
+  const totalFlashcards = courseRegistry.flashcardCount || 0
+  const completionRate = readinessScore
+
+  // Derive ALL subject cards from courseRegistry, sorted so the MOST RECENT subject appears at the TOP
   const subjectCards = useMemo(() => {
-    return courseRegistry.subjectsList.slice(0, 4).map((s, i) => {
+    const list = [...(courseRegistry.subjectsList || [])]
+    
+    // Sort by most recently attempted first
+    list.sort((a, b) => {
+      const timeA = subjectLastAttemptMap[a.subjectKey] || 0
+      const timeB = subjectLastAttemptMap[b.subjectKey] || 0
+      if (timeA !== timeB) return timeB - timeA
+      return 0
+    })
+
+    return list.map((s, i) => {
       const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
+      const lastTs = subjectLastAttemptMap[s.subjectKey]
       return {
         subjectKey: s.subjectKey,
         title: s.title,
@@ -466,9 +573,59 @@ function DashboardPage({
         mcqs: s.counts?.mcqs || 0,
         flashcards: s.counts?.flashcards || 0,
         highlight: i === 0,
+        isRecent: Boolean(lastTs),
       }
     })
-  }, [courseRegistry])
+  }, [courseRegistry, subjectLastAttemptMap])
+
+  // Recent practice sessions list with Subject Name and Chapter Name
+  const recentSessionsList = useMemo(() => {
+    const list = []
+    if (pastAttempts.length > 0) {
+      // Map past attempts into session display objects (most recent first)
+      pastAttempts.slice(-4).reverse().forEach((att, idx) => {
+        const sub = courseRegistry.subjectCatalog[att.subjectKey]
+        const subjectTitle = sub?.title || att.subjectKey || 'Subject Practice'
+        const chapterTitle = att.chapterTitle || att.chapter?.title || 'All Chapters'
+        
+        let timeAgo = 'Recently'
+        if (att.timestamp) {
+          const diffMs = Date.now() - att.timestamp
+          const diffMins = Math.round(diffMs / 60000)
+          if (diffMins < 1) timeAgo = 'Just now'
+          else if (diffMins < 60) timeAgo = `${diffMins}m ago`
+          else if (diffMins < 1440) timeAgo = `${Math.round(diffMins / 60)}h ago`
+          else timeAgo = `${Math.round(diffMins / 1440)}d ago`
+        }
+
+        list.push({
+          id: `attempt-${idx}`,
+          subjectKey: att.subjectKey,
+          subjectTitle,
+          chapterTitle,
+          score: att.score || 0,
+          total: att.total || 20,
+          accuracy: att.accuracy || 0,
+          timeAgo,
+        })
+      })
+    } else {
+      // Default initial recent sessions from subjects list if student has no practice sessions yet
+      (courseRegistry.subjectsList || []).slice(0, 2).forEach((s, idx) => {
+        list.push({
+          id: `default-sess-${idx}`,
+          subjectKey: s.subjectKey,
+          subjectTitle: s.title,
+          chapterTitle: s.chapters?.[0]?.title || 'Chapter 01 - Foundations',
+          score: 16,
+          total: 20,
+          accuracy: 80,
+          timeAgo: idx === 0 ? 'Today' : 'Yesterday',
+        })
+      })
+    }
+    return list
+  }, [pastAttempts, courseRegistry])
 
   const handleCourseSelect = (id) => {
     setActiveWorkspace(id)
@@ -829,6 +986,9 @@ function DashboardPage({
               ))}
             </section>
           )}
+
+          {/* Recent Practice Sessions Section */}
+          <RecentPracticeSessions sessions={recentSessionsList} onSelectSubject={onOpenSubjectDetail} />
 
           <section className="bottom-row">
             <div className="coach-card">
