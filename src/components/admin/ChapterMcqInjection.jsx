@@ -109,26 +109,11 @@ export default function ChapterMcqInjection() {
 
   const currentChapters = useMemo(() => {
     if (!activeSubject) return []
-    const list = adminState.allChapters.filter(
+    return adminState.allChapters.filter(
       (c) =>
         (c.subject === activeSubject.name || c.subjectId === activeSubject.id) &&
         (!selectedCourseId || c.courseId === selectedCourseId)
     )
-    if (list.length > 0) return list
-
-    const normName = String(activeSubject.name || '').trim().toLowerCase()
-    const domainList = SUBJECT_DOMAINS[normName] || [
-      { name: `${activeSubject.name} Fundamentals` },
-      { name: `Core Principles & Architecture` },
-      { name: `Advanced Concepts & Applications` },
-      { name: `Problem Solving & Practice` },
-    ]
-
-    return domainList.map((item, idx) => ({
-      id: `${activeSubject.id}-ch${idx + 1}`,
-      number: idx + 1,
-      name: item.name,
-    }))
   }, [adminState.allChapters, activeSubject, selectedCourseId])
 
   const [selectedChapterName, setSelectedChapterName] = useState(() => {
@@ -139,13 +124,21 @@ export default function ChapterMcqInjection() {
     return currentChapters.find((c) => c.name === selectedChapterName) || currentChapters[0] || null
   }, [currentChapters, selectedChapterName])
 
-  const chapterDescription = useMemo(() => {
-    if (!activeChapter) return ''
-    const found = adminState.allChapters.find(
-      (c) => c.name === activeChapter.name && c.courseId === selectedCourseId
-    )
-    return found?.desc || ''
-  }, [adminState.allChapters, activeChapter, selectedCourseId])
+  // Chapter Description state (loaded automatically when a chapter of any subject is chosen)
+  const [chapterDescription, setChapterDescription] = useState('')
+
+  useEffect(() => {
+    if (activeChapter) {
+      const found = adminState.allChapters.find(
+        (c) =>
+          (c.name === activeChapter.name || c.id === activeChapter.id) &&
+          (!selectedCourseId || c.courseId === selectedCourseId)
+      )
+      setChapterDescription(found?.desc || activeChapter?.desc || '')
+    } else {
+      setChapterDescription('')
+    }
+  }, [activeChapter, adminState.allChapters, selectedCourseId])
 
   // ── 2. Top Right Statistics Metrics ──────────────────────────────
   const chapterMcqs = useMemo(() => {
@@ -486,6 +479,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <select
                 className="admin-select-sm"
                 value={selectedCourseId}
+                title={selectedCourse?.name || 'Select Course'}
                 onChange={(e) => {
                   const newCourseId = e.target.value
                   setSelectedCourseId(newCourseId)
@@ -498,7 +492,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
                 }}
               >
                 {workspaces.map((w) => (
-                  <option key={w.id} value={w.id}>
+                  <option key={w.id} value={w.id} title={w.name}>
                     {w.name}
                   </option>
                 ))}
@@ -510,6 +504,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <select
                 className="admin-select-sm"
                 value={selectedSubjectName}
+                title={activeSubject?.name || 'Select Subject'}
                 onChange={(e) => {
                   const newSub = e.target.value
                   setSelectedSubjectName(newSub)
@@ -521,7 +516,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
                 disabled={currentCourseSubjects.length === 0}
               >
                 {currentCourseSubjects.map((s) => (
-                  <option key={s.id || s.name} value={s.name}>
+                  <option key={s.id || s.name} value={s.name} title={s.name}>
                     {s.name}
                   </option>
                 ))}
@@ -533,11 +528,12 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <select
                 className="admin-select-sm"
                 value={selectedChapterName}
+                title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
                 onChange={(e) => setSelectedChapterName(e.target.value)}
                 disabled={currentChapters.length === 0}
               >
                 {currentChapters.map((c) => (
-                  <option key={c.id || c.name} value={c.name}>
+                  <option key={c.id || c.name} value={c.name} title={`Ch ${c.number}: ${c.name}`}>
                     Ch {c.number}: {c.name}
                   </option>
                 ))}
@@ -611,6 +607,23 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <AppIcon name={copied ? "check" : "copy"} size={16} />
               {copied ? '✓ Prompt Copied' : 'Copy Prompt'}
             </Button>
+          </div>
+
+          {/* Target Context Summary Badge Bar */}
+          <div className="prompt-context-summary-pill">
+            <div className="summary-chip">
+              <span className="chip-label">Course:</span> <strong>{courseTitle}</strong>
+            </div>
+            <div className="summary-chip">
+              <span className="chip-label">Subject:</span> <strong>{subjectTitle}</strong>
+            </div>
+            <div className="summary-chip">
+              <span className="chip-label">Chapter:</span> <strong>{chapterTitle}</strong>
+            </div>
+            <div className={`summary-chip ${chapterDescription ? 'desc-attached' : 'desc-empty'}`}>
+              <AppIcon name={chapterDescription ? 'check' : 'help'} size={12} />
+              <span>{chapterDescription ? 'Description Attached' : 'No Description'}</span>
+            </div>
           </div>
 
           {/* Mode Switcher: MCQs vs Flashcards */}
@@ -706,6 +719,22 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
                   if (contentMode === 'mcqs') setTargetExam(e.target.value)
                   else setFlashDeckName(e.target.value)
                 }}
+              />
+            </div>
+
+            <div className="form-field full-width">
+              <label className="form-lbl">
+                Chapter Description{' '}
+                <span className="opt-badge auto-loaded-badge">
+                  <AppIcon name="check" size={10} /> Auto-loaded from Chapter
+                </span>
+              </label>
+              <textarea
+                className="admin-textarea-sm prompt-desc-textarea"
+                rows="2"
+                placeholder="Chapter description loaded automatically when a chapter is selected..."
+                value={chapterDescription}
+                onChange={(e) => setChapterDescription(e.target.value)}
               />
             </div>
 

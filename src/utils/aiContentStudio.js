@@ -54,6 +54,9 @@ function buildSpecLines(form) {
   if (form.examination) spec.push(`Examination: ${form.examination}`)
   if (form.subject) spec.push(`Subject: ${form.subject}`)
   if (form.chapter) spec.push(`Chapter: ${form.chapter}`)
+  if (form.chapterDescription || form.chapterDesc || form.desc) {
+    spec.push(`Chapter Description: ${form.chapterDescription || form.chapterDesc || form.desc}`)
+  }
   if (form.topic) spec.push(`Topic / Subtopic: ${form.topic}`)
   if (form.difficulty) spec.push(`Difficulty Level: ${form.difficulty}`)
   if (form.bloom) spec.push(`Bloom's Taxonomy Level: ${form.bloom}`)

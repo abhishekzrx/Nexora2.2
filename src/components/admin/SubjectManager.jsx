@@ -509,35 +509,16 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
     )
   }
 
-  // Chapter content for this specific subject
+  // Chapter content for this specific subject (Returns ONLY actual created/stored chapters from DB)
   const subjectChapters = useMemo(() => {
     if (!selectedSubject) return []
-    const list = chapters.filter(
+    return chapters.filter(
       (c) =>
         (c.subjectId && c.subjectId === selectedSubject.id) ||
         (c.subject_id && c.subject_id === selectedSubject.id) ||
-        (c.subject && String(c.subject).toLowerCase() === String(selectedSubject.name).toLowerCase()) ||
-        (c.subjectName && String(c.subjectName).toLowerCase() === String(selectedSubject.name).toLowerCase())
+        (c.subject && String(c.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase()) ||
+        (c.subjectName && String(c.subjectName).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
     )
-    if (list.length > 0) return list
-
-    // Domain-specific starter chapters for each subject
-    const normName = String(selectedSubject.name || '').trim().toLowerCase()
-    const domainList = SUBJECT_DOMAINS[normName] || [
-      { name: `${selectedSubject.name} Fundamentals` },
-      { name: `Core Principles & Architecture` },
-      { name: `Advanced Concepts & Applications` },
-      { name: `Problem Solving & Practice` },
-    ]
-
-    return domainList.map((item, idx) => ({
-      id: `${selectedSubject.id}-ch${idx + 1}`,
-      number: idx + 1,
-      name: item.name,
-      mcqs: 0,
-      flashcards: 0,
-      notes: 1,
-    }))
   }, [chapters, selectedSubject])
 
   // Helper to compute EXACT chapter content counts (MCQs, Flashcards, Notes) directly from DB store
@@ -700,10 +681,6 @@ const handleDeleteChapter = async (ch) => {
               <h3 className="sm-subject-panel-title">{selectedSubject.name}</h3>
               <StatusBadge status={selectedSubject.status} locked={selectedSubject.locked} />
             </div>
-            {/* 2. SUBJECT SUMMARY DIRECTLY UNDER TITLE */}
-            <p className="sm-subject-panel-desc">
-              {selectedSubject.desc || 'No description available for this subject.'}
-            </p>
           </div>
         </div>
       </div>
