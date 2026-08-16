@@ -240,6 +240,66 @@ function nextId(items) {
   return items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1
 }
 
+export function matchContentToChapter(item, chapter) {
+  if (!item || !chapter) return false
+
+  if (item.chapterId && chapter.id && String(item.chapterId) === String(chapter.id)) {
+    return true
+  }
+
+  const itemSub = String(item.subject || item.subjectId || '').trim().toLowerCase()
+  const chapSub = String(chapter.subject || chapter.subjectId || '').trim().toLowerCase()
+  if (itemSub && chapSub && itemSub !== chapSub && !chapSub.includes(itemSub) && !itemSub.includes(chapSub)) {
+    return false
+  }
+
+  const itemChap = String(item.chapter || item.chapterName || '').trim().toLowerCase()
+  const chapName = String(chapter.name || chapter.title || '').trim().toLowerCase()
+  if (!itemChap || !chapName) return false
+
+  if (itemChap === chapName || chapName.includes(itemChap) || itemChap.includes(chapName)) {
+    return true
+  }
+
+  const normItem = itemChap.replace(/\bintro\b/g, 'introduction').replace(/[^a-z0-9]/g, '')
+  const normChap = chapName.replace(/\bintro\b/g, 'introduction').replace(/[^a-z0-9]/g, '')
+
+  if (normItem && normChap && (normItem === normChap || normChap.includes(normItem) || normItem.includes(normChap))) {
+    return true
+  }
+
+  if (chapter.number && item.chapterNumber && Number(chapter.number) === Number(item.chapterNumber)) {
+    return true
+  }
+
+  return false
+}
+
+function recomputeAllChapterStats() {
+  chapters = chapters.map((ch) => {
+    const matchingMcqs = mcqs.filter((m) => {
+      if (m.courseId && ch.courseId && m.courseId !== ch.courseId) return false
+      return matchContentToChapter(m, ch)
+    })
+
+    const matchingFlashcards = flashcards.filter((f) => {
+      if (f.courseId && ch.courseId && f.courseId !== ch.courseId) return false
+      return matchContentToChapter(f, ch)
+    })
+
+    const countMcqs = matchingMcqs.length > 0 ? matchingMcqs.length : (typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0)
+    const countFlashcards = matchingFlashcards.length > 0 ? matchingFlashcards.length : (typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0)
+
+    return {
+      ...ch,
+      mcqs: countMcqs,
+      totalMcqs: countMcqs,
+      flashcards: countFlashcards,
+      totalFlashcards: countFlashcards,
+    }
+  })
+}
+
 function currentCourseId() {
   return getActiveWorkspaceId() || DEFAULT_COURSE_ID
 }
@@ -257,6 +317,7 @@ function recomputeSubjectStats(subject) {
 }
 
 function recomputeAllSubjectStats() {
+  recomputeAllChapterStats()
   subjects.forEach(recomputeSubjectStats)
 }
 

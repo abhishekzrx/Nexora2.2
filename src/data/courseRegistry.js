@@ -17,7 +17,7 @@
  */
 
 import { useMemo } from 'react'
-import { useAdminStore } from './adminStore'
+import { useAdminStore, matchContentToChapter } from './adminStore'
 
 const ACCENT_PALETTE = [
   { accent: '#F1621B', accentLight: '#FF7A2E', accentBg: '#FFF1E6', accentSoft: '#FDECE3' },
@@ -174,21 +174,8 @@ export function useCourseRegistry(courseId) {
       )
 
       const enrichedChapters = subChapters.map((ch) => {
-        const chMcqs = subMcqs.filter((m) => {
-          if (m.chapterId && ch.id && String(m.chapterId) === String(ch.id)) return true
-          const mChap = String(m.chapter || m.chapterName || '').trim().toLowerCase()
-          const chName = String(ch.name || ch.title || '').trim().toLowerCase()
-          if (!mChap || !chName) return false
-          return mChap === chName || chName.includes(mChap) || mChap.includes(chName)
-        })
-
-        const chFlash = subFlashcards.filter((f) => {
-          if (f.chapterId && ch.id && String(f.chapterId) === String(ch.id)) return true
-          const fChap = String(f.chapter || f.chapterName || '').trim().toLowerCase()
-          const chName = String(ch.name || ch.title || '').trim().toLowerCase()
-          if (!fChap || !chName) return false
-          return fChap === chName || chName.includes(fChap) || fChap.includes(chName)
-        })
+        const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
+        const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
 
         const totalMcqs = chMcqs.length > 0 ? chMcqs.length : (typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0)
         const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0)
