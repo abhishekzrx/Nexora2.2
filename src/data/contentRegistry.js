@@ -129,10 +129,12 @@ function buildSubjectEntry(key, sub, cls, exam, palette, icon, stats, index) {
     .filter((c) => !c.archived)
     .sort((a, b) => a.number - b.number)
     .map((ch, ci) => {
+      const mcqCount = typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0
+      const flashCount = typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0
       const progress = ch.completion && typeof ch.completion === 'number'
         ? ch.completion
-        : (ch.mcqs > 0 || ch.flashcards > 0)
-          ? Math.min(100, ((ch.mcqs > 0 ? 1 : 0) + (ch.flashcards > 0 ? 1 : 0) + (ch.notes > 0 ? 1 : 0)) * 25)
+        : (mcqCount > 0 || flashCount > 0)
+          ? Math.min(100, ((mcqCount > 0 ? 1 : 0) + (flashCount > 0 ? 1 : 0) + (ch.notes > 0 ? 1 : 0)) * 25)
           : 0
       return {
         num: String(ch.number || ci + 1).padStart(2, '0'),
@@ -140,8 +142,8 @@ function buildSubjectEntry(key, sub, cls, exam, palette, icon, stats, index) {
         sub: ch.difficulty ? `${ch.difficulty.toUpperCase()} • ${ch.estMinutes || 45} min` : `${ch.status || 'draft'} • ${ch.estMinutes || 45} min`,
         progress,
         pct: `${progress}%`,
-        complete: ch.mcqs > 0 && ch.flashcards > 0 && ch.notes > 0 && ch.status === 'published',
-        meta: `${ch.mcqs || 0} MCQs • ${ch.flashcards || 0} Flashcards`,
+        complete: mcqCount > 0 && flashCount > 0 && ch.notes > 0 && ch.status === 'published',
+        meta: `${mcqCount} MCQs • ${flashCount} Flashcards`,
         locked: Boolean(ch.locked),
         status: ch.locked ? 'locked' : ch.status || 'draft',
         id: ch.id,

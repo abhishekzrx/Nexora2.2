@@ -59,7 +59,10 @@ function buildSubjectEntry(key, subject, index) {
     .filter((ch) => !ch.archived)
     .sort((a, b) => (a.number || 0) - (b.number || 0))
     .map((ch, ci) => {
-      const totalMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (ch.mcqs || 0)
+      const rawMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
+      const totalMcqs = rawMcqs === 1000 ? 0 : rawMcqs
+      const rawFlash = typeof ch.totalFlashcards === 'number' ? ch.totalFlashcards : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
+      const totalFlashcards = rawFlash === 1000 ? 0 : rawFlash
       const answeredMcqs = typeof ch.answeredMcqs === 'number' ? ch.answeredMcqs : 0
       
       const progress = totalMcqs > 0
@@ -73,7 +76,7 @@ function buildSubjectEntry(key, subject, index) {
         progress,
         pct: `${progress}%`,
         complete: progress === 100,
-        meta: `${totalMcqs} MCQs • ${ch.flashcards || 0} Flashcards`,
+        meta: `${totalMcqs} MCQs • ${totalFlashcards} Flashcards`,
         locked: Boolean(ch.locked),
         status: ch.locked ? 'locked' : ch.status || 'draft',
         id: ch.id,
@@ -171,15 +174,31 @@ export function useCourseRegistry(courseId) {
       )
 
       const enrichedChapters = subChapters.map((ch) => {
-        const chMcqs = subMcqs.filter(
-          (m) => (m.chapterId === ch.id || m.chapter === ch.name || m.chapter === ch.title)
-        )
-        const totalMcqs = chMcqs.length || ch.mcqs || 0
+        const chMcqs = subMcqs.filter((m) => {
+          if (m.chapterId && ch.id && String(m.chapterId) === String(ch.id)) return true
+          const mChap = String(m.chapter || m.chapterName || '').trim().toLowerCase()
+          const chName = String(ch.name || ch.title || '').trim().toLowerCase()
+          if (!mChap || !chName) return false
+          return mChap === chName || chName.includes(mChap) || mChap.includes(chName)
+        })
+
+        const chFlash = subFlashcards.filter((f) => {
+          if (f.chapterId && ch.id && String(f.chapterId) === String(ch.id)) return true
+          const fChap = String(f.chapter || f.chapterName || '').trim().toLowerCase()
+          const chName = String(ch.name || ch.title || '').trim().toLowerCase()
+          if (!fChap || !chName) return false
+          return fChap === chName || chName.includes(fChap) || fChap.includes(chName)
+        })
+
+        const totalMcqs = chMcqs.length > 0 ? chMcqs.length : (typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0)
+        const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0)
+
         return {
           ...ch,
           mcqs: totalMcqs,
           totalMcqs,
-          flashcards: courseFlashcards.filter((f) => f.chapterId === ch.id || f.chapter === ch.name || f.chapter === ch.title).length || ch.flashcards || 0,
+          flashcards: totalFlashcards,
+          totalFlashcards,
         }
       })
 
