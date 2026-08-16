@@ -109,7 +109,7 @@ export const iconRegistry = {
   moreVert: { component: MoreVertRounded, optical: 1 },
   chevronRight: { component: ArrowForwardRounded, optical: 1 },
   bookmark: { component: BookmarkRounded, optical: 0 },
-  centerBook: { component: SchoolRounded, optical: 0 },
+  centerBook: { component: WorkspacePremiumRounded, optical: 0 },
 
   // ── Stats & status ──────────────────────────────────────────
   calendar: { component: CalendarTodayRounded, optical: 0 },
