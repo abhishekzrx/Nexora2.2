@@ -26,43 +26,25 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   const subject = registry.subjectCatalog[subjectKey || testSession.subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
-  // Result metrics computed at submission
-  const result = testSession.result || {
-    total: 0,
-    attempted: 0,
-    correct: 0,
-    incorrect: 0,
-    unanswered: 0,
-    skipped: 0,
-    score: 0,
-    percentage: 0,
-    accuracy: 0,
-    poolSize: 0,
-    newCount: 0,
-    practicedCount: 0,
-    uniquePracticedTotal: 0,
-    remainingUnpracticed: 0,
-    prevAttemptAccuracy: null,
-    scoreDelta: null,
-  }
+  // Result metrics computed at submission from testSession.result
+  const result = testSession.result || {}
 
   const total = result.total || 0
-  const attempted = result.attempted || 0
-  const correct = result.correct || 0
-  const incorrect = result.incorrect || 0
-  const skipped = result.skipped !== undefined ? result.skipped : Math.max(0, total - attempted)
-  const score = result.score || 0
-  const percentage = result.percentage || 0
-  const accuracy = result.accuracy || 0
+  const attempted = result.attempted !== undefined ? result.attempted : 0
+  const correct = result.correct !== undefined ? result.correct : 0
+  const incorrect = result.incorrect !== undefined ? result.incorrect : 0
+  const accuracy = result.accuracy !== undefined ? result.accuracy : 0
+  const percentage = result.percentage !== undefined ? result.percentage : 0
 
-  const poolSize = result.poolSize || total
-  const newlyMasteredCount = result.newlyMasteredCount || 0
-  const totalMastered = result.totalMastered !== undefined ? result.totalMastered : correct
-  const remainingEligible = result.remainingEligible !== undefined ? result.remainingEligible : Math.max(0, poolSize - totalMastered)
-  const uniquePracticedTotal = result.uniquePracticedTotal || totalMastered
-  const remainingUnpracticed = remainingEligible
-  const prevAttemptAccuracy = result.prevAttemptAccuracy
-  const scoreDelta = result.scoreDelta
+  const totalPool = result.totalPool || result.poolSize || total
+  const masteredCount = result.masteredCount !== undefined ? result.masteredCount : (result.totalMastered || correct)
+  const remainingUnmastered = result.remainingUnmastered !== undefined ? result.remainingUnmastered : (result.remainingEligible || Math.max(0, totalPool - masteredCount))
+  const newlyMasteredCount = result.newlyMasteredCount !== undefined ? result.newlyMasteredCount : 0
+  const skipped = result.skipped !== undefined ? result.skipped : Math.max(0, total - attempted)
+  const score = result.score !== undefined ? result.score : correct
+
+  const prevAttemptAccuracy = result.prevAttemptAccuracy !== undefined ? result.prevAttemptAccuracy : null
+  const scoreDelta = result.scoreDelta !== undefined ? result.scoreDelta : null
 
   // Invariant verification: correct + incorrect + skipped = total
   const invariantSum = correct + incorrect + skipped
@@ -71,8 +53,8 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   const statItems = [
     { icon: 'check', iconClass: 'icon-correct', value: String(correct), label: 'Correct' },
     { icon: 'cross', iconClass: 'icon-incorrect', value: String(incorrect), label: 'Incorrect' },
-    { icon: 'star', iconClass: 'icon-total', value: String(newlyMasteredCount), label: 'Newly Mastered' },
-    { icon: 'viewList', iconClass: 'icon-unattempted', value: String(remainingEligible), label: 'Remaining' },
+    { icon: 'star', iconClass: 'icon-total', value: String(masteredCount), label: 'Total Mastered' },
+    { icon: 'viewList', iconClass: 'icon-unattempted', value: String(remainingUnmastered), label: 'Remaining' },
   ]
 
   // Strengths / Topics to Improve derived from actual question results
@@ -107,8 +89,12 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   else if (percentage >= 50) performanceTier = 'Fair 🙂'
   const above70 = percentage >= 70
 
+  const poolSize = totalPool
+  const uniquePracticedTotal = result.uniquePracticedTotal !== undefined ? result.uniquePracticedTotal : masteredCount
+  const remainingUnpracticed = remainingUnmastered
+
   // Data-driven AI Mentor Insight
-  let aiInsightText = `You completed ${total} practice questions from your ${poolSize} available MCQ pool.`
+  let aiInsightText = `You completed ${total} practice questions from your ${totalPool} available MCQ pool.`
   if (strengths.length > 0 && improvements.length === 0) {
     aiInsightText = `Perfect score! You answered all ${total} questions correctly. You have strong mastery of this content.`
   } else if (scoreDelta !== null && scoreDelta > 0) {
@@ -119,8 +105,8 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
   }
 
   // Pool progress calculation
-  const poolCoveragePercent = poolSize > 0 ? Math.round((uniquePracticedTotal / poolSize) * 100) : 0
-  const sessionPoolPercent = poolSize > 0 ? Math.round((total / poolSize) * 100) : 0
+  const poolCoveragePercent = totalPool > 0 ? Math.round((uniquePracticedTotal / totalPool) * 100) : 0
+  const sessionPoolPercent = totalPool > 0 ? Math.round((total / totalPool) * 100) : 0
 
   return (
     <div className="results-shell">
