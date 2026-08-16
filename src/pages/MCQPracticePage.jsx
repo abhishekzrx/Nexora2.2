@@ -19,7 +19,7 @@ import { testSession } from '../utils/navigation'
 import { showToast } from '../data/feedbackStore'
 import { mcqService } from '../services/mcqService'
 import { useWorkspaceStore } from '../data/workspaceStore'
-import { getCurrentUserId } from '../services/userService'
+import { getCurrentUserId, getUserId } from '../services/userService'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -382,7 +382,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
       const subjectId = subject?.subjectId || subjectKey
       const chapterId = chapter?.id || null
-      const userId = getCurrentUserId()
+      const userId = getUserId()
 
       abortController = new AbortController()
 
@@ -713,7 +713,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
 
   // Finalize attempt and update persistent user progress in Supabase
   const finalizeSubmission = useCallback(async (questionList) => {
-    const userId = getCurrentUserId()
+    const userId = getUserId()
     const chapterId = chapter?.id || dbQuestions[0]?.chapterId || 'ch-default'
 
     let correctCount = 0
