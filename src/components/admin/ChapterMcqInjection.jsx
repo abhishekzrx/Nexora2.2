@@ -31,6 +31,57 @@ const COGNITIVE_LEVELS = ['Recall', 'Understanding', 'Application', 'Analysis', 
 const EXAM_PATTERNS = ['Previous-year style', 'Competitive exam', 'Board exam', 'Custom']
 const LANGUAGE_STYLES = ['Simple', 'Academic', 'Exam-oriented']
 
+const SUBJECT_DOMAINS = {
+  'digital electronics': [
+    { name: 'Number Systems & Boolean Algebra' },
+    { name: 'Logic Gates & Minimization (K-Maps)' },
+    { name: 'Combinational Logic Circuits' },
+    { name: 'Sequential Logic Circuits & Flip-Flops' },
+  ],
+  'computer organization & architecture (coa)': [
+    { name: 'Machine Instructions & Addressing Modes' },
+    { name: 'ALU, Data Path & Control Unit Design' },
+    { name: 'Memory Hierarchy & Cache Mapping' },
+    { name: 'Pipelining & I/O Interface' },
+  ],
+  'operating systems': [
+    { name: 'Processes, Threads & CPU Scheduling' },
+    { name: 'Process Synchronization & Deadlocks' },
+    { name: 'Memory Management & Virtual Memory' },
+    { name: 'File Systems & I/O Protection' },
+  ],
+  'database management systems (dbms)': [
+    { name: 'ER Modeling & Relational Algebra' },
+    { name: 'SQL Queries, Joins & Subqueries' },
+    { name: 'Normalization & Functional Dependencies' },
+    { name: 'Transaction Processing & Concurrency' },
+  ],
+  'computer networks': [
+    { name: 'Network Fundamentals & Architecture' },
+    { name: 'Physical & Data Link Layer' },
+    { name: 'Network Layer & IP Addressing' },
+    { name: 'Transport & Application Layer' },
+  ],
+  'python programming': [
+    { name: 'Data Types, Control Flow & Loops' },
+    { name: 'Functions, Modules & Recursion' },
+    { name: 'File Handling & Exception Management' },
+    { name: 'Object-Oriented Programming (OOP)' },
+  ],
+  'physics': [
+    { name: 'Physical World, Units & Measurements' },
+    { name: 'Kinematics & Laws of Motion' },
+    { name: 'Work, Energy & Power' },
+    { name: 'Gravitation & Fluid Mechanics' },
+  ],
+  'chemistry': [
+    { name: 'Some Basic Concepts & Atomic Structure' },
+    { name: 'Chemical Bonding & Molecular Structure' },
+    { name: 'States of Matter & Thermodynamics' },
+    { name: 'Equilibrium & Redox Reactions' },
+  ],
+}
+
 export default function ChapterMcqInjection() {
   const adminState = useAdminStore()
   const workspaceState = useWorkspaceStore()
@@ -65,12 +116,19 @@ export default function ChapterMcqInjection() {
     )
     if (list.length > 0) return list
 
-    return [
-      { id: `${activeSubject.id}-ch1`, number: 1, name: 'Introduction & Foundations', desc: 'Core concepts and basic architecture overview' },
-      { id: `${activeSubject.id}-ch2`, number: 2, name: 'Physical & Data Link Layer', desc: 'Data communication, network topologies, framing' },
-      { id: `${activeSubject.id}-ch3`, number: 3, name: 'Network Layer & IP Addressing', desc: 'IP routing, IPv4/IPv6, subnetting and ARP' },
-      { id: `${activeSubject.id}-ch4`, number: 4, name: 'Transport & Application Layer', desc: 'TCP/UDP, HTTP, DNS and socket programming' },
+    const normName = String(activeSubject.name || '').trim().toLowerCase()
+    const domainList = SUBJECT_DOMAINS[normName] || [
+      { name: `${activeSubject.name} Fundamentals` },
+      { name: `Core Principles & Architecture` },
+      { name: `Advanced Concepts & Applications` },
+      { name: `Problem Solving & Practice` },
     ]
+
+    return domainList.map((item, idx) => ({
+      id: `${activeSubject.id}-ch${idx + 1}`,
+      number: idx + 1,
+      name: item.name,
+    }))
   }, [adminState.allChapters, activeSubject, selectedCourseId])
 
   const [selectedChapterName, setSelectedChapterName] = useState(() => {

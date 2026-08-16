@@ -27,6 +27,57 @@ import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
 
+const SUBJECT_DOMAINS = {
+  'digital electronics': [
+    { name: 'Number Systems & Boolean Algebra' },
+    { name: 'Logic Gates & Minimization (K-Maps)' },
+    { name: 'Combinational Logic Circuits' },
+    { name: 'Sequential Logic Circuits & Flip-Flops' },
+  ],
+  'computer organization & architecture (coa)': [
+    { name: 'Machine Instructions & Addressing Modes' },
+    { name: 'ALU, Data Path & Control Unit Design' },
+    { name: 'Memory Hierarchy & Cache Mapping' },
+    { name: 'Pipelining & I/O Interface' },
+  ],
+  'operating systems': [
+    { name: 'Processes, Threads & CPU Scheduling' },
+    { name: 'Process Synchronization & Deadlocks' },
+    { name: 'Memory Management & Virtual Memory' },
+    { name: 'File Systems & I/O Protection' },
+  ],
+  'database management systems (dbms)': [
+    { name: 'ER Modeling & Relational Algebra' },
+    { name: 'SQL Queries, Joins & Subqueries' },
+    { name: 'Normalization & Functional Dependencies' },
+    { name: 'Transaction Processing & Concurrency' },
+  ],
+  'computer networks': [
+    { name: 'Network Fundamentals & Architecture' },
+    { name: 'Physical & Data Link Layer' },
+    { name: 'Network Layer & IP Addressing' },
+    { name: 'Transport & Application Layer' },
+  ],
+  'python programming': [
+    { name: 'Data Types, Control Flow & Loops' },
+    { name: 'Functions, Modules & Recursion' },
+    { name: 'File Handling & Exception Management' },
+    { name: 'Object-Oriented Programming (OOP)' },
+  ],
+  'physics': [
+    { name: 'Physical World, Units & Measurements' },
+    { name: 'Kinematics & Laws of Motion' },
+    { name: 'Work, Energy & Power' },
+    { name: 'Gravitation & Fluid Mechanics' },
+  ],
+  'chemistry': [
+    { name: 'Some Basic Concepts & Atomic Structure' },
+    { name: 'Chemical Bonding & Molecular Structure' },
+    { name: 'States of Matter & Thermodynamics' },
+    { name: 'Equilibrium & Redox Reactions' },
+  ],
+}
+
 const STATUS_MAP = {
   active: { label: 'ACTIVE', tone: 'green' },
   disabled: { label: 'DISABLED', tone: 'gray' },
@@ -470,13 +521,23 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
     )
     if (list.length > 0) return list
 
-    // Default starter chapters starting cleanly at Chapter 1
-    return [
-      { id: `${selectedSubject.id}-ch1`, number: 1, name: 'Introduction & Foundations', desc: 'Core concepts and basic architecture overview', mcqs: 0, flashcards: 0, notes: 1 },
-      { id: `${selectedSubject.id}-ch2`, number: 2, name: 'Physical & Data Link Layer', desc: 'Data communication, network topologies, framing', mcqs: 0, flashcards: 0, notes: 1 },
-      { id: `${selectedSubject.id}-ch3`, number: 3, name: 'Network Layer & IP Addressing', desc: 'IP routing, IPv4/IPv6, subnetting and ARP', mcqs: 0, flashcards: 0, notes: 1 },
-      { id: `${selectedSubject.id}-ch4`, number: 4, name: 'Transport & Application Layer', desc: 'TCP/UDP, HTTP, DNS and socket programming', mcqs: 0, flashcards: 0, notes: 1 },
+    // Domain-specific starter chapters for each subject
+    const normName = String(selectedSubject.name || '').trim().toLowerCase()
+    const domainList = SUBJECT_DOMAINS[normName] || [
+      { name: `${selectedSubject.name} Fundamentals` },
+      { name: `Core Principles & Architecture` },
+      { name: `Advanced Concepts & Applications` },
+      { name: `Problem Solving & Practice` },
     ]
+
+    return domainList.map((item, idx) => ({
+      id: `${selectedSubject.id}-ch${idx + 1}`,
+      number: idx + 1,
+      name: item.name,
+      mcqs: 0,
+      flashcards: 0,
+      notes: 1,
+    }))
   }, [chapters, selectedSubject])
 
   // Helper to compute EXACT chapter content counts (MCQs, Flashcards, Notes) directly from DB store
@@ -743,7 +804,6 @@ const handleDeleteChapter = async (ch) => {
                     <span className="sm-ch-num-badge">Ch. {chNum}</span>
                     <div className="sm-ch-titles">
                       <h5 className="sm-ch-name">{ch.name}</h5>
-                      {ch.desc && <span className="sm-ch-desc">{ch.desc}</span>}
                     </div>
 
                     <div className="sm-ch-meta">
