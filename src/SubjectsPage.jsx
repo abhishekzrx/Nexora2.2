@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import './Subjects.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
