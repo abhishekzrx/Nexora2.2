@@ -1826,3 +1826,96 @@ img{
    background: var(--purple-soft);
  }
 
+/* ── Mobile Layout Alignment & Anti-Horizontal Overflow ── */
+@media (max-width: 520px) {
+  html, body, #root {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .header {
+    padding: 14px 4px 10px;
+  }
+
+  .subjects-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .subject-card {
+    width: 100%;
+    transform: none;
+    padding: 12px 14px;
+  }
+
+  .continue-card {
+    padding: 16px 14px;
+  }
+
+  .continue-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .continue-body {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .continue-copy {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .continue-accuracy-badge {
+    align-self: flex-start;
+  }
+
+  .continue-meta-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .recent-attempt-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .item-left {
+    width: 100%;
+  }
+
+  .item-right {
+    margin-left: auto;
+  }
+
+  .coach-card {
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .coach-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .mini-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .subject-stats {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+}
+
