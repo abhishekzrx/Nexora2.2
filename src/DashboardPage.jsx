@@ -14,6 +14,19 @@ import EmptyCourseState from './components/admin/EmptyCourseState'
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
 
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'Recently'
+  const diffMs = Date.now() - timestamp
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return 'Yesterday'
+  return `${diffDays}d ago`
+}
+
 // ── Dynamic Readiness Levels ─────────────────────────────
 // Future backend integration only needs to pass a readiness
 // percentage — all colors, labels, gradients, badges and
@@ -505,10 +518,73 @@ function DashboardPage({
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
   const effectiveCourseId = activeWorkspaceId || activeCourse?.id
 
-  // Past attempts history
+  // Past attempts history merging in-memory state with persistent localStorage cache
   const pastAttempts = useMemo(() => {
-    return Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    if (memoryAttempts.length === 0) {
+      try {
+        const cached = localStorage.getItem('nexora_recent_mcq_attempts')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed)) memoryAttempts = parsed
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return memoryAttempts
   }, [testSession.attemptHistoryData])
+
+  // Recent attempted MCQs list sorted by newest attempt first
+  const recentAttemptsList = useMemo(() => {
+    const attempts = [...pastAttempts]
+    attempts.reverse()
+
+    if (attempts.length > 0) {
+      return attempts.map((att) => {
+        const sub = registry.subjectCatalog[att.subjectKey] || null
+        const subjectTitle = att.subjectTitle || sub?.title || att.subjectKey || 'Subject'
+        const chapterTitle = att.chapterTitle || 'MCQ Practice Session'
+        const icon = sub?.icon || 'computerNetworks'
+
+        return {
+          id: att.id || `att-${att.timestamp}`,
+          subjectKey: att.subjectKey,
+          subjectTitle,
+          chapterTitle,
+          icon,
+          accuracy: att.accuracy !== undefined ? att.accuracy : 0,
+          correct: att.correct !== undefined ? att.correct : 0,
+          attempted: att.attempted !== undefined ? att.attempted : (att.total || 0),
+          total: att.total || 0,
+          timestamp: att.timestamp,
+          timeAgo: formatTimeAgo(att.timestamp),
+          isReal: true,
+        }
+      })
+    }
+
+    // Default fallback from subject catalog
+    const firstSubKey = Object.keys(registry.subjectCatalog)[0] || 'computer-networks'
+    const firstSub = registry.subjectCatalog[firstSubKey]
+    return [
+      {
+        id: 'default-1',
+        subjectKey: firstSubKey,
+        subjectTitle: firstSub?.title || 'Computer Networks',
+        chapterTitle: firstSub?.chapters?.[0]?.title || 'Routing Algorithms',
+        icon: firstSub?.icon || 'computerNetworks',
+        accuracy: 72,
+        correct: 14,
+        attempted: 18,
+        total: 20,
+        timeAgo: 'Recommended',
+        isReal: false,
+      },
+    ]
+  }, [pastAttempts, registry.subjectCatalog])
+
+  const topRecentAttempt = recentAttemptsList[0]
 
   // Subject last attempt timestamp lookup map
   const subjectLastAttemptMap = useMemo(() => {
@@ -908,43 +984,106 @@ function DashboardPage({
             </div>
           </section>
 
-          <section className="continue-card">
+          {/* Recent MCQ Practice / Continue Today's Study Card */}
+          <section className="continue-card recent-mcq-card">
             <div className="continue-header">
-              <AppIcon name="practice" size={16} />
-              Continue Today's Study
+              <div className="continue-header-left">
+                <AppIcon name="practice" size={18} />
+                <span>Recent MCQ Practice</span>
+              </div>
+              <span className="continue-count-badge">
+                {topRecentAttempt.isReal ? `${recentAttemptsList.length} Attempted` : 'Recommended'}
+              </span>
             </div>
+
+            {/* Main Highlighted Attempt Card */}
             <div className="continue-body">
               <div className="continue-icon" aria-hidden="true">
-                <AppIcon name="computerNetworks" size={20} />
+                <AppIcon name={topRecentAttempt.icon || 'computerNetworks'} size={22} />
               </div>
               <div className="continue-copy">
-                <div className="continue-subject">Computer Networks</div>
-                <div className="continue-chapter">Routing Algorithms</div>
-                <div className="continue-progress-track">
-                  <div className="continue-progress-fill" />
+                {/* HIGHLIGHTED SUBJECT NAME */}
+                <div className="continue-subject-badge">
+                  <AppIcon name="book" size={12} />
+                  {topRecentAttempt.subjectTitle}
                 </div>
-                <div className="continue-pct">72% Completed</div>
+
+                {/* CHAPTER / PRACTICE TITLE */}
+                <div className="continue-chapter">
+                  {topRecentAttempt.chapterTitle}
+                </div>
+
+                {/* ACCURACY PROGRESS TRACK */}
+                <div className="continue-progress-track">
+                  <div
+                    className="continue-progress-fill"
+                    style={{
+                      width: `${Math.max(8, topRecentAttempt.accuracy)}%`,
+                      backgroundColor: topRecentAttempt.accuracy >= 75 ? '#12B76A' : topRecentAttempt.accuracy >= 50 ? '#F1621B' : '#F04438'
+                    }}
+                  />
+                </div>
+
+                <div className="continue-meta-stats">
+                  <span>{topRecentAttempt.correct} of {topRecentAttempt.total} Correct</span>
+                  <span className="dot-sep">•</span>
+                  <span>{topRecentAttempt.timeAgo}</span>
+                </div>
+              </div>
+
+              {/* HIGHLIGHTED ACCURACY BADGE */}
+              <div className={`continue-accuracy-badge ${topRecentAttempt.accuracy >= 75 ? 'acc-high' : topRecentAttempt.accuracy >= 50 ? 'acc-mid' : 'acc-low'}`}>
+                <AppIcon name={topRecentAttempt.accuracy >= 75 ? 'star' : 'check'} size={12} />
+                {topRecentAttempt.accuracy}% Accuracy
               </div>
             </div>
+
             <div className="continue-meta-row">
               <div>
-                <div className="continue-meta-label">Remaining</div>
-                <div className="continue-meta-value">18 MCQs • 12 Flashcards</div>
+                <div className="continue-meta-label">Subject Target</div>
+                <div className="continue-meta-value">{topRecentAttempt.subjectTitle}</div>
               </div>
               <div>
-                <div className="continue-meta-label">Est. Time</div>
+                <div className="continue-meta-label">Performance</div>
                 <div className="continue-meta-value with-icon">
-                  <AppIcon name="clock" size={14} /> 14 min
+                  <span className="accuracy-pill-mini">{topRecentAttempt.accuracy}% Acc</span>
                 </div>
               </div>
             </div>
+
             <button
               type="button"
               className="continue-btn"
-              onClick={() => onOpenSubjectDetail('computer-networks')}
+              onClick={() => onOpenSubjectDetail(topRecentAttempt.subjectKey)}
             >
-              Continue Study →
+              Continue Practice →
             </button>
+
+            {/* List of Other Recent Attempted MCQs (if user has > 1 attempt) */}
+            {recentAttemptsList.length > 1 && (
+              <div className="recent-attempts-sublist">
+                <div className="sublist-header">More Recent Attempted MCQs</div>
+                {recentAttemptsList.slice(1, 4).map((att) => (
+                  <div
+                    key={att.id}
+                    className="recent-attempt-item"
+                    onClick={() => onOpenSubjectDetail(att.subjectKey)}
+                    title={`Practice ${att.subjectTitle}`}
+                  >
+                    <div className="item-left">
+                      <span className="item-subject-tag">{att.subjectTitle}</span>
+                      <span className="item-chapter">{att.chapterTitle}</span>
+                    </div>
+                    <div className="item-right">
+                      <span className={`item-acc-pill ${att.accuracy >= 75 ? 'acc-high' : att.accuracy >= 50 ? 'acc-mid' : 'acc-low'}`}>
+                        {att.accuracy}% Acc
+                      </span>
+                      <AppIcon name="arrowForward" size={14} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="mini-grid">

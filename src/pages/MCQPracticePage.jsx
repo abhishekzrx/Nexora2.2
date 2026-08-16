@@ -804,7 +804,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       id: `att-${Date.now()}`,
       timestamp: Date.now(),
       subjectKey,
+      subjectTitle: subjectTitle || subjectKey,
       chapterId: chapter?.id || null,
+      chapterTitle: chapter?.num ? `Chapter ${chapter.num}: ${chapter.title || chapter.name || 'Chapter'}` : (chapter?.title || chapter?.name || 'Chapter Practice'),
       total: totalCount,
       attempted: attemptedCount,
       correct: correctCount,
@@ -826,7 +828,14 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     const initialSeconds = 29 * 60 + 45
     testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
-    testSession.attemptHistoryData = [...pastAttempts, currentAttemptRecord]
+    const updatedHistory = [...pastAttempts, currentAttemptRecord]
+    testSession.attemptHistoryData = updatedHistory
+
+    try {
+      localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(updatedHistory))
+    } catch {
+      // ignore
+    }
 
     testSession.result = {
       total: totalCount,
