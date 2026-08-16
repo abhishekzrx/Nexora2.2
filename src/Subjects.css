@@ -204,44 +204,32 @@ img{
 }
 
 .hero-ring-wrap{
-  position:relative;
-  width:96px;
-  flex-shrink:0;
-  text-align:center;
-}
-
-.progress-ring{
-  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
   flex-shrink:0;
 }
 
-.progress-ring svg{
-  transform:rotate(-90deg);
-  display:block;
+.hero-ring-content{
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-.hero-ring-value{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  display:grid;
-  place-items:center;
-  text-align:center;
-  pointer-events:none;
-  box-sizing:border-box;
-  font-size:22px;
+.hero-ring-pct{
+  font-size:13px;
   font-weight:800;
-  color:#fff;
-  line-height:1;
+  color:#ffffff;
 }
 
 .hero-ring-label{
   text-align:center;
-  font-size:11.5px;
-  color:#B7BCC7;
-  margin-top:8px;
+  font-size:10.5px;
+  font-weight:700;
+  color:rgba(255,255,255,0.7);
   white-space:nowrap;
+  margin-top:2px;
 }
 
 .hero-stats{

@@ -602,7 +602,7 @@ function DashboardPage({
 
   const topRecentAttempt = recentAttemptsList[0]
 
-  // Subject last attempt timestamp lookup map
+  // Subject last attempt / access timestamp lookup map
   const subjectLastAttemptMap = useMemo(() => {
     const map = {}
     pastAttempts.forEach((att, idx) => {
@@ -611,6 +611,17 @@ function DashboardPage({
         map[att.subjectKey] = Math.max(map[att.subjectKey] || 0, ts)
       }
     })
+    try {
+      const cachedAccess = localStorage.getItem('nexora_recent_subject_access')
+      if (cachedAccess) {
+        const accessMap = JSON.parse(cachedAccess)
+        Object.keys(accessMap).forEach((key) => {
+          map[key] = Math.max(map[key] || 0, accessMap[key] || 0)
+        })
+      }
+    } catch {
+      // ignore
+    }
     return map
   }, [pastAttempts])
 

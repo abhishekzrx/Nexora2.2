@@ -6,6 +6,7 @@ import SideDrawer from './components/layout/SideDrawer'
 import { useCourseRegistry } from './data/courseRegistry'
 import { useWorkspaceStore } from './data/workspaceStore'
 
+import ProgressRing from './components/ui/ProgressRing'
 import { testSession } from './utils/navigation'
 
 const TONE_MAP = [
@@ -132,35 +133,75 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
     return map
   }, [pastAttempts])
 
-  const subjects = useMemo(() => registry.subjectsList.map((s, i) => {
-    const tone = TONE_MAP[i % TONE_MAP.length]
-    const perf = subjectPerformanceMap[s.subjectKey] || null
-    const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
-    const accuracy = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
-
-    const isHighAcc = accuracy >= 75
-    const isMidAcc = accuracy >= 50
-    const pillClass = hasAttempts
-      ? (isHighAcc ? 'pill-green' : isMidAcc ? 'pill-blue' : 'pill-orange')
-      : tone.pillClass
-
-    return {
-      subjectKey: s.subjectKey,
-      title: s.title,
-      icon: s.icon,
-      iconClass: tone.iconClass,
-      pillClass,
-      pillLabel: hasAttempts ? `${accuracy}% ACCURACY` : (s.badge || 'MEDIUM'),
-      meta: hasAttempts
-        ? `${s.counts.chapters} Chapters • ${accuracy}% MCQ Acc (${perf.attemptsCount} Attempt${perf.attemptsCount > 1 ? 's' : ''})`
-        : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
-      progress: accuracy,
-      progressClass: hasAttempts && isHighAcc ? 'fill-green' : tone.progressClass,
-      percentClass: hasAttempts && isHighAcc ? 'pct-green' : tone.percentClass,
-      arrowClass: tone.arrowClass,
-      locked: s.locked,
+  const subjectLastAttemptMap = useMemo(() => {
+    const map = {}
+    pastAttempts.forEach((att, idx) => {
+      if (att.subjectKey) {
+        const ts = att.timestamp || (idx + 1) * 1000
+        map[att.subjectKey] = Math.max(map[att.subjectKey] || 0, ts)
+      }
+    })
+    try {
+      const cachedAccess = localStorage.getItem('nexora_recent_subject_access')
+      if (cachedAccess) {
+        const accessMap = JSON.parse(cachedAccess)
+        Object.keys(accessMap).forEach((key) => {
+          map[key] = Math.max(map[key] || 0, accessMap[key] || 0)
+        })
+      }
+    } catch {
+      // ignore
     }
-  }), [registry, subjectPerformanceMap])
+    return map
+  }, [pastAttempts])
+
+  const subjects = useMemo(() => {
+    const list = [...(registry.subjectsList || [])]
+    
+    // Sort by most recently used/attempted subject at the TOP
+    list.sort((a, b) => {
+      const timeA = subjectLastAttemptMap[a.subjectKey] || 0
+      const timeB = subjectLastAttemptMap[b.subjectKey] || 0
+      if (timeA !== timeB) return timeB - timeA
+      return 0
+    })
+
+    return list.map((s, i) => {
+      const tone = TONE_MAP[i % TONE_MAP.length]
+      const perf = subjectPerformanceMap[s.subjectKey] || null
+      const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
+      const accuracy = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
+
+      const isHighAcc = accuracy >= 75
+      const isMidAcc = accuracy >= 50
+      const pillClass = hasAttempts
+        ? (isHighAcc ? 'pill-green' : isMidAcc ? 'pill-blue' : 'pill-orange')
+        : tone.pillClass
+
+      return {
+        subjectKey: s.subjectKey,
+        title: s.title,
+        icon: s.icon,
+        iconClass: tone.iconClass,
+        pillClass,
+        pillLabel: hasAttempts ? `${accuracy}% ACCURACY` : (s.badge || 'MEDIUM'),
+        meta: hasAttempts
+          ? `${s.counts.chapters} Chapters • ${accuracy}% MCQ Acc (${perf.attemptsCount} Attempt${perf.attemptsCount > 1 ? 's' : ''})`
+          : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
+        progress: accuracy,
+        progressClass: hasAttempts && isHighAcc ? 'fill-green' : tone.progressClass,
+        percentClass: hasAttempts && isHighAcc ? 'pct-green' : tone.percentClass,
+        arrowClass: tone.arrowClass,
+        locked: s.locked,
+      }
+    })
+  }, [registry, subjectPerformanceMap, subjectLastAttemptMap])
+
+  const overallProgress = useMemo(() => {
+    if (!registry.subjectsList || registry.subjectsList.length === 0) return 0
+    const total = registry.subjectsList.reduce((s, sub) => s + (sub.progress || 0), 0)
+    return Math.round(total / registry.subjectsList.length)
+  }, [registry.subjectsList])
 
   const heroStats = useMemo(() => [
     { icon: 'chapters', value: String(registry.subjectCount), label: 'Subjects' },
@@ -236,12 +277,20 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
             <div className="hero-top">
               <div className="hero-text">
                 <div className="hero-title">{activeCourse?.name || 'Computer Science Prep Hub'} 🚀</div>
-                <div className="hero-sub">
-                  Your all-in-one platform to learn, practice and master {activeCourse?.name || 'Computer Science'}.
-                </div>
               </div>
               <div className="hero-ring-wrap">
-                <div className="hero-ring-value">{registry.subjectsList.length > 0 ? Math.round(registry.subjectsList.reduce((s, sub) => s + sub.progress, 0) / registry.subjectsList.length) : 0}%</div>
+                <ProgressRing
+                  size={64}
+                  radius={24}
+                  strokeWidth={5}
+                  progress={overallProgress}
+                  trackColor="rgba(255, 255, 255, 0.18)"
+                  fillColor="#F1621B"
+                >
+                  <div className="hero-ring-content">
+                    <span className="hero-ring-pct">{overallProgress}%</span>
+                  </div>
+                </ProgressRing>
                 <div className="hero-ring-label">Overall Progress</div>
               </div>
             </div>
