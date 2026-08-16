@@ -1,13 +1,11 @@
 /**
  * TestResultsPage
- * Reusable test results screen with trophy, stats, overview,
- * strengths/improve, progress trend, and quote.
- * Reproduces htmlresource/test-results.html.
- *
- * DATA BINDING:
- * Every existing field is driven by the authoritative result computed at
- * submission time and stored on `testSession`. No hardcoded/demo numbers —
- * the UI simply re-renders with the user's actual responses.
+ * Performance overview screen answering:
+ * - How did I perform?
+ * - Why did I get this result?
+ * - How does this compare with my previous performance?
+ * - How much of the available content have I practiced?
+ * - What should I focus on next?
  */
 import '../styles/testResults.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
@@ -18,56 +16,74 @@ import { testSession } from '../utils/navigation'
 
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds || 0))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
+  const m = Math.floor(s / 60)
   const sec = s % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
 function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSubjects, subjectKey }) {
   const registry = useContentRegistry()
   const subject = registry.subjectCatalog[subjectKey || testSession.subjectKey] || null
-  const subjectTitle = subject?.title || 'Computer Networks'
+  const subjectTitle = subject?.title || 'Subject'
 
-  // Authoritative result computed at submission. Falls back to a safe
-  // zero-state so the UI never shows NaN/undefined if reached directly.
+  // Result metrics computed at submission
   const result = testSession.result || {
     total: 0,
     attempted: 0,
     correct: 0,
     incorrect: 0,
     unanswered: 0,
+    skipped: 0,
     score: 0,
     percentage: 0,
     accuracy: 0,
+    poolSize: 0,
+    newCount: 0,
+    practicedCount: 0,
+    uniquePracticedTotal: 0,
+    remainingUnpracticed: 0,
+    prevAttemptAccuracy: null,
+    scoreDelta: null,
   }
+
   const total = result.total || 0
   const attempted = result.attempted || 0
   const correct = result.correct || 0
   const incorrect = result.incorrect || 0
-  const unanswered = result.unanswered || 0
+  const skipped = result.skipped !== undefined ? result.skipped : Math.max(0, total - attempted)
   const score = result.score || 0
   const percentage = result.percentage || 0
   const accuracy = result.accuracy || 0
 
-  // ── Stat grid (Correct / Incorrect / Unattempted / Total) ──
+  const poolSize = result.poolSize || total
+  const uniquePracticedTotal = result.uniquePracticedTotal || total
+  const remainingUnpracticed = result.remainingUnpracticed !== undefined ? result.remainingUnpracticed : Math.max(0, poolSize - uniquePracticedTotal)
+  const prevAttemptAccuracy = result.prevAttemptAccuracy
+  const scoreDelta = result.scoreDelta
+
+  // Invariant verification: correct + incorrect + skipped = total
+  const invariantSum = correct + incorrect + skipped
+
+  // Stat grid items
   const statItems = [
     { icon: 'check', iconClass: 'icon-correct', value: String(correct), label: 'Correct' },
     { icon: 'cross', iconClass: 'icon-incorrect', value: String(incorrect), label: 'Incorrect' },
-    { icon: 'remove', iconClass: 'icon-unattempted', value: String(unanswered), label: 'Unattempted' },
-    { icon: 'viewList', iconClass: 'icon-total', value: String(total), label: 'Total Questions' },
+    { icon: 'remove', iconClass: 'icon-unattempted', value: String(skipped), label: 'Skipped' },
+    { icon: 'viewList', iconClass: 'icon-total', value: String(total), label: 'Session Size' },
   ]
 
-  // ── Strengths / Improve derived from the actual submitted questions ──
+  // Strengths / Topics to Improve derived from actual question results
   const questions = testSession.questions || []
   const answers = testSession.answers || {}
   const strengths = []
   const improvements = []
+
   questions.forEach((q, idx) => {
     const chosen = answers[idx]
     const shortLabel = (q.text || `Question ${idx + 1}`).length > 34
       ? `${(q.text || '').slice(0, 34)}…`
       : (q.text || `Question ${idx + 1}`)
+
     if (chosen !== undefined && chosen !== null) {
       if (chosen === q.correct) {
         strengths.push({ label: shortLabel, score: 'Correct' })
@@ -75,30 +91,33 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
         improvements.push({ label: shortLabel, score: 'Incorrect' })
       }
     } else {
-      improvements.push({ label: shortLabel, score: 'Unanswered' })
+      improvements.push({ label: shortLabel, score: 'Skipped' })
     }
   })
 
-  // ── Progress trend from real attempt history ──
-  const history = Array.isArray(testSession.attemptHistory) ? testSession.attemptHistory : []
-  const trendData = history.map((value, i) => ({
-    label: `Attempt ${i + 1}`,
-    value,
-  }))
-  // Always end with the current attempt.
-  trendData.push({ label: 'Current', value: percentage })
-  const prevAttempt = history.length > 1 ? history[history.length - 2] : null
-  const scoreDelta = prevAttempt !== null ? percentage - prevAttempt : null
-
-  // ── Time taken ──
+  // Time & Performance Tier
   const timeTaken = formatTime(testSession.timeTakenSeconds)
 
-  // ── Performance tier text (derived, not hardcoded) ──
   let performanceTier = 'Keep Practicing 💪'
   if (percentage >= 90) performanceTier = 'Outstanding! 🏆'
   else if (percentage >= 75) performanceTier = 'Good 😌'
   else if (percentage >= 50) performanceTier = 'Fair 🙂'
   const above70 = percentage >= 70
+
+  // Data-driven AI Mentor Insight
+  let aiInsightText = `You completed ${total} practice questions from your ${poolSize} available MCQ pool.`
+  if (strengths.length > 0 && improvements.length === 0) {
+    aiInsightText = `Perfect score! You answered all ${total} questions correctly. You have strong mastery of this content.`
+  } else if (scoreDelta !== null && scoreDelta > 0) {
+    aiInsightText = `Your accuracy improved by +${scoreDelta}% compared to your last practice attempt! Focus on weak topics to maintain momentum.`
+  } else if (improvements.length > 0) {
+    const topWeak = improvements[0].label
+    aiInsightText = `Your accuracy is ${accuracy}%. Reviewing '${topWeak}' will help boost your score on the next attempt.`
+  }
+
+  // Pool progress calculation
+  const poolCoveragePercent = poolSize > 0 ? Math.round((uniquePracticedTotal / poolSize) * 100) : 0
+  const sessionPoolPercent = poolSize > 0 ? Math.round((total / poolSize) * 100) : 0
 
   return (
     <div className="results-shell">
@@ -110,17 +129,17 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
             </button>
             <div className="header-title">
               <h1>Test Submitted! 🎉</h1>
-              <p>{subjectTitle} • {total} Questions</p>
+              <p>{subjectTitle} • {total} Questions Session</p>
             </div>
           </div>
           <button type="button" className="test-details-btn" disabled>
             <AppIcon name="testDetails" size={15} />
-            Test Details
+            Attempt Recorded
           </button>
         </header>
 
         <main className="content">
-          {/* Top row: trophy + performance */}
+          {/* 1. Primary Result Hero */}
           <div className="top-row">
             <div className="card trophy-card anim" style={{ animationDelay: '0.05s' }}>
               <div className="trophy-circle">
@@ -129,11 +148,10 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '65px', '--ty': '-60px', '--rot': '160deg', animationDelay: '0.25s' }}>✨</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '-70px', '--ty': '40px', '--rot': '90deg', animationDelay: '0.35s' }}>🎉</span>
                 <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '70px', '--ty': '50px', '--rot': '-90deg', animationDelay: '0.2s' }}>⭐</span>
-                <span className="confetti-piece" style={{ top: '40%', left: '50%', '--tx': '0px', '--ty': '-90px', '--rot': '40deg', animationDelay: '0.4s' }}>🎉</span>
               </div>
-              <div className="trophy-title">Great Effort! Keep Going!</div>
-              <div className="score-big">{score}<span> / {total}</span></div>
-              <div className="score-pill">{percentage}% Score</div>
+              <div className="trophy-title">Great Effort!</div>
+              <div className="score-big">{score}<span> / {total} Correct</span></div>
+              <div className="score-pill">{accuracy}% Accuracy</div>
             </div>
 
             <div className="card stats-card anim" style={{ animationDelay: '0.12s' }}>
@@ -141,7 +159,7 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                 {statItems.map((item) => (
                   <div className="stat-item" key={item.label}>
                     <div className={`stat-icon ${item.iconClass}`}>
-                      <AppIcon name={item.icon} size={16} />
+                      <AppIcon name={item.icon} size={15} />
                     </div>
                     <div className="stat-num">{item.value}</div>
                     <div className="stat-label">{item.label}</div>
@@ -151,7 +169,7 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
 
               <div className="performance-box">
                 <div className="performance-top">
-                  <div className="performance-label">Your Performance</div>
+                  <div className="performance-label">Performance Tier</div>
                   <div className="above-pill">
                     <AppIcon name="clock" size={12} />
                     {above70 ? 'Above 70%' : 'Below 70%'}
@@ -160,93 +178,146 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
                 <div className="performance-value">{performanceTier}</div>
                 <div className="performance-sub">
                   {attempted > 0
-                    ? `You answered ${attempted} of ${total} questions`
-                    : 'You did not attempt any questions'}
+                    ? `Answered ${attempted} of ${total} session questions`
+                    : 'No questions attempted in session'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Performance Overview */}
+          {/* 2. Key Performance Metrics Hierarchy */}
           <div className="section-title anim" style={{ animationDelay: '0.16s' }}>Performance Overview</div>
           <div className="overview-grid mb-16">
             <div className="overview-card anim" style={{ animationDelay: '0.18s' }}>
-              <h3>Accuracy</h3>
-              <ProgressRing size={96} radius={42} strokeWidth={9} progress={accuracy} trackColor="#EAECF0" fillColor="#12B76A">
-                <div className="ring-value">{accuracy}%</div>
-              </ProgressRing>
-              {scoreDelta !== null ? (
-                <div className={`overview-delta ${scoreDelta >= 0 ? 'delta-up' : 'delta-down'}`}>
-                  <AppIcon name={scoreDelta >= 0 ? 'trendingUp' : 'trendingDown'} size={14} />
-                  {Math.abs(scoreDelta)}%
-                </div>
-              ) : (
-                <div className="overview-delta delta-up">
-                  <AppIcon name="trendingUp" size={14} />
-                  0%
-                </div>
-              )}
-              <div className="overview-compare">
-                {prevAttempt !== null ? `vs Last Attempt (${prevAttempt}%)` : 'First attempt'}
+              <div className="metric-large">{accuracy}%</div>
+              <div className="metric-title">Accuracy</div>
+              <div className={`metric-context ${scoreDelta !== null && scoreDelta >= 0 ? 'text-green' : scoreDelta !== null ? 'text-red' : ''}`}>
+                {scoreDelta !== null
+                  ? `${scoreDelta >= 0 ? '+' : ''}${scoreDelta}% vs previous practice`
+                  : 'First practice session'}
               </div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.22s' }}>
-              <h3>Score</h3>
-              <ProgressRing size={96} radius={42} strokeWidth={9} progress={percentage} trackColor="#EDE6FC" fillColor="#7C3AED">
-                <div className="ring-value">{score}<span>/{total}</span></div>
-              </ProgressRing>
-              {scoreDelta !== null ? (
-                <div className={`overview-delta ${scoreDelta >= 0 ? 'delta-up' : 'delta-down'}`}>
-                  <AppIcon name={scoreDelta >= 0 ? 'trendingUp' : 'trendingDown'} size={14} />
-                  {Math.abs(scoreDelta)}
-                </div>
-              ) : (
-                <div className="overview-delta delta-up">
-                  <AppIcon name="trendingUp" size={14} />
-                  0
-                </div>
-              )}
-              <div className="overview-compare">
-                {prevAttempt !== null ? `vs Last Attempt (${prevAttempt}%)` : 'First attempt'}
-              </div>
+              <div className="metric-large">{score}<span>/{total}</span></div>
+              <div className="metric-title">Session Score</div>
+              <div className="metric-context">{percentage}% total score</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.26s' }}>
-              <h3>Time Taken</h3>
-              <div className="clock-icon-wrap">
-                <AppIcon name="clock" size={32} />
-              </div>
-              <div className="time-value">{timeTaken}</div>
-              <div className="overview-compare">Total time for this attempt</div>
+              <div className="metric-large">{timeTaken}</div>
+              <div className="metric-title">Time Elapsed</div>
+              <div className="metric-context">Total session duration</div>
             </div>
 
             <div className="overview-card anim" style={{ animationDelay: '0.3s' }}>
-              <h3>Rank</h3>
-              <div className="medal-icon-wrap">
-                <AppIcon name="medal" size={40} />
+              <div className="metric-large">
+                {attempted > 0 ? Math.round((attempted / total) * 100) : 0}%
               </div>
-              <div className="rank-value">
-                {percentage >= 90 ? '🥇' : percentage >= 75 ? '🥈' : percentage >= 50 ? '🥉' : '—'}
+              <div className="metric-title">Attempt Rate</div>
+              <div className="metric-context">{attempted} of {total} attempted</div>
+            </div>
+          </div>
+
+          {/* 3. MCQ Pool vs Practice Comparison */}
+          <div className="section-title anim" style={{ animationDelay: '0.32s' }}>MCQ Pool vs Practice Attempt</div>
+          <div className="card pool-comparison-card mb-16 anim" style={{ animationDelay: '0.34s' }}>
+            <div className="pool-comp-header">
+              <div>
+                <div className="pool-comp-title">Question Pool Coverage</div>
+                <div className="pool-comp-sub">
+                  Practiced {uniquePracticedTotal} of {poolSize} total available MCQs ({poolCoveragePercent}%)
+                </div>
               </div>
-              <div className="rank-sub">
-                {history.length > 1 ? `of ${history.length} attempts` : 'First attempt'}
+              <span className="pool-badge">{poolSize} Total MCQs</span>
+            </div>
+
+            <div className="pool-bar-track">
+              <div
+                className="pool-bar-fill session-fill"
+                style={{ width: `${Math.min(100, (total / poolSize) * 100)}%` }}
+                title="Current Session"
+              />
+              <div
+                className="pool-bar-fill practiced-fill"
+                style={{ width: `${Math.min(100 - (total / poolSize) * 100, Math.max(0, poolCoveragePercent - sessionPoolPercent))}%` }}
+                title="Previously Practiced"
+              />
+            </div>
+
+            <div className="pool-stats-row">
+              <div className="pool-stat-col">
+                <span className="dot dot-purple" />
+                <div>
+                  <div className="pool-stat-val">{poolSize}</div>
+                  <div className="pool-stat-lbl">MCQ Pool</div>
+                </div>
+              </div>
+              <div className="pool-stat-col">
+                <span className="dot dot-orange" />
+                <div>
+                  <div className="pool-stat-val">{total}</div>
+                  <div className="pool-stat-lbl">Current Session</div>
+                </div>
+              </div>
+              <div className="pool-stat-col">
+                <span className="dot dot-green" />
+                <div>
+                  <div className="pool-stat-val">{uniquePracticedTotal}</div>
+                  <div className="pool-stat-lbl">Total Practiced</div>
+                </div>
+              </div>
+              <div className="pool-stat-col">
+                <span className="dot dot-gray" />
+                <div>
+                  <div className="pool-stat-val">{remainingUnpracticed}</div>
+                  <div className="pool-stat-lbl">Remaining</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Strengths / Improve */}
+          {/* 4. Performance Comparison / Previous Attempt */}
+          <div className="section-title anim" style={{ animationDelay: '0.36s' }}>Performance Comparison</div>
+          <div className="card prev-comparison-card mb-16 anim" style={{ animationDelay: '0.38s' }}>
+            {prevAttemptAccuracy !== null ? (
+              <div className="prev-comp-grid">
+                <div className="prev-box">
+                  <div className="prev-lbl">Previous Practice</div>
+                  <div className="prev-val">{prevAttemptAccuracy}%</div>
+                </div>
+                <div className="prev-arrow">➔</div>
+                <div className="prev-box current">
+                  <div className="prev-lbl">Current Practice</div>
+                  <div className="prev-val">{accuracy}%</div>
+                </div>
+                <div className={`prev-delta-pill ${scoreDelta >= 0 ? 'delta-up' : 'delta-down'}`}>
+                  {scoreDelta >= 0 ? `+${scoreDelta}%` : `${scoreDelta}%`}
+                </div>
+              </div>
+            ) : (
+              <div className="first-attempt-box">
+                <AppIcon name="star" size={24} />
+                <div>
+                  <div className="first-attempt-title">First Recorded Practice Session</div>
+                  <div className="first-attempt-sub">
+                    Your baseline performance for this chapter is {accuracy}%. Subsequent attempts will display performance improvement comparisons here.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Strengths & 6. Topics to Improve (INFORMATIONAL ONLY — NON CLICKABLE) */}
           <div className="two-col mb-16">
-            <div className="box box-strength anim" style={{ animationDelay: '0.34s' }}>
+            <div className="box box-strength anim non-clickable" style={{ animationDelay: '0.40s' }}>
               <h4>Your Strengths 💪</h4>
               {strengths.length > 0 ? (
-                strengths.map((item) => (
+                strengths.slice(0, 5).map((item) => (
                   <div className="list-row" key={item.label}>
                     <div className="list-left">
-                      <span className="dot dot-green">
-                        <AppIcon name="check" size={10} />
-                      </span>
-                      {item.label}
+                      <span className="dot dot-green">✓</span>
+                      <span className="item-label">{item.label}</span>
                     </div>
                     <span className="list-score">{item.score}</span>
                   </div>
@@ -254,29 +325,25 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               ) : (
                 <div className="list-row">
                   <div className="list-left">
-                    <span className="dot dot-green">
-                      <AppIcon name="check" size={10} />
-                    </span>
-                    No correct answers yet
+                    <span className="dot dot-green">✓</span>
+                    No correct answers in this session
                   </div>
                 </div>
               )}
               <div className="tip-banner tip-green">
                 <AppIcon name="star" size={14} />
-                Keep it up! You're doing great in these topics.
+                Solid performance in these questions.
               </div>
             </div>
 
-            <div className="box box-improve anim" style={{ animationDelay: '0.38s' }}>
+            <div className="box box-improve anim non-clickable" style={{ animationDelay: '0.42s' }}>
               <h4>Topics to Improve 🎯</h4>
               {improvements.length > 0 ? (
-                improvements.map((item) => (
+                improvements.slice(0, 5).map((item) => (
                   <div className="list-row" key={item.label}>
                     <div className="list-left">
-                      <span className="dot dot-red">
-                        <AppIcon name="cross" size={10} />
-                      </span>
-                      {item.label}
+                      <span className="dot dot-red">✕</span>
+                      <span className="item-label">{item.label}</span>
                     </div>
                     <span className="list-score">{item.score}</span>
                   </div>
@@ -284,83 +351,43 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
               ) : (
                 <div className="list-row">
                   <div className="list-left">
-                    <span className="dot dot-red">
-                      <AppIcon name="cross" size={10} />
-                    </span>
-                    Nothing to improve 🎉
+                    <span className="dot dot-red">✕</span>
+                    No incorrect items 🎉
                   </div>
                 </div>
               )}
               <div className="tip-banner tip-red">
                 <AppIcon name="trendingUp" size={14} />
-                Focus on these topics to boost your score in the next attempt.
+                Review these items to boost future accuracy.
               </div>
             </div>
           </div>
 
-          {/* Progress Trend */}
-          <div className="section-title anim" style={{ animationDelay: '0.42s' }}>Your Progress Trend</div>
-          <div className="progress-card mb-16 anim" style={{ animationDelay: '0.46s' }}>
-            <div className="chart-wrap">
-              <div className="trend-chart">
-                {trendData.map((point, index) => {
-                  const max = 100
-                  const height = (point.value / max) * 100
-                  return (
-                    <div className="trend-point" key={point.label} style={{ left: `${(index / Math.max(1, trendData.length - 1)) * 100}%`, bottom: `${height}%` }}>
-                      <span className="trend-value">{point.value}%</span>
-                      <span className="trend-dot" />
-                      <span className="trend-label">{point.label}</span>
-                    </div>
-                  )
-                })}
-                <div className="trend-line" />
-              </div>
+          {/* 7. AI Learning Insight */}
+          <div className="section-title anim" style={{ animationDelay: '0.44s' }}>AI Learning Insight</div>
+          <div className="card ai-insight-card mb-16 anim" style={{ animationDelay: '0.46s' }}>
+            <div className="ai-insight-icon">
+              <AppIcon name="lightbulb" size={24} />
             </div>
-            <div className="improve-panel">
-              <div>
-                <div className="improve-title">
-                  {scoreDelta !== null && scoreDelta > 0
-                    ? 'You are improving! 🎉'
-                    : 'Keep going! 💪'}
-                </div>
-                <div className="improve-text">
-                  {scoreDelta !== null && scoreDelta > 0
-                    ? `Your score improved by ${scoreDelta}% from your last attempt.`
-                    : scoreDelta !== null
-                      ? `Your score changed by ${Math.abs(scoreDelta)}% from your last attempt.`
-                      : 'This is your first recorded attempt.'}
-                </div>
-              </div>
-              <div className="improve-arrow">
-                <AppIcon name="trendingUp" size={30} />
-              </div>
+            <div>
+              <div className="ai-insight-title">Mentor Recommendation</div>
+              <div className="ai-insight-text">{aiInsightText}</div>
             </div>
-          </div>
-
-          {/* Quote */}
-          <div className="quote-card mb-16 anim" style={{ animationDelay: '0.5s' }}>
-            <div className="quote-mark">”</div>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div className="quote-text">The expert at anything was once a beginner. Keep learning, keep growing!</div>
-              <div className="quote-author">– Helen Hayes</div>
-            </div>
-            <div className="quote-mountain">🏔️</div>
           </div>
         </main>
 
-        {/* Bottom bar */}
-        <div className="bottom-bar anim" style={{ animationDelay: '0.54s' }}>
-          <button type="button" className="btn" onClick={onReviewAnswers}>
-            <AppIcon name="reviewAnswers" size={15} />
+        {/* 8. Next Learning Action */}
+        <div className="bottom-bar anim" style={{ animationDelay: '0.50s' }}>
+          <button type="button" className="btn btn-primary" onClick={onReviewAnswers}>
+            <AppIcon name="reviewAnswers" size={16} />
             Review Answers
           </button>
           <button type="button" className="btn" onClick={onPracticeAgain}>
-            <AppIcon name="practiceAgain" size={15} />
+            <AppIcon name="practiceAgain" size={16} />
             Practice Again
           </button>
-          <button type="button" className="btn btn-primary" onClick={onBackToSubjects}>
-            <AppIcon name="backToSubjects" size={15} />
+          <button type="button" className="btn" onClick={onBackToSubjects}>
+            <AppIcon name="backToSubjects" size={16} />
             Back to Subjects
           </button>
         </div>
@@ -370,3 +397,4 @@ function TestResultsPage({ onBack, onReviewAnswers, onPracticeAgain, onBackToSub
 }
 
 export default TestResultsPage
+

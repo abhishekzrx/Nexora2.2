@@ -364,12 +364,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       }
 
       const subjectId = subject?.subjectId || subjectKey
-      const chapterId = chapter?.id
-
-      if (!chapterId) {
-        setLoadingMcqs(false)
-        return
-      }
+      const chapterId = chapter?.id || null
 
       abortController = new AbortController()
 
@@ -377,33 +372,46 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         const res = await mcqService.getMcqs(
           activeWorkspaceId,
           subjectId,
-          chapterId,
-          subjectTitle,
-          chapter?.title || chapter?.name || ''
+          chapterId
         )
 
         if (!isMounted || abortController.signal.aborted) return
 
         if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped = res.data.map((m, idx) => {
+          const seenIds = new Set()
+          const validList = []
+
+          res.data.forEach((m, idx) => {
+            if (!m) return
+            const qId = m.id || `q-${idx + 1}`
+            if (seenIds.has(qId)) return
+
+            const questionText = m.question || m.text
+            if (!questionText || typeof questionText !== 'string') return
+
             const rawOpts = m.options || [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD].filter(Boolean)
             const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
+
             let correctIdx = 0
             if (typeof m.correct === 'number') correctIdx = m.correct
+            else if (typeof m.correct_answer === 'number') correctIdx = m.correct_answer
             else if (typeof m.correct_answer === 'string' || typeof m.correctAnswer === 'string') {
-              const strKey = String(m.correct_answer || m.correctAnswer || 'A').toUpperCase()
-              const map = { A: 0, B: 1, C: 2, D: 3 }
+              const strKey = String(m.correct_answer || m.correctAnswer || 'A').trim().toUpperCase()
+              const map = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
               correctIdx = map[strKey] ?? 0
             }
-            return {
-              id: m.id || idx + 1,
-              text: m.question || m.text,
+
+            seenIds.add(qId)
+            validList.push({
+              id: qId,
+              text: questionText,
               options: opts,
               correct: correctIdx,
               explanation: m.explanation || 'No detailed explanation provided for this question.',
-            }
+            })
           })
-          setDbQuestions(mapped)
+
+          setDbQuestions(validList)
           setMcqError(null)
         } else if (res.success) {
           setDbQuestions([])
@@ -436,22 +444,59 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     }
   }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
 
-  const activeQuestions = useMemo(() => {
-    if (loadingMcqs) return []
-    if (dbQuestions.length > 0) return dbQuestions
+  const totalPool = dbQuestions.length
 
-    if (mcqError) {
-      if (import.meta.env.DEV) {
-        console.warn('[MCQPracticePage] MCQ load error:', mcqError)
-      }
-      return []
+  // Smart Practice Session Selection: Prefer new unpracticed questions first, then fill with practiced if < 20
+  const { activeQuestions, newCount, practicedCount } = useMemo(() => {
+    if (loadingMcqs || totalPool === 0) {
+      return { activeQuestions: [], newCount: 0, practicedCount: 0 }
     }
 
-    return []
-  }, [dbQuestions, mcqError, loadingMcqs])
+    const pastAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    const historicalQuestionIds = new Set()
+    pastAttempts.forEach((att) => {
+      if (Array.isArray(att.questionIds)) {
+        att.questionIds.forEach((id) => historicalQuestionIds.add(id))
+      }
+    })
 
-  const totalGridSize = 20
+    const unpracticedList = []
+    const practicedList = []
+
+    dbQuestions.forEach((q) => {
+      if (historicalQuestionIds.has(q.id)) {
+        practicedList.push(q)
+      } else {
+        unpracticedList.push(q)
+      }
+    })
+
+    const targetSize = Math.min(20, totalPool)
+    const selected = []
+
+    // 1. Prefer new/unpracticed questions first
+    const newSelected = unpracticedList.slice(0, targetSize)
+    selected.push(...newSelected)
+
+    // 2. Fill remaining slots with previously practiced questions if needed
+    if (selected.length < targetSize) {
+      const remainingNeeded = targetSize - selected.length
+      const practicedSelected = practicedList.slice(0, remainingNeeded)
+      selected.push(...practicedSelected)
+    }
+
+    const n = newSelected.length
+    const p = selected.length - n
+
+    return {
+      activeQuestions: selected,
+      newCount: n,
+      practicedCount: p,
+    }
+  }, [dbQuestions, totalPool, loadingMcqs])
+
   const availableCount = activeQuestions.length
+  const totalGridSize = availableCount
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState(() =>
@@ -514,14 +559,26 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Timer countdown — only runs while timerOn is true.
+  // Evaluation state
+  const [isEvaluating, setIsEvaluating] = useState(false)
+  const [evalStep, setEvalStep] = useState(0)
+
+  const evalStages = useMemo(() => [
+    'Analyzing your answers',
+    'Calculating accuracy',
+    'Reviewing your performance',
+    'Identifying learning patterns',
+    'Preparing results',
+  ], [])
+
+  // Timer countdown — only runs while timerOn is true and not evaluating.
   useEffect(() => {
-    if (!timerOn) return undefined
+    if (!timerOn || isEvaluating) return undefined
     const id = setInterval(() => {
       setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
     return () => clearInterval(id)
-  }, [timerOn])
+  }, [timerOn, isEvaluating])
 
   // Drive the question change transition: animate the current question out,
   // then swap to the target and animate it in. Reduced-motion users skip the
@@ -570,12 +627,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [secondsLeft])
 
   const selectOption = useCallback((optionIndex) => {
-    if (reviewMode) return
+    if (reviewMode || isEvaluating) return
     setAnswers((prev) => ({ ...prev, [displayed]: optionIndex }))
-  }, [displayed, reviewMode])
+  }, [displayed, reviewMode, isEvaluating])
 
   const toggleMark = useCallback(() => {
-    if (reviewMode) return
+    if (reviewMode || isEvaluating) return
     setMarked((prev) => {
       const next = new Set(prev)
       if (next.has(displayed)) {
@@ -585,7 +642,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       }
       return next
     })
-  }, [displayed, reviewMode])
+  }, [displayed, reviewMode, isEvaluating])
 
   const goTo = useCallback((index, direction = 'fade') => {
     if (index >= availableCount) {
@@ -616,9 +673,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   }, [currentIndex, availableCount, goTo, handleUnavailableClick])
 
   const toggleTimer = useCallback(() => {
-    if (reviewMode) return
+    if (reviewMode || isEvaluating) return
     setTimerOn((prev) => !prev)
-  }, [reviewMode])
+  }, [reviewMode, isEvaluating])
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
@@ -627,6 +684,114 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
   const toggleExamMode = useCallback(() => {
     setExamMode((prev) => !prev)
   }, [])
+
+  // Finalize attempt and update session state
+  const finalizeSubmission = useCallback((questionList) => {
+    let correctCount = 0
+    let incorrectCount = 0
+    let attemptedCount = 0
+    questionList.forEach((q, idx) => {
+      const chosen = answers[idx]
+      if (chosen === undefined || chosen === null) return
+      attemptedCount += 1
+      if (chosen === q.correct) correctCount += 1
+      else incorrectCount += 1
+    })
+    const totalCount = questionList.length
+    const unansweredCount = totalCount - attemptedCount
+    const score = correctCount
+    const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0
+    const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0
+
+    const pastAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    const prevAttempt = pastAttempts.length > 0 ? pastAttempts[pastAttempts.length - 1] : null
+
+    // Track unique question IDs attempted across sessions
+    const attemptedIdsSet = new Set()
+    pastAttempts.forEach((att) => {
+      if (Array.isArray(att.questionIds)) {
+        att.questionIds.forEach((id) => attemptedIdsSet.add(id))
+      }
+    })
+    questionList.forEach((q) => attemptedIdsSet.add(q.id))
+
+    const uniquePracticedTotal = attemptedIdsSet.size
+    const remainingUnpracticed = Math.max(0, totalPool - uniquePracticedTotal)
+
+    const currentAttemptRecord = {
+      id: `att-${Date.now()}`,
+      timestamp: Date.now(),
+      subjectKey,
+      chapterId: chapter?.id || null,
+      total: totalCount,
+      attempted: attemptedCount,
+      correct: correctCount,
+      incorrect: incorrectCount,
+      skipped: unansweredCount,
+      score,
+      percentage,
+      accuracy,
+      questionIds: questionList.map((q) => q.id),
+    }
+
+    testSession.subjectKey = subjectKey
+    testSession.chapter = chapter
+    testSession.answers = { ...answers }
+    testSession.marked = new Set(marked)
+    testSession.visited = new Set(visited)
+    testSession.questions = questionList
+    testSession.mode = 'practice'
+    const initialSeconds = 29 * 60 + 45
+    testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
+    testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
+    testSession.attemptHistoryData = [...pastAttempts, currentAttemptRecord]
+    
+    testSession.result = {
+      total: totalCount,
+      attempted: attemptedCount,
+      correct: correctCount,
+      incorrect: incorrectCount,
+      unanswered: unansweredCount,
+      score,
+      percentage,
+      accuracy,
+      poolSize: totalPool,
+      newCount,
+      practicedCount,
+      uniquePracticedTotal,
+      remainingUnpracticed,
+      prevAttemptAccuracy: prevAttempt ? prevAttempt.accuracy : null,
+      scoreDelta: prevAttempt ? accuracy - prevAttempt.accuracy : null,
+    }
+    
+    setIsEvaluating(false)
+    onSubmit?.()
+  }, [answers, marked, visited, subjectKey, chapter, secondsLeft, totalPool, newCount, practicedCount, onSubmit])
+
+  const handleSubmit = () => {
+    if (isEvaluating) return
+    setIsEvaluating(true)
+    setEvalStep(0)
+
+    const questionList = activeQuestions.map((q) => ({
+      id: q.id,
+      correct: q.correct,
+      text: q.text,
+      options: q.options,
+      explanation: q.explanation,
+    }))
+
+    let step = 0
+    const interval = setInterval(() => {
+      step += 1
+      if (step < evalStages.length) {
+        setEvalStep(step)
+      } else {
+        clearInterval(interval)
+        finalizeSubmission(questionList)
+      }
+    }, 240)
+  }
 
   // Locked content cannot be practiced
   const isLocked = subject?.locked || chapter?.locked || false
@@ -659,56 +824,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     )
   }
 
-  const handleSubmit = () => {
-    // Authoritative evaluation of the submitted session. All result fields
-    // on the Results Page are derived from this single source so every
-    // section (stats, charts, rings) stays consistent.
-    const questionList = activeQuestions.map((q) => ({
-      id: q.id,
-      correct: q.correct,
-      text: q.text,
-      options: q.options,
-      explanation: q.explanation,
-    }))
-    let correctCount = 0
-    let incorrectCount = 0
-    let attemptedCount = 0
-    questionList.forEach((q, idx) => {
-      const chosen = answers[idx]
-      if (chosen === undefined || chosen === null) return
-      attemptedCount += 1
-      if (chosen === q.correct) correctCount += 1
-      else incorrectCount += 1
-    })
-    const totalCount = questionList.length
-    const unansweredCount = totalCount - attemptedCount
-    const score = correctCount
-    const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0
-    const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0
-
-    testSession.subjectKey = subjectKey
-    testSession.chapter = chapter
-    testSession.answers = { ...answers }
-    testSession.marked = new Set(marked)
-    testSession.visited = new Set(visited)
-    testSession.questions = questionList
-    testSession.mode = 'practice'
-    const initialSeconds = 29 * 60 + 45
-    testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
-    testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
-    testSession.result = {
-      total: totalCount,
-      attempted: attemptedCount,
-      correct: correctCount,
-      incorrect: incorrectCount,
-      unanswered: unansweredCount,
-      score,
-      percentage,
-      accuracy,
-    }
-    onSubmit?.()
-  }
-
   return (
     <div className={`mcq-shell theme-${theme}${examMode && isMobile ? ' exam-mode' : ''}`}>
       <PhoneFrame>
@@ -719,7 +834,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             </button>
             <div className="header-title">
               <h1>{reviewMode ? 'Review Answers' : 'MCQ Practice'}</h1>
-              <p>{chapter ? `${subjectTitle} • Chapter ${chapter.num}` : subjectTitle}</p>
+              <p>{chapter ? `${subjectTitle} • Chapter ${chapter.num || chapter.number || 1}` : subjectTitle}</p>
             </div>
           </div>
           <div className="header-right">
@@ -737,7 +852,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               className={`pause-btn${timerOn ? ' timer-active' : ''}`}
               onClick={toggleTimer}
               aria-label={timerOn ? 'Pause timer' : 'Start timer'}
-              disabled={reviewMode}
+              disabled={reviewMode || isEvaluating}
             >
               <AppIcon name={timerOn ? 'pause' : 'timer'} size={16} />
             </button>
@@ -778,57 +893,85 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             </div>
           )}
 
-          {/* Hide summary bar and sidebar in mobile exam mode */}
-          {!(examMode && isMobile) && (
-            <SummaryBar
-              totalQuestions={totalGridSize}
-              answeredCount={answeredCount}
-              markedCount={markedCount}
-              notVisitedCount={notVisitedCount}
-              theme={theme}
-            />
+          {loadingMcqs ? (
+            <div className="mcq-state-card">
+              <div className="mcq-spinner" />
+              <p>Loading questions from database...</p>
+            </div>
+          ) : totalPool === 0 ? (
+            <div className="mcq-state-card empty">
+              <AppIcon name="viewList" size={40} />
+              <h2>No Practice Questions Available</h2>
+              <p>This chapter doesn't have MCQs available in the database yet.</p>
+              <button type="button" className="btn btn-primary" onClick={onBack}>
+                Go Back
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Pool & Session Info Banner */}
+              <div className="pool-info-banner">
+                <div className="pool-info-pill">
+                  <span className="pill-dot pool-dot" />
+                  <strong>MCQ Pool:</strong> {totalPool} Questions
+                </div>
+                <div className="pool-info-pill">
+                  <span className="pill-dot session-dot" />
+                  <strong>Practice Session:</strong> {availableCount} Questions ({newCount} New, {practicedCount} Practiced)
+                </div>
+              </div>
+
+              {/* Hide summary bar and sidebar in mobile exam mode */}
+              {!(examMode && isMobile) && (
+                <SummaryBar
+                  totalQuestions={totalGridSize}
+                  answeredCount={answeredCount}
+                  markedCount={markedCount}
+                  notVisitedCount={notVisitedCount}
+                  theme={theme}
+                />
+              )}
+
+              <div className="main-layout">
+                {!(examMode && isMobile) && (
+                  <Sidebar
+                    totalGridSize={totalGridSize}
+                    availableCount={availableCount}
+                    currentIndex={currentIndex}
+                    answers={answers}
+                    marked={marked}
+                    onGoTo={goTo}
+                    onUnavailableClick={handleUnavailableClick}
+                    theme={theme}
+                  />
+                )}
+
+                <QuestionPanel
+                  question={current}
+                  questionNumber={displayed + 1}
+                  totalQuestions={availableCount}
+                  selectedOption={answers[displayed]}
+                  onSelectOption={selectOption}
+                  onToggleMark={toggleMark}
+                  onPrev={goPrev}
+                  onNext={goNext}
+                  hasPrev={displayed > 0}
+                  hasNext={displayed < availableCount - 1}
+                  reviewMode={reviewMode}
+                  scrollRef={questionScrollRef}
+                  theme={theme}
+                  examMode={examMode}
+                  isMobile={isMobile}
+                  animKey={displayed}
+                  animPhase={phase}
+                  animDir={dir}
+                />
+              </div>
+            </>
           )}
-
-          <div className="main-layout">
-            {!(examMode && isMobile) && (
-              <Sidebar
-                totalGridSize={totalGridSize}
-                availableCount={availableCount}
-                currentIndex={currentIndex}
-                answers={answers}
-                marked={marked}
-                onGoTo={goTo}
-                onUnavailableClick={handleUnavailableClick}
-                theme={theme}
-              />
-            )}
-
-            <QuestionPanel
-              question={current}
-              questionNumber={displayed + 1}
-              totalQuestions={availableCount}
-              selectedOption={answers[displayed]}
-              onSelectOption={selectOption}
-              onToggleMark={toggleMark}
-              onPrev={goPrev}
-              onNext={goNext}
-              hasPrev={displayed > 0}
-              hasNext={displayed < availableCount - 1}
-              reviewMode={reviewMode}
-              scrollRef={questionScrollRef}
-              theme={theme}
-              examMode={examMode}
-              isMobile={isMobile}
-              animKey={displayed}
-              animPhase={phase}
-              animDir={dir}
-            />
-          </div>
-
-          {/* External nav-buttons removed — navigation is now inside QuestionPanel */}
         </main>
 
-        {!(examMode && isMobile) && (
+        {!(examMode && isMobile) && totalPool > 0 && (
           <div className="submit-bar">
             <div className="submit-left">
               <div className="submit-icon">
@@ -836,12 +979,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               </div>
               <div>
                 <div className="submit-title">
-                  {reviewMode ? 'Review complete' : 'Answer 10 more questions to submit the test'}
+                  {reviewMode ? 'Review complete' : `Session progress: ${answeredCount} of ${availableCount} answered`}
                 </div>
                 <div className="submit-sub">
                   {reviewMode
                     ? 'You can go back to your results at any time.'
-                    : 'You can submit the test after answering at least 10 questions.'}
+                    : 'Submit your test when ready to view detailed performance metrics.'}
                 </div>
               </div>
             </div>
@@ -849,6 +992,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
               type="button"
               className="submit-btn"
               onClick={reviewMode ? onBack : handleSubmit}
+              disabled={isEvaluating}
             >
               <AppIcon name={reviewMode ? 'back' : 'send'} size={16} />
               {reviewMode ? 'Back to Results' : 'Submit Test'}
@@ -856,8 +1000,34 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           </div>
         )}
       </PhoneFrame>
+
+      {/* Submission Evaluation State Overlay */}
+      {isEvaluating && (
+        <div className="eval-overlay" role="dialog" aria-label="Evaluating Performance">
+          <div className="eval-card">
+            <div className="eval-spinner-wrap">
+              <div className="eval-spinner" />
+              <div className="eval-sparkle">✨</div>
+            </div>
+            <h3 className="eval-title">Evaluating Your Performance</h3>
+            <p className="eval-subtitle">{evalStages[evalStep]}</p>
+
+            <div className="eval-steps">
+              {evalStages.map((stage, idx) => (
+                <div key={stage} className={`eval-step-item ${idx <= evalStep ? 'active' : ''}`}>
+                  <span className="eval-step-icon">
+                    {idx < evalStep ? '✓' : idx === evalStep ? '●' : '○'}
+                  </span>
+                  <span className="eval-step-label">{stage}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default MCQPracticePage
+

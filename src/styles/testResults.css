@@ -655,3 +655,290 @@
 .results-shell .mb-16 {
   margin-bottom: 16px;
 }
+
+/* ── Metric Hierarchy (Large Metric → Clear Title → Context) ──── */
+.results-shell .metric-large {
+  font-size: 28px;
+  font-weight: 800;
+  color: #101828;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.results-shell .metric-large span {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-text);
+}
+
+.results-shell .metric-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #101828;
+  margin-bottom: 4px;
+}
+
+.results-shell .metric-context {
+  font-size: 11.5px;
+  color: var(--gray-text);
+  line-height: 1.3;
+}
+
+.results-shell .text-green { color: var(--green); font-weight: 700; }
+.results-shell .text-red { color: var(--red); font-weight: 700; }
+
+/* ── MCQ Pool vs Practice Comparison Card ─────────────────── */
+.results-shell .pool-comparison-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+
+.results-shell .pool-comp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.results-shell .pool-comp-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.results-shell .pool-comp-sub {
+  font-size: 12.5px;
+  color: var(--gray-text);
+  margin-top: 2px;
+}
+
+.results-shell .pool-badge {
+  background: var(--purple-bg);
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.results-shell .pool-bar-track {
+  height: 12px;
+  border-radius: 8px;
+  background: #EAECF0;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.results-shell .pool-bar-fill.session-fill {
+  background: var(--orange);
+}
+
+.results-shell .pool-bar-fill.practiced-fill {
+  background: var(--green);
+}
+
+.results-shell .pool-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.results-shell .pool-stat-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.results-shell .dot-purple { background: var(--purple); }
+.results-shell .dot-orange { background: var(--orange); }
+.results-shell .dot-gray { background: #98A2B3; }
+
+.results-shell .pool-stat-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.results-shell .pool-stat-lbl {
+  font-size: 10.5px;
+  color: var(--gray-text);
+}
+
+/* ── Previous Performance Comparison ──────────────────────── */
+.results-shell .prev-comparison-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+
+.results-shell .prev-comp-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 12px;
+}
+
+.results-shell .prev-box {
+  text-align: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--page-bg);
+  flex: 1;
+}
+
+.results-shell .prev-box.current {
+  background: var(--orange-bg);
+  border: 1px solid var(--orange-light);
+}
+
+.results-shell .prev-lbl {
+  font-size: 11.5px;
+  color: var(--gray-text);
+  margin-bottom: 4px;
+}
+
+.results-shell .prev-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.results-shell .prev-arrow {
+  font-size: 18px;
+  color: var(--gray-text);
+}
+
+.results-shell .prev-delta-pill {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.results-shell .delta-up { background: var(--green-bg); color: var(--green); }
+.results-shell .delta-down { background: var(--red-bg); color: var(--red); }
+
+.results-shell .first-attempt-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #FFF8F0;
+  border: 1px solid #FFE4CC;
+  border-radius: 14px;
+  padding: 14px;
+  color: #B2460B;
+}
+
+.results-shell .first-attempt-title {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.results-shell .first-attempt-sub {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+/* ── Informational Only Strengths / Weaknesses ─────────────── */
+.results-shell .non-clickable {
+  cursor: default !important;
+  user-select: none;
+}
+
+.results-shell .non-clickable .list-row {
+  cursor: default !important;
+  pointer-events: none;
+}
+
+.results-shell .item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+/* ── AI Learning Insight ───────────────────────────────────── */
+.results-shell .ai-insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, #F9F5FF 0%, #F0E6FF 100%);
+  border: 1px solid #E4D4FF;
+  border-radius: 18px;
+  padding: 18px 20px;
+}
+
+.results-shell .ai-insight-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.results-shell .ai-insight-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--purple);
+  margin-bottom: 4px;
+}
+
+.results-shell .ai-insight-text {
+  font-size: 13px;
+  color: #3E3050;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* ── Mobile Responsiveness (< 640px) ────────────────────────── */
+@media (max-width: 640px) {
+  .results-shell .top-row {
+    flex-direction: column;
+  }
+
+  .results-shell .trophy-card {
+    flex: none;
+  }
+
+  .results-shell .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .results-shell .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .results-shell .pool-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .results-shell .prev-comp-grid {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .results-shell .prev-box {
+    width: 100%;
+  }
+
+  .results-shell .bottom-bar {
+    flex-direction: column;
+  }
+
+  .results-shell .btn {
+    width: 100%;
+  }
+}
