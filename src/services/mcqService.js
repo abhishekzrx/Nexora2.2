@@ -7,6 +7,7 @@ import { apiService } from './apiService'
 import {
   injectMcqsIntoStore,
   injectFlashcardsIntoStore,
+  hydrateAdminStoreFromSupabase,
 } from '../data/adminStore'
 
 function mapMcqToPayload(item, subjectId, chapterId) {
@@ -209,6 +210,9 @@ export const mcqService = {
       }))
       injectFlashcardsIntoStore(formattedRecords)
     }
+
+    // Trigger store re-hydration in background to guarantee database count accuracy
+    hydrateAdminStoreFromSupabase().catch(() => {})
 
     return {
       success: true,

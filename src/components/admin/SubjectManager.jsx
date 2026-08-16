@@ -8,7 +8,7 @@
  * 4. Two-Column Workspace: Left Subject List + Right Selected Subject Analytics & Chapter Workspace.
  */
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import Button from '../ui/Button'
 import AppIcon from '../ui/AppIcon'
 import {
@@ -17,6 +17,7 @@ import {
   toggleSubjectLock,
   getDeleteSubjectImpact,
   seedDefaultSubjects,
+  hydrateAdminStoreFromSupabase,
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
@@ -471,69 +472,82 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
 
     // Default starter chapters starting cleanly at Chapter 1
     return [
-      { id: `${selectedSubject.id}-ch1`, number: 1, name: 'Introduction & Foundations', desc: 'Core concepts and basic architecture overview', mcqs: 68, flashcards: 12, notes: 2 },
-      { id: `${selectedSubject.id}-ch2`, number: 2, name: 'Physical & Data Link Layer', desc: 'Data communication, network topologies, framing', mcqs: 68, flashcards: 15, notes: 1 },
-      { id: `${selectedSubject.id}-ch3`, number: 3, name: 'Network Layer & IP Addressing', desc: 'IP routing, IPv4/IPv6, subnetting and ARP', mcqs: 68, flashcards: 10, notes: 2 },
-      { id: `${selectedSubject.id}-ch4`, number: 4, name: 'Transport & Application Layer', desc: 'TCP/UDP, HTTP, DNS and socket programming', mcqs: 68, flashcards: 10, notes: 1 },
+      { id: `${selectedSubject.id}-ch1`, number: 1, name: 'Introduction & Foundations', desc: 'Core concepts and basic architecture overview', mcqs: 0, flashcards: 0, notes: 1 },
+      { id: `${selectedSubject.id}-ch2`, number: 2, name: 'Physical & Data Link Layer', desc: 'Data communication, network topologies, framing', mcqs: 0, flashcards: 0, notes: 1 },
+      { id: `${selectedSubject.id}-ch3`, number: 3, name: 'Network Layer & IP Addressing', desc: 'IP routing, IPv4/IPv6, subnetting and ARP', mcqs: 0, flashcards: 0, notes: 1 },
+      { id: `${selectedSubject.id}-ch4`, number: 4, name: 'Transport & Application Layer', desc: 'TCP/UDP, HTTP, DNS and socket programming', mcqs: 0, flashcards: 0, notes: 1 },
     ]
   }, [chapters, selectedSubject])
 
-  const subjectMcqs = useMemo(() => {
-    return mcqs.filter((m) =>
-      (m.subjectId && m.subjectId === selectedSubject.id) ||
-      (m.subject_id && m.subject_id === selectedSubject.id) ||
-      (m.subject && String(m.subject).toLowerCase() === String(selectedSubject.name).toLowerCase())
-    )
-  }, [mcqs, selectedSubject])
+  // Helper to compute EXACT chapter content counts (MCQs, Flashcards, Notes) directly from DB store
+  const getChapterContentCounts = useCallback(
+    (ch) => {
+      if (!ch) return { mcqs: 0, flashcards: 0, notes: 0 }
 
-  const subjectFlashcards = useMemo(() => {
-    return flashcards.filter((f) =>
-      (f.subjectId && f.subjectId === selectedSubject.id) ||
-      (f.subject_id && f.subject_id === selectedSubject.id) ||
-      (f.subject && String(f.subject).toLowerCase() === String(selectedSubject.name).toLowerCase())
-    )
-  }, [flashcards, selectedSubject])
+      // 1. Exact matching questions from mcqs store
+      const matchingM = mcqs.filter((m) => {
+        const matchesSubject =
+          !selectedSubject ||
+          m.subjectId === selectedSubject.id ||
+          m.subject_id === selectedSubject.id ||
+          (m.subject && String(m.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
 
-  // Helper to compute exact chapter content counts (MCQs, Flashcards, Notes)
-  const getChapterContentCounts = (ch, idx) => {
-    let mCount = typeof ch.mcqs === 'number' && ch.mcqs > 0 ? ch.mcqs : 0
-    let fCount = typeof ch.flashcards === 'number' && ch.flashcards > 0 ? ch.flashcards : 0
-    let nCount = typeof ch.notes === 'number' && ch.notes > 0 ? ch.notes : 1
+        const matchesChapter =
+          m.chapterId === ch.id ||
+          m.chapter_id === ch.id ||
+          (m.chapter && String(m.chapter).trim().toLowerCase() === String(ch.name).trim().toLowerCase())
 
-    // Match questions from mcqs store
-    const matchingM = mcqs.filter(
-      (m) =>
-        (m.chapterId && m.chapterId === ch.id) ||
-        (m.chapter_id && m.chapter_id === ch.id) ||
-        (m.chapter && String(m.chapter).toLowerCase() === String(ch.name).toLowerCase())
-    )
-    if (matchingM.length > 0) mCount = Math.max(mCount, matchingM.length)
+        return matchesSubject && matchesChapter
+      })
 
-    // Match cards from flashcards store
-    const matchingF = flashcards.filter(
-      (f) =>
-        (f.chapterId && f.chapterId === ch.id) ||
-        (f.chapter_id && f.chapter_id === ch.id) ||
-        (f.chapter && String(f.chapter).toLowerCase() === String(ch.name).toLowerCase())
-    )
-    if (matchingF.length > 0) fCount = Math.max(fCount, matchingF.length)
+      // 2. Exact matching cards from flashcards store
+      const matchingF = flashcards.filter((f) => {
+        const matchesSubject =
+          !selectedSubject ||
+          f.subjectId === selectedSubject.id ||
+          f.subject_id === selectedSubject.id ||
+          (f.subject && String(f.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
 
-    // Proportional fallback if total subject MCQs exist (e.g. 272 MCQs in Computer Networks)
-    if (mCount === 0) {
-      const totalSubjectMcqs = subjectMcqs.length > 0 ? subjectMcqs.length : 272
-      mCount = Math.round(totalSubjectMcqs / Math.max(1, subjectChapters.length))
-    }
-    if (fCount === 0) {
-      const totalSubjectFlash = subjectFlashcards.length > 0 ? subjectFlashcards.length : 10
-      fCount = Math.round(totalSubjectFlash / Math.max(1, subjectChapters.length))
-    }
+        const matchesChapter =
+          f.chapterId === ch.id ||
+          f.chapter_id === ch.id ||
+          (f.chapter && String(f.chapter).trim().toLowerCase() === String(ch.name).trim().toLowerCase())
 
-    return { mcqs: mCount, flashcards: fCount, notes: nCount }
-  }
+        return matchesSubject && matchesChapter
+      })
+
+      const mCount = matchingM.length > 0 ? matchingM.length : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
+      const fCount = matchingF.length > 0 ? matchingF.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
+      const nCount = typeof ch.notes === 'number' ? ch.notes : (ch.id ? 1 : 0)
+
+      return { mcqs: mCount, flashcards: fCount, notes: nCount }
+    },
+    [mcqs, flashcards, selectedSubject],
+  )
 
   const chapterCount = subjectChapters.length
-  const mcqCount = subjectMcqs.length || subjectChapters.reduce((sum, ch, i) => sum + getChapterContentCounts(ch, i).mcqs, 0)
-  const flashcardCount = subjectFlashcards.length || subjectChapters.reduce((sum, ch, i) => sum + getChapterContentCounts(ch, i).flashcards, 0)
+
+  const mcqCount = useMemo(() => {
+    const directMcqs = mcqs.filter(
+      (m) =>
+        (m.subjectId && m.subjectId === selectedSubject.id) ||
+        (m.subject_id && m.subject_id === selectedSubject.id) ||
+        (m.subject && String(m.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
+    )
+    if (directMcqs.length > 0) return directMcqs.length
+    return subjectChapters.reduce((sum, ch) => sum + getChapterContentCounts(ch).mcqs, 0)
+  }, [mcqs, selectedSubject, subjectChapters, getChapterContentCounts])
+
+  const flashcardCount = useMemo(() => {
+    const directFlash = flashcards.filter(
+      (f) =>
+        (f.subjectId && f.subjectId === selectedSubject.id) ||
+        (f.subject_id && f.subject_id === selectedSubject.id) ||
+        (f.subject && String(f.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
+    )
+    if (directFlash.length > 0) return directFlash.length
+    return subjectChapters.reduce((sum, ch) => sum + getChapterContentCounts(ch).flashcards, 0)
+  }, [flashcards, selectedSubject, subjectChapters, getChapterContentCounts])
 
   const readinessScore = Math.min(
     100,
@@ -861,6 +875,10 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   }, [subjects, activeCourse])
 
   useEffect(() => {
+    hydrateAdminStoreFromSupabase()
+  }, [activeWorkspaceId])
+
+  useEffect(() => {
     if (courseSubjects.length > 0 && !courseSubjects.some((s) => s.id === selectedSubjectId)) {
       setSelectedSubjectId(courseSubjects[0].id)
     }
@@ -887,11 +905,21 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
 
   // Helper stats for subject list
   const getSubjectContentStats = (subject) => {
-    const sChapters = chapters.filter((c) => c.subject === subject.name)
-    const sMcqs = mcqs.filter((m) => m.subject === subject.name)
+    const sChapters = chapters.filter(
+      (c) =>
+        (c.subjectId && c.subjectId === subject.id) ||
+        (c.subject_id && c.subject_id === subject.id) ||
+        (c.subject && String(c.subject).trim().toLowerCase() === String(subject.name).trim().toLowerCase())
+    )
+    const sMcqs = mcqs.filter(
+      (m) =>
+        (m.subjectId && m.subjectId === subject.id) ||
+        (m.subject_id && m.subject_id === subject.id) ||
+        (m.subject && String(m.subject).trim().toLowerCase() === String(subject.name).trim().toLowerCase())
+    )
     return {
-      chapters: sChapters.length || (subject.name.includes('Structures') ? 12 : 4),
-      mcqs: sMcqs.length || (subject.name.includes('Structures') ? 80 : 20),
+      chapters: sChapters.length,
+      mcqs: sMcqs.length,
     }
   }
 
