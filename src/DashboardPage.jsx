@@ -368,16 +368,9 @@ function SubjectCard({ subject, onSelect }) {
     onSelect(subject.subjectKey)
   }
 
-  const handleContinueClick = (e) => {
-    e.stopPropagation()
-    onSelect(subject.subjectKey)
-  }
-
-  const isHighAcc = subject.accuracy >= 75
-  const isMidAcc = subject.accuracy >= 50
-  const ringColor = subject.hasAttempts
-    ? (isHighAcc ? '#12B76A' : isMidAcc ? '#2E5CE6' : '#F1621B')
-    : '#2E5CE6'
+  const ringColor = subject.coverageLevel?.color || subject.ringColor || '#12B76A'
+  const coveragePct = subject.coveragePercent ?? subject.progress ?? 0
+  const masteryPct = subject.masteryPercent ?? subject.accuracy ?? 0
 
   return (
     <div
@@ -401,34 +394,34 @@ function SubjectCard({ subject, onSelect }) {
             size={44}
             radius={18}
             strokeWidth={4}
-            progress={subject.progress}
+            progress={coveragePct}
             trackColor="#E7EDFD"
             fillColor={ringColor}
           >
-            <span className="subject-progress-pct">{subject.progress}%</span>
+            <span className="subject-progress-pct">{Math.round(coveragePct)}%</span>
           </ProgressRing>
         </div>
       </div>
       <div className="subject-name">{subject.title}</div>
 
-      {/* Performance Trend Bar reflecting MCQ practice performance */}
+      {/* Subject Coverage & Mastery Header */}
       <div className="subject-trend-wrap">
         <div className="subject-trend-header">
           <span className="subject-trend-lbl">
-            {subject.hasAttempts ? 'MCQ Performance' : 'Course Progress'}
+            {subject.hasAttempts ? 'Subject Coverage' : 'Course Coverage'}
           </span>
-          <span className={`subject-trend-val ${subject.hasAttempts && isHighAcc ? 'text-green' : ''}`}>
+          <span className="subject-trend-val" style={{ color: ringColor }}>
             {subject.hasAttempts
-              ? `${subject.accuracy}% Accuracy`
-              : subject.progress >= 70 ? 'High Mastery' : subject.progress >= 40 ? 'Steady' : 'Building'}
+              ? `${masteryPct}% Mastery`
+              : `${Math.round(coveragePct)}% Coverage`}
           </span>
         </div>
         <div className="subject-trend-track">
           <div
             className="subject-trend-fill"
             style={{
-              width: `${Math.max(8, subject.progress)}%`,
-              backgroundColor: ringColor
+              width: `${Math.max(8, coveragePct)}%`,
+              backgroundColor: ringColor,
             }}
           />
         </div>
@@ -441,7 +434,9 @@ function SubjectCard({ subject, onSelect }) {
         </span>
         <span className={`subject-stat ${subject.hasAttempts ? 'highlight-acc-stat' : ''}`}>
           <AppIcon name="mcqs" size={11} />
-          {subject.hasAttempts ? `${subject.accuracy}% Acc` : `${subject.mcqs} MCQs`}
+          {subject.hasAttempts
+            ? `${subject.attemptedMcqs}/${subject.mcqs} MCQs`
+            : `${subject.mcqs} MCQs`}
         </span>
         <span className="subject-stat">
           <AppIcon name="flashcardsTab" size={11} />
@@ -454,15 +449,11 @@ function SubjectCard({ subject, onSelect }) {
           <AppIcon name="streak" size={10} />
           Practiced Recently
         </div>
-      ) : null}
-
-      <button
-        type="button"
-        className="subject-continue"
-        onClick={handleContinueClick}
-      >
-        Continue <AppIcon name="arrowForward" size={13} />
-      </button>
+      ) : (
+        <div className={`subject-continue ${subject.iconClass.replace('icon-', 'cont-')}`}>
+          Continue Subject →
+        </div>
+      )}
     </div>
   )
 }
@@ -704,23 +695,33 @@ function DashboardPage({
     return list.map((s, i) => {
       const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
       const perf = subjectPerformanceMap[s.subjectKey] || null
-      const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
-      const accuracyPct = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
       const lastTs = perf?.lastAttemptTimestamp || subjectLastAttemptMap[s.subjectKey]
+
+      const hasAttempts = Boolean(s.hasAttempts || (perf && perf.attemptsCount > 0))
+      const coveragePercent = typeof s.coveragePercent === 'number' ? s.coveragePercent : (s.progress || 0)
+      const masteryPercent = typeof s.masteryPercent === 'number' ? s.masteryPercent : (s.accuracy || 0)
+      const coverageLevel = s.coverageLevel
+      const ringColor = coverageLevel?.color || tone.ringTrack
 
       return {
         subjectKey: s.subjectKey,
         title: s.title,
         icon: s.icon,
         iconClass: tone.iconClass,
-        progress: accuracyPct,
-        accuracy: accuracyPct,
+        progress: coveragePercent,
+        accuracy: masteryPercent,
+        coveragePercent,
+        masteryPercent,
+        coverageLevel,
+        ringColor,
         hasAttempts,
         attemptsCount: perf?.attemptsCount || 0,
-        totalCorrect: perf?.totalCorrect || 0,
-        totalAttempted: perf?.totalAttempted || 0,
+        totalCorrect: perf?.totalCorrect || s.masteredMcqs || 0,
+        totalAttempted: perf?.totalAttempted || s.attemptedMcqs || 0,
+        attemptedMcqs: s.attemptedMcqs || 0,
+        masteredMcqs: s.masteredMcqs || 0,
         chapters: s.counts?.chapters || 0,
-        mcqs: s.counts?.mcqs || 0,
+        mcqs: s.counts?.mcqs || s.totalMcqs || 0,
         flashcards: s.counts?.flashcards || 0,
         highlight: i === 0,
         isRecent: Boolean(lastTs),

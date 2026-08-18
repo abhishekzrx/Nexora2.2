@@ -854,6 +854,314 @@
   color: #101828;
 }
 
+.coverage-legend-range {
+  font-weight: 700;
+  color: #1D2939;
+}
+
+.coverage-legend-label {
+  font-weight: 500;
+  color: #667085;
+}
+
+/* Chapter MCQ Analytics & Aggregate Summary Card */
+.chapter-mcq-analytics-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 20px;
+}
+
+.aggregate-mcq-summary-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.agg-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.agg-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agg-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #EEF2FF;
+  color: #2E5CE6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.agg-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+}
+
+.agg-card-subtitle {
+  font-size: 11.5px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.agg-coverage-pill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.agg-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 540px) {
+  .agg-metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.agg-metric-box {
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.agg-metric-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+}
+
+.agg-metric-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 4px 0 2px;
+}
+
+.agg-metric-sub {
+  font-size: 10.5px;
+  color: #94A3B8;
+}
+
+.agg-progress-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agg-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agg-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #334155;
+}
+
+.agg-bar-track {
+  height: 6px;
+  background: #E2E8F0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.agg-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Chapter-wise MCQs Bar Chart */
+.chapter-mcqs-barchart-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.barchart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.barchart-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+}
+
+.barchart-subtitle {
+  font-size: 11.5px;
+  color: #64748B;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.barchart-legend-row {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #475467;
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-total {
+  background: #CBD5E1;
+}
+
+.dot-attempted {
+  background: #12B76A;
+}
+
+.barchart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.barchart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #F8FAFC;
+  border-radius: 8px;
+}
+
+.barchart-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.barchart-chap-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.barchart-chap-num {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #EEF2FF;
+  color: #2E5CE6;
+  flex-shrink: 0;
+}
+
+.barchart-chap-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barchart-chap-values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.barchart-val-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.main-val-badge {
+  color: #0F172A;
+}
+
+.sub-val-badge {
+  font-size: 11px;
+}
+
+.muted-val-badge {
+  font-size: 10.5px;
+  color: #94A3B8;
+}
+
+.barchart-track-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.barchart-total-track {
+  height: 8px;
+  background: #E2E8F0;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: width 0.4s ease;
+}
+
+.barchart-attempted-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.barchart-bar-count-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475467;
+  min-width: 45px;
+}
+
 .subject-detail-shell .time-progress {
   flex: 1;
   height: 8px;

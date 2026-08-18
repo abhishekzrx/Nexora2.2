@@ -36,7 +36,73 @@ export function formatInteger(num) {
 }
 
 /**
+ * Reusable Four-Color Coverage Level System Config
+ * Exactly four coverage ranges:
+ * 0% - <25%: Level 1 / Very Low Coverage (Getting Started)
+ * 25% - <50%: Level 2 / Developing Coverage (Building Coverage)
+ * 50% - <75%: Level 3 / Strong Coverage (Strong Coverage)
+ * 75% - 100%: Level 4 / High Coverage (High Coverage)
+ */
+export const COVERAGE_LEVELS = [
+  {
+    level: 1,
+    min: 0,
+    max: 24.99,
+    rangeLabel: '0–24%',
+    label: 'Getting Started',
+    color: '#F04438',
+    bg: 'rgba(240, 68, 56, 0.1)',
+    ringTrack: 'rgba(240, 68, 56, 0.2)',
+  },
+  {
+    level: 2,
+    min: 25,
+    max: 49.99,
+    rangeLabel: '25–49%',
+    label: 'Building Coverage',
+    color: '#F1621B',
+    bg: 'rgba(241, 98, 27, 0.1)',
+    ringTrack: 'rgba(241, 98, 27, 0.2)',
+  },
+  {
+    level: 3,
+    min: 50,
+    max: 74.99,
+    rangeLabel: '50–74%',
+    label: 'Strong Coverage',
+    color: '#0E9494',
+    bg: 'rgba(14, 148, 148, 0.1)',
+    ringTrack: 'rgba(14, 148, 148, 0.2)',
+  },
+  {
+    level: 4,
+    min: 75,
+    max: 100,
+    rangeLabel: '75–100%',
+    label: 'High Coverage',
+    color: '#12B76A',
+    bg: 'rgba(18, 183, 106, 0.1)',
+    ringTrack: 'rgba(18, 183, 106, 0.2)',
+  },
+]
+
+/**
+ * Reusable coverage level helper
+ * Returns { level, label, color, bg, ringTrack, rangeLabel }
+ */
+export function getAttemptCoverageLevel(percent) {
+  const p = Math.max(0, Math.min(100, Number(percent) || 0))
+  if (p < 25) return COVERAGE_LEVELS[0]
+  if (p < 50) return COVERAGE_LEVELS[1]
+  if (p < 75) return COVERAGE_LEVELS[2]
+  return COVERAGE_LEVELS[3]
+}
+
+/**
  * Calculate chapter MCQ metrics from total DB MCQs and user progress records.
+ *
+ * COVERAGE = attemptedUniqueQuestions / totalChapterMcqs * 100
+ * MASTERY  = masteredUniqueQuestions / attemptedUniqueQuestions * 100
  *
  * @param {number} totalMcqs - Actual count of MCQs belonging to the chapter in DB
  * @param {Array} progressRecords - Supabase progress records for this chapter
@@ -45,43 +111,55 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
   const total = Math.max(0, Math.round(Number(totalMcqs) || 0))
   const records = Array.isArray(progressRecords) ? progressRecords : []
 
-  // Count current progress states
-  let masteredMcqs = 0
-  let incorrectMcqs = 0
+  const attemptedSet = new Set()
+  const masteredSet = new Set()
+  const incorrectSet = new Set()
 
   records.forEach((rec) => {
     if (!rec) return
+    const mcqId = rec.mcq_id || rec.mcqId
+    if (!mcqId) return
+
+    attemptedSet.add(mcqId)
     const status = String(rec.status || '').toUpperCase()
     if (status === 'MASTERED') {
-      masteredMcqs += 1
+      masteredSet.add(mcqId)
     } else if (status === 'INCORRECT') {
-      incorrectMcqs += 1
+      incorrectSet.add(mcqId)
     }
   })
 
-  // Prevent counts from exceeding actual total MCQs
-  masteredMcqs = Math.min(total, masteredMcqs)
-  incorrectMcqs = Math.min(total - masteredMcqs, incorrectMcqs)
+  const attemptedMcqs = Math.min(total, attemptedSet.size)
+  const masteredMcqs = Math.min(attemptedMcqs, masteredSet.size)
+  const incorrectMcqs = Math.min(attemptedMcqs - masteredMcqs, incorrectSet.size)
 
-  const unseenMcqs = Math.max(0, total - masteredMcqs - incorrectMcqs)
+  const unseenMcqs = Math.max(0, total - attemptedMcqs)
   const remainingUnmastered = Math.max(0, total - masteredMcqs)
 
-  const masteryPercentage = total > 0 ? Math.round((masteredMcqs / total) * 100) : null
+  const rawCoverage = total > 0 ? (attemptedMcqs / total) * 100 : 0
+  const coveragePercent = Math.round(rawCoverage * 10) / 10
+  const masteryPercentage = attemptedMcqs > 0 ? Math.round((masteredMcqs / attemptedMcqs) * 100) : 0
+  const coverageLevel = getAttemptCoverageLevel(coveragePercent)
 
   let state = 'IN_PROGRESS'
   if (total === 0) {
     state = 'NOT_AVAILABLE'
+  } else if (attemptedMcqs === 0) {
+    state = 'NOT_STARTED'
   } else if (masteredMcqs === total && total > 0) {
     state = 'MASTERED'
   }
 
   return {
     totalMcqs: total,
+    attemptedMcqs,
     masteredMcqs,
     incorrectMcqs,
     unseenMcqs,
     remainingUnmastered,
+    coveragePercent,
     masteryPercentage,
+    coverageLevel,
     state,
     isCompleted: state === 'MASTERED',
   }
@@ -90,12 +168,16 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
 /**
  * Aggregate chapter metrics into Subject metrics.
  *
+ * Subject Coverage = attempted / totalMCQs * 100
+ * Subject Mastery  = mastered / attempted * 100
+ *
  * @param {Array} chapterMetricsList - Array of calculated chapter metrics objects
  */
 export function calculateSubjectMetrics(chapterMetricsList = []) {
   const list = Array.isArray(chapterMetricsList) ? chapterMetricsList : []
 
   let subjectTotalMcqs = 0
+  let subjectAttemptedMcqs = 0
   let subjectMasteredMcqs = 0
   let subjectIncorrectMcqs = 0
   let subjectUnseenMcqs = 0
@@ -105,6 +187,7 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
   list.forEach((ch) => {
     if (!ch) return
     subjectTotalMcqs += ch.totalMcqs || 0
+    subjectAttemptedMcqs += ch.attemptedMcqs || 0
     subjectMasteredMcqs += ch.masteredMcqs || 0
     subjectIncorrectMcqs += ch.incorrectMcqs || 0
     subjectUnseenMcqs += ch.unseenMcqs || 0
@@ -116,25 +199,33 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
   })
 
   const subjectTotalChapters = list.length
+  const rawCoverage = subjectTotalMcqs > 0 ? (subjectAttemptedMcqs / subjectTotalMcqs) * 100 : 0
+  const subjectCoveragePercent = Math.round(rawCoverage * 10) / 10
   const subjectMasteryPercentage =
-    subjectTotalMcqs > 0
-      ? Math.round((subjectMasteredMcqs / subjectTotalMcqs) * 100)
-      : null
+    subjectAttemptedMcqs > 0
+      ? Math.round((subjectMasteredMcqs / subjectAttemptedMcqs) * 100)
+      : 0
+  const subjectCoverageLevel = getAttemptCoverageLevel(subjectCoveragePercent)
 
   let state = 'IN_PROGRESS'
   if (subjectTotalMcqs === 0) {
     state = 'NOT_AVAILABLE'
+  } else if (subjectAttemptedMcqs === 0) {
+    state = 'NOT_STARTED'
   } else if (subjectMasteredMcqs === subjectTotalMcqs && subjectTotalMcqs > 0) {
     state = 'MASTERED'
   }
 
   return {
     subjectTotalMcqs,
+    subjectAttemptedMcqs,
     subjectMasteredMcqs,
     subjectIncorrectMcqs,
     subjectUnseenMcqs,
     subjectRemainingUnmastered,
+    subjectCoveragePercent,
     subjectMasteryPercentage,
+    subjectCoverageLevel,
     subjectCompletedChapters,
     subjectTotalChapters,
     state,
@@ -158,9 +249,6 @@ export function calculateAccuracy(totalAttempts = 0, correctAttempts = 0) {
 
 /**
  * Format Chapter display strings per contract.
- * Example outputs:
- * - "306 MCQs • 5 Flashcards"
- * - "42% mastered • 178 remaining"
  */
 export function formatChapterDisplay(metrics, flashcardsCount = 0) {
   if (!metrics || metrics.state === 'NOT_AVAILABLE') {
@@ -171,22 +259,19 @@ export function formatChapterDisplay(metrics, flashcardsCount = 0) {
   }
 
   const formattedTotal = formatCompactNumber(metrics.totalMcqs)
-  const formattedRemaining = formatCompactNumber(metrics.remainingUnmastered)
-  const pct = metrics.masteryPercentage !== null ? `${metrics.masteryPercentage}%` : '0%'
+  const formattedAttempted = formatCompactNumber(metrics.attemptedMcqs)
+  const masteryPct = `${metrics.masteryPercentage}%`
 
   return {
-    mcqMeta: `${formattedTotal} MCQs • ${flashcardsCount} Flashcards`,
-    masteryMeta: `${pct} mastered • ${formattedRemaining} remaining`,
+    mcqMeta: metrics.attemptedMcqs > 0
+      ? `${formattedAttempted} / ${formattedTotal} MCQs`
+      : `${formattedTotal} MCQs`,
+    masteryMeta: `${masteryPct} mastery`,
   }
 }
 
 /**
  * Format Subject display strings per contract.
- * Example outputs:
- * - "1.24K MCQs • 320 Flashcards"
- * - "27% mastery"
- * - "334 / 1,240 mastered"
- * - "3 / 12 chapters mastered"
  */
 export function formatSubjectDisplay(metrics, flashcardsCount = 0) {
   if (!metrics || metrics.state === 'NOT_AVAILABLE') {
@@ -203,7 +288,7 @@ export function formatSubjectDisplay(metrics, flashcardsCount = 0) {
 
   const masteredExact = formatInteger(metrics.subjectMasteredMcqs)
   const totalExact = formatInteger(metrics.subjectTotalMcqs)
-  const pct = metrics.subjectMasteryPercentage !== null ? `${metrics.subjectMasteryPercentage}%` : '0%'
+  const pct = `${metrics.subjectMasteryPercentage}%`
 
   return {
     mcqMeta: `${formattedTotal} MCQs • ${formattedFlash} Flashcards`,
@@ -216,9 +301,12 @@ export function formatSubjectDisplay(metrics, flashcardsCount = 0) {
 export default {
   formatCompactNumber,
   formatInteger,
+  COVERAGE_LEVELS,
+  getAttemptCoverageLevel,
   calculateChapterMetrics,
   calculateSubjectMetrics,
   calculateAccuracy,
   formatChapterDisplay,
   formatSubjectDisplay,
 }
+

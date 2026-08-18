@@ -21,6 +21,7 @@ import { mcqService } from '../services/mcqService'
 import { getCurrentUserId, getUserId } from '../services/userService'
 import { calculateAccuracy, calculateChapterMetrics } from '../services/mcqAnalyticsService'
 import { useWorkspaceStore } from '../data/workspaceStore'
+import { updateUserProgressStore } from '../data/progressStore'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -777,6 +778,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         })
         return
       }
+
+      // Update global reactive progressStore so dashboard and chapter analytics recalculate reactively
+      updateUserProgressStore(progressUpdates)
     }
 
     // Persisted to database successfully -> Update local component state

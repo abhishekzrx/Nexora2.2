@@ -13,6 +13,8 @@ import MobileLayout from '../components/layout/MobileLayout'
 import SubjectHero from '../components/subject/SubjectHero'
 import Tabs from '../components/subject/Tabs'
 import ChapterCard from '../components/subject/ChapterCard'
+import CoverageLegendCard from '../components/subject/CoverageLegendCard'
+import ChapterMcqAnalytics from '../components/subject/ChapterMcqAnalytics'
 import StatGrid from '../components/subject/StatGrid'
 import BarList from '../components/subject/BarList'
 import WeakTopics from '../components/subject/WeakTopics'
@@ -95,6 +97,7 @@ function SubjectDetailPage({
               <ChapterCard key={chapter.id || chapter.num} chapter={chapter} onClick={onChapterClick} />
             ))}
           </div>
+          <CoverageLegendCard />
           <div className="banner">
             <div className="banner-left">
               <div className="banner-icon">
@@ -116,8 +119,7 @@ function SubjectDetailPage({
     if (activeTab === 'mcqs') {
       return (
         <>
-          <StatGrid metrics={derived.mcqMetrics} />
-          <BarList title="MCQ Practice" items={derived.mcqList} />
+          <ChapterMcqAnalytics subject={subject} />
         </>
       )
     }
@@ -142,12 +144,11 @@ function SubjectDetailPage({
 
     return (
       <>
+        <ChapterMcqAnalytics subject={subject} />
         <StatGrid metrics={derived.metrics} streakIndex={2} />
         <AccuracyChart values={derived.trend} />
-        <BarList title="Chapter-wise Accuracy" items={derived.breakdown} />
         <WeakTopics items={derived.focus} />
         <StudyStats items={derived.study} />
-        <TimeSpent items={derived.timeSpent} />
         <Achievements items={derived.achievements} />
       </>
     )

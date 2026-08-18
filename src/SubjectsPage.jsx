@@ -51,22 +51,30 @@ const drawerSections = [
 ]
 
 function SubjectCard({ subject, onSelect }) {
+  const ringColor = subject.coverageLevel?.color || '#12B76A'
+  const coveragePct = Math.round(subject.coveragePercent || subject.progress || 0)
+
   return (
     <button type="button" className="subj-card" onClick={() => onSelect(subject.subjectKey)}>
       <div className="subj-top">
         <div className={`subj-icon ${subject.iconClass}`}>
           <AppIcon name={subject.icon} size={20} />
         </div>
-        <div className={`difficulty-pill ${subject.pillClass}`}>{subject.pillLabel}</div>
+        <div
+          className={`difficulty-pill ${subject.pillClass}`}
+          style={subject.hasAttempts ? { backgroundColor: subject.coverageLevel?.bg || 'rgba(18, 183, 106, 0.1)', color: ringColor } : {}}
+        >
+          {subject.pillLabel}
+        </div>
       </div>
       <div className="subj-name">{subject.title}</div>
       <div className="subj-meta">{subject.meta}</div>
       <div className="subj-bottom">
-        <span className={`subj-pct ${subject.percentClass}`}>{subject.progress}%</span>
+        <span className="subj-pct" style={{ color: ringColor }}>{coveragePct}%</span>
         <div className="subj-track">
           <div
             className={`subj-fill ${subject.progressClass}`}
-            style={{ width: `${subject.progress}%` }}
+            style={{ width: `${coveragePct}%`, backgroundColor: ringColor }}
           />
         </div>
         <div className={`subj-arrow ${subject.arrowClass}`}>
@@ -170,28 +178,30 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
     return list.map((s, i) => {
       const tone = TONE_MAP[i % TONE_MAP.length]
       const perf = subjectPerformanceMap[s.subjectKey] || null
-      const hasAttempts = Boolean(perf && perf.attemptsCount > 0)
-      const accuracy = hasAttempts ? perf.effectiveAccuracy : (s.progress || 0)
+      const hasAttempts = Boolean(s.hasAttempts || (perf && perf.attemptsCount > 0))
+      const coveragePercent = typeof s.coveragePercent === 'number' ? s.coveragePercent : (s.progress || 0)
+      const masteryPercent = typeof s.masteryPercent === 'number' ? s.masteryPercent : (s.accuracy || 0)
+      const coverageLevel = s.coverageLevel
 
-      const isHighAcc = accuracy >= 75
-      const isMidAcc = accuracy >= 50
-      const pillClass = hasAttempts
-        ? (isHighAcc ? 'pill-green' : isMidAcc ? 'pill-blue' : 'pill-orange')
-        : tone.pillClass
+      const metaStr = hasAttempts
+        ? `${s.counts.chapters} Chapters • ${s.attemptedMcqs}/${s.counts.mcqs} MCQs (${masteryPercent}% Mastery)`
+        : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`
 
       return {
         subjectKey: s.subjectKey,
         title: s.title,
         icon: s.icon,
         iconClass: tone.iconClass,
-        pillClass,
-        pillLabel: hasAttempts ? `${accuracy}% ACCURACY` : (s.badge || 'MEDIUM'),
-        meta: hasAttempts
-          ? `${s.counts.chapters} Chapters • ${accuracy}% MCQ Acc (${perf.attemptsCount} Attempt${perf.attemptsCount > 1 ? 's' : ''})`
-          : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`,
-        progress: accuracy,
-        progressClass: hasAttempts && isHighAcc ? 'fill-green' : tone.progressClass,
-        percentClass: hasAttempts && isHighAcc ? 'pct-green' : tone.percentClass,
+        pillClass: tone.pillClass,
+        pillLabel: hasAttempts ? `${masteryPercent}% MASTERY` : (s.badge || 'MEDIUM'),
+        meta: metaStr,
+        progress: coveragePercent,
+        coveragePercent,
+        masteryPercent,
+        coverageLevel,
+        hasAttempts,
+        progressClass: tone.progressClass,
+        percentClass: tone.percentClass,
         arrowClass: tone.arrowClass,
         locked: s.locked,
       }

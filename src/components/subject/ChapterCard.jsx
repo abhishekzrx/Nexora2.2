@@ -1,17 +1,77 @@
 /**
  * ChapterCard
- * Reusable clickable chapter row showing number, title, subtitle,
- * progress bar, meta counts, completion status, and chevron.
- * Clicking navigates to the MCQ Response page for that chapter.
+ * Reusable clickable chapter row showing:
+ * - Chapter Number & Title
+ * - Dynamic Real MCQ Count ("X MCQs" or "Y / X MCQs")
+ * - Question Attempt Coverage (Circular SVG progress indicator colored by 4-level system)
+ * - Mastery Value (Numeric % indicator calculated from unique student attempts)
+ * - Navigation chevron
  */
 import AppIcon from '../ui/AppIcon'
+import { getAttemptCoverageLevel } from '../../services/mcqAnalyticsService'
+
+export function CircularCoverageRing({ percent = 0, color = '#12B76A', size = 20, strokeWidth = 2.5 }) {
+  const p = Math.max(0, Math.min(100, Number(percent) || 0))
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (p / 100) * circumference
+
+  return (
+    <div
+      className="coverage-ring-wrap"
+      title={`Attempt Coverage: ${Math.round(p)}%`}
+      aria-label={`Coverage ${Math.round(p)}%`}
+      style={{
+        width: size,
+        height: size,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#E4E7EC"
+          strokeWidth={strokeWidth}
+        />
+        {p > 0 && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.3s ease' }}
+          />
+        )}
+      </svg>
+    </div>
+  )
+}
 
 function ChapterCard({ chapter, onClick }) {
-  const statusClass = chapter.complete
-    ? 'pct-complete'
-    : chapter.progress === 0
-      ? 'pct-none'
-      : 'pct-progress'
+  const coveragePercent = typeof chapter.coveragePercent === 'number' ? chapter.coveragePercent : (chapter.progress || 0)
+  const masteryPercent = typeof chapter.masteryPercent === 'number' ? chapter.masteryPercent : (parseInt(chapter.pct, 10) || 0)
+  
+  const coverageLevel = chapter.coverageLevel || getAttemptCoverageLevel(coveragePercent)
+  const levelColor = coverageLevel.color || '#12B76A'
+
+  const totalMcqs = chapter.totalMcqs ?? (typeof chapter.mcqs === 'number' ? chapter.mcqs : 0)
+  const attemptedMcqs = chapter.attemptedMcqs ?? 0
+
+  const subText = attemptedMcqs > 0
+    ? `${attemptedMcqs} / ${totalMcqs} MCQs`
+    : `${totalMcqs} MCQs`
 
   return (
     <button type="button" className="chapter-item" onClick={() => onClick?.(chapter)}>
@@ -19,22 +79,26 @@ function ChapterCard({ chapter, onClick }) {
         <div className="chapter-num">{chapter.num}</div>
         <div className="chapter-body">
           <div className="chapter-title">{chapter.title}</div>
-          <div className="chapter-sub">{chapter.sub}</div>
+          <div className="chapter-sub">{chapter.sub || subText}</div>
           <div className="chapter-progress-track">
-            <div className="chapter-progress-fill" style={{ width: `${chapter.progress}%` }} />
+            <div
+              className="chapter-progress-fill"
+              style={{
+                width: `${coveragePercent}%`,
+                backgroundColor: levelColor,
+              }}
+            />
           </div>
         </div>
         <div className="chapter-right">
-          <div className="chapter-meta">{chapter.meta}</div>
+          <div className="chapter-meta">
+            {attemptedMcqs > 0 ? `${masteryPercent}% Mastery` : 'Not Started'}
+          </div>
           <div className="chapter-status">
-            <span className={`chapter-pct ${statusClass}`}>{chapter.pct}</span>
-            {chapter.complete ? (
-              <span className="status-check">
-                <AppIcon name="check" size={11} />
-              </span>
-            ) : (
-              <span className={`status-ring${chapter.progress === 0 ? ' empty' : ''}`} />
-            )}
+            <span className="chapter-pct" style={{ color: levelColor }}>
+              {masteryPercent}%
+            </span>
+            <CircularCoverageRing percent={coveragePercent} color={levelColor} />
             <span className="chevron">
               <AppIcon name="chevronRight" size={16} />
             </span>

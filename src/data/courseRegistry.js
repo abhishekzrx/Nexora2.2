@@ -1,23 +1,11 @@
-/**
- * courseRegistry
- * Course-aware content registry that derives student-facing views
- * from the adminStore for a specific Course.
- *
- * This bridges the admin-centric Course architecture with the
- * student-facing experience.
- *
- * When a student selects a Course, this registry provides:
- * - Subject catalog (from adminStore subjects)
- * - Chapter lists (from adminStore chapters)
- * - Content counts (MCQs, Flashcards, Notes)
- * - Progress estimates
- *
- * Fallback: if no course is selected or course has no content,
- * returns empty state data.
- */
-
 import { useMemo } from 'react'
 import { useAdminStore, matchContentToChapter } from './adminStore'
+import { useUserProgressStore } from './progressStore'
+import {
+  calculateChapterMetrics,
+  calculateSubjectMetrics,
+  getAttemptCoverageLevel,
+} from '../services/mcqAnalyticsService'
 
 const ACCENT_PALETTE = [
   { accent: '#F1621B', accentLight: '#FF7A2E', accentBg: '#FFF1E6', accentSoft: '#FDECE3' },
@@ -54,37 +42,52 @@ export function subjectKeyFor(subjectName, subjectId) {
     .replace(/^-+|-+$/g, '')
 }
 
-function buildSubjectEntry(key, subject, index) {
+function buildSubjectEntry(key, subject, index, progressList = []) {
   const chapters = subject.chapters
     .filter((ch) => !ch.archived)
     .sort((a, b) => (a.number || 0) - (b.number || 0))
     .map((ch, ci) => {
       const totalMcqs = typeof ch.totalMcqs === 'number' ? ch.totalMcqs : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
       const totalFlashcards = typeof ch.totalFlashcards === 'number' ? ch.totalFlashcards : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
-      const answeredMcqs = typeof ch.answeredMcqs === 'number' ? ch.answeredMcqs : 0
       
-      const progress = totalMcqs > 0
-        ? Math.min(100, Math.max(0, Math.round((answeredMcqs / totalMcqs) * 100)))
-        : (ch.completion && typeof ch.completion === 'number' ? Math.min(100, Math.max(0, ch.completion)) : 0)
+      // Filter progress records belonging to this chapter or its MCQs
+      const chMcqIds = new Set(Array.isArray(ch.chMcqs) ? ch.chMcqs.map((m) => String(m.id)) : [])
+      const chProgressRecords = progressList.filter((rec) => {
+        if (!rec) return false
+        const recChapId = rec.chapter_id || rec.chapterId
+        if (recChapId && ch.id && String(recChapId) === String(ch.id)) return true
+        const recMcqId = String(rec.mcq_id || rec.mcqId || '')
+        if (recMcqId && chMcqIds.has(recMcqId)) return true
+        return false
+      })
+
+      const metrics = calculateChapterMetrics(totalMcqs, chProgressRecords)
+
+      const subText = metrics.attemptedMcqs > 0
+        ? `${metrics.attemptedMcqs} / ${metrics.totalMcqs} MCQs`
+        : `${metrics.totalMcqs} MCQs`
 
       return {
+        id: ch.id,
         num: String(ch.number || ci + 1).padStart(2, '0'),
         title: ch.name || ch.title || 'Chapter',
-        sub: ch.difficulty ? `${ch.difficulty.toUpperCase()} • ${ch.estMinutes || 45} min` : `${ch.status || 'draft'} • ${ch.estMinutes || 45} min`,
-        progress,
-        pct: `${progress}%`,
-        complete: progress === 100,
-        meta: `${totalMcqs} MCQs • ${totalFlashcards} Flashcards`,
+        sub: subText,
+        totalMcqs: metrics.totalMcqs,
+        attemptedMcqs: metrics.attemptedMcqs,
+        masteredMcqs: metrics.masteredMcqs,
+        coveragePercent: metrics.coveragePercent,
+        masteryPercent: metrics.masteryPercentage,
+        coverageLevel: metrics.coverageLevel,
+        progress: metrics.coveragePercent, // Circular coverage %
+        pct: `${metrics.masteryPercentage}%`, // Numeric mastery %
+        complete: metrics.coveragePercent === 100 && metrics.masteryPercentage === 100,
+        meta: `${metrics.totalMcqs} MCQs • ${totalFlashcards} Flashcards`,
         locked: Boolean(ch.locked),
         status: ch.locked ? 'locked' : ch.status || 'draft',
-        id: ch.id,
       }
     })
 
-  const averageProgress = chapters.length
-    ? Math.round(chapters.reduce((sum, c) => sum + c.progress, 0) / chapters.length)
-    : 0
-
+  const subjectMetrics = calculateSubjectMetrics(chapters)
   const palette = ACCENT_PALETTE[index % ACCENT_PALETTE.length]
   const icon = subject.icon || ICON_LIBRARY[index % ICON_LIBRARY.length]
   const locked = Boolean(subject.locked)
@@ -105,11 +108,19 @@ function buildSubjectEntry(key, subject, index) {
     shortCode: subject.shortCode,
     icon,
     badge,
-    progress: averageProgress,
+    progress: subjectMetrics.subjectCoveragePercent,
+    accuracy: subjectMetrics.subjectMasteryPercentage,
+    coveragePercent: subjectMetrics.subjectCoveragePercent,
+    masteryPercent: subjectMetrics.subjectMasteryPercentage,
+    coverageLevel: subjectMetrics.subjectCoverageLevel,
+    totalMcqs: subjectMetrics.subjectTotalMcqs,
+    attemptedMcqs: subjectMetrics.subjectAttemptedMcqs,
+    masteredMcqs: subjectMetrics.subjectMasteredMcqs,
+    hasAttempts: subjectMetrics.subjectAttemptedMcqs > 0,
     desc: subject.desc || '',
     counts: {
       chapters: chapters.length,
-      mcqs: subject.mcqs || 0,
+      mcqs: subjectMetrics.subjectTotalMcqs,
       flashcards: subject.flashcards || 0,
       notes: subject.notes || 0,
     },
@@ -130,10 +141,13 @@ function buildSubjectEntry(key, subject, index) {
 
 export function useCourseRegistry(courseId) {
   const adminState = useAdminStore()
+  const userProgressState = useUserProgressStore()
+
   const subjects = adminState.allSubjects || adminState.subjects || []
   const chapters = adminState.allChapters || adminState.chapters || []
   const mcqs = adminState.allMcqs || adminState.mcqs || []
   const flashcards = adminState.allFlashcards || adminState.flashcards || []
+  const progressList = userProgressState.progressList || []
 
   const courseSubjects = useMemo(() => {
     if (!courseId) return []
@@ -180,6 +194,7 @@ export function useCourseRegistry(courseId) {
 
         return {
           ...ch,
+          chMcqs,
           mcqs: totalMcqs,
           totalMcqs,
           flashcards: totalFlashcards,
@@ -195,7 +210,7 @@ export function useCourseRegistry(courseId) {
         notes: sub.notes || 0,
       }
 
-      catalog[key] = buildSubjectEntry(key, enrichedSubject, index)
+      catalog[key] = buildSubjectEntry(key, enrichedSubject, index, progressList)
       orderedKeys.push(key)
     })
 
@@ -212,12 +227,12 @@ export function useCourseRegistry(courseId) {
       noteCount: list.reduce((n, s) => n + (s.counts?.notes || 0), 0),
       lockedSubjectCount: list.filter((s) => s.locked).length,
     }
-  }, [courseSubjects, courseChapters, courseMcqs, courseFlashcards])
+  }, [courseSubjects, courseChapters, courseMcqs, courseFlashcards, progressList])
 
   return snapshot
 }
 
-export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards) {
+export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards, progressList = []) {
   const courseSubjects = subjects.filter((s) => s.courseId === courseId)
   const courseChapters = chapters.filter((c) => c.courseId === courseId)
   const courseMcqs = mcqs.filter((m) => m.courseId === courseId)
@@ -235,7 +250,7 @@ export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards
       flashcards: courseFlashcards.filter((f) => f.subject === sub.name).length,
       notes: 0,
     }
-    catalog[key] = buildSubjectEntry(key, enrichedSubject, index)
+    catalog[key] = buildSubjectEntry(key, enrichedSubject, index, progressList)
     orderedKeys.push(key)
   })
 
@@ -252,3 +267,4 @@ export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards
     lockedSubjectCount: list.filter((s) => s.locked).length,
   }
 }
+

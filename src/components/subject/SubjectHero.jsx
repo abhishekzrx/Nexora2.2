@@ -1,19 +1,19 @@
-/**
- * SubjectHero
- * Compact Subject Header Card redesign for Subject Details page.
- * Displays subject icon, name, difficulty badge, horizontal metrics row,
- * and centered progress ring in a clean, information-dense 50% shorter layout.
- */
 import ProgressRing from '../ui/ProgressRing'
 import AppIcon from '../ui/AppIcon'
-import { formatCompactNumber } from '../../services/mcqAnalyticsService'
+import { formatCompactNumber, formatInteger } from '../../services/mcqAnalyticsService'
 
 function SubjectHero({ subject }) {
   const counts = subject.counts || {}
-  const chapterCount = counts.chapters ?? (subject.chapters ? subject.chapters.length : 0)
-  const mcqCount = counts.mcqs ?? 0
+  const chapters = subject.chapters || []
+  const chapterCount = counts.chapters ?? chapters.length
+  
+  const totalMcqCount = subject.totalMcqs ?? counts.mcqs ?? chapters.reduce((s, c) => s + (c.totalMcqs || 0), 0)
+  const attemptedMcqCount = subject.attemptedMcqs ?? chapters.reduce((s, c) => s + (c.attemptedMcqs || 0), 0)
   const flashCount = counts.flashcards ?? 0
   const notesCount = counts.notes ?? chapterCount ?? 0
+
+  const coveragePercent = subject.coveragePercent ?? subject.progress ?? 0
+  const masteryPercent = subject.masteryPercent ?? subject.accuracy ?? 0
 
   return (
     <section className="hero-card compact-hero">
@@ -44,13 +44,17 @@ function SubjectHero({ subject }) {
 
           <div className="hero-metric-divider" aria-hidden="true" />
 
-          <div className="hero-metric-item">
+          <div className="hero-metric-item" title={`Total MCQ Pool Size: ${totalMcqCount}`}>
             <span className="hero-metric-icon" aria-hidden="true">
               <AppIcon name="mcqs" size={13} />
             </span>
             <div className="hero-metric-text">
-              <span className="hero-metric-num">{formatCompactNumber(mcqCount)}</span>
-              <span className="hero-metric-label">MCQs</span>
+              <span className="hero-metric-num">
+                {attemptedMcqCount > 0
+                  ? `${formatInteger(attemptedMcqCount)} / ${formatInteger(totalMcqCount)}`
+                  : formatInteger(totalMcqCount)}
+              </span>
+              <span className="hero-metric-label">Total MCQs</span>
             </div>
           </div>
 
@@ -86,13 +90,13 @@ function SubjectHero({ subject }) {
         <ProgressRing
           size={74}
           strokeWidth={6}
-          progress={subject.progress}
+          progress={coveragePercent}
           trackColor="rgba(255, 255, 255, 0.28)"
           fillColor="#ffffff"
         >
           <div className="hero-ring-inner">
-            <span className="hero-ring-num">{subject.progress}%</span>
-            <span className="hero-ring-lbl">Overall Progress</span>
+            <span className="hero-ring-num">{Math.round(coveragePercent)}%</span>
+            <span className="hero-ring-lbl">Coverage</span>
           </div>
         </ProgressRing>
       </div>
@@ -100,4 +104,5 @@ function SubjectHero({ subject }) {
   )
 }
 
-export default SubjectHero
+export default SubjectHero
+
