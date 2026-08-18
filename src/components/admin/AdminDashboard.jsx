@@ -728,18 +728,18 @@ function AdminDashboard({ activeSection, onNavigate }) {
       />
 
       <div className="admin-dashboard-main">
-        <div className="admin-dashboard-header">
-          <div>
-            <h1 className="admin-dashboard-greeting">Good Morning, Abhi 👋</h1>
-            <div className="admin-dashboard-sub">
-              {activeSection === 'dashboard'
-                ? "Here's what's happening in your active course today."
-                : activeSection === 'mcq-manager'
-                ? 'MCQ Bank Management & Operations'
-                : `${activeSection.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} Management`}
+        {activeSection !== 'mcq-manager' && (
+          <div className="admin-dashboard-header">
+            <div>
+              <h1 className="admin-dashboard-greeting">Good Morning, Abhi 👋</h1>
+              <div className="admin-dashboard-sub">
+                {activeSection === 'dashboard'
+                  ? "Here's what's happening in your active course today."
+                  : `${activeSection.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} Management`}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {courseSection}
       </div>

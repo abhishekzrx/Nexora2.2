@@ -7833,8 +7833,8 @@
   top: -24px;
   z-index: 95;
   background: var(--page-bg, #F8FAFC);
-  padding: 8px 0 12px 0;
-  margin-bottom: 16px;
+  padding: 4px 0 8px 0;
+  margin-bottom: 10px;
 }
 
 /* Clean EduTech MCQ Manager Container */
@@ -7846,80 +7846,81 @@
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04), 0 10px 24px -4px rgba(16, 24, 40, 0.02);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
+/* Sticky Top Controls Panel (~80% Height Compacted) */
 .mcq-sticky-top-controls {
   position: sticky;
-  top: 42px;
+  top: 0;
   z-index: 90;
   background: #FFFFFF;
-  padding: 16px 24px 20px 24px;
+  padding: 12px 20px 14px 20px;
   margin: -24px -24px 16px -24px;
-  border-bottom: 2px solid #E2E8F0;
+  border-bottom: 3px solid #CBD5E1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.06);
+  gap: 10px;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
 }
 
-/* EduTech Header */
+/* EduTech Header (Compacted Height) */
 .mcq-manager-header.edutech-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px stroke #F1F5F9;
+  gap: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #F1F5F9;
   flex-wrap: wrap;
 }
 
 .header-left {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
 }
 
 .header-badge-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #2E5CE6 0%, #1E40AF 100%);
   color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(46, 92, 230, 0.3);
+  box-shadow: 0 3px 10px rgba(46, 92, 230, 0.25);
   flex-shrink: 0;
 }
 
 .edutech-pill-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   color: #2E5CE6;
   background: #EEF2FF;
-  padding: 3px 10px;
-  border-radius: 20px;
+  padding: 2px 8px;
+  border-radius: 16px;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .live-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #12B76A;
-  box-shadow: 0 0 6px #12B76A;
+  box-shadow: 0 0 4px #12B76A;
 }
 
 .mcq-manager-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   color: #0F172A;
   margin: 0;
@@ -7927,15 +7928,15 @@
 }
 
 .mcq-manager-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748B;
-  margin-top: 3px;
+  margin-top: 1px;
   margin-bottom: 0;
 }
 
 .header-stats-row {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .stat-pill-chip {
@@ -7945,16 +7946,15 @@
   justify-content: center;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 8px 16px;
-  min-width: 80px;
+  border-radius: 10px;
+  padding: 4px 12px;
+  min-width: 70px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .stat-pill-chip:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: #CBD5E1;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
 }
 
 .stat-pill-chip.highlight {
@@ -7963,7 +7963,7 @@
 }
 
 .stat-num {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   color: #1E293B;
   line-height: 1;
@@ -7974,24 +7974,24 @@
 }
 
 .stat-lbl {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #64748B;
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
-/* Target Hierarchy Selectors */
+/* Target Hierarchy Selectors (Compacted Height) */
 .mcq-manager-selectors.edutech-card-elevated {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
   background: rgba(248, 250, 252, 0.9);
   backdrop-filter: blur(8px);
   border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  padding: 18px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.02);
 }
 
 @media (max-width: 768px) {
@@ -8003,65 +8003,65 @@
 .select-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .select-label {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #334155;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .custom-select {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1px solid #CBD5E1;
   background: #FFFFFF;
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #0F172A;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .custom-select:focus {
   border-color: #2E5CE6;
-  box-shadow: 0 0 0 3px rgba(46, 92, 230, 0.15);
+  box-shadow: 0 0 0 3px rgba(46, 92, 230, 0.12);
 }
 
-/* Chapter Overview & Trimming Banner */
+/* Chapter Overview & Trimming Banner (Compacted Height) */
 .mcq-manager-panel.edutech-chap-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%);
   border: 1px solid #DBEAFE;
-  border-radius: 14px;
-  padding: 16px 20px;
+  border-radius: 10px;
+  padding: 8px 14px;
   flex-wrap: wrap;
 }
 
 .panel-info {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .panel-badge-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: #FFFFFF;
   color: #2E5CE6;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(46, 92, 230, 0.12);
+  box-shadow: 0 2px 6px rgba(46, 92, 230, 0.1);
   flex-shrink: 0;
 }
 
