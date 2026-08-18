@@ -186,9 +186,14 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
       const masteryPercent = typeof s.masteryPercent === 'number' ? s.masteryPercent : (s.accuracy || 0)
       const coverageLevel = s.coverageLevel
 
+      const chapCount = s.counts?.chapters ?? s.chaptersCount ?? 0
+      const mcqCount = s.counts?.mcqs ?? s.mcqsCount ?? 0
+      const flashCount = s.counts?.flashcards ?? s.flashcardsCount ?? 0
+      const notesCount = s.counts?.notes ?? s.notesCount ?? 0
+
       const metaStr = hasAttempts
-        ? `${s.counts.chapters} Chapters • ${s.attemptedMcqs}/${s.counts.mcqs} MCQs (${masteryPercent}% Mastery)`
-        : `${s.counts.chapters} Chapters • ${s.counts.mcqs} MCQs • ${s.counts.flashcards} Flashcards`
+        ? `${chapCount} C • ${s.attemptedMcqs || 0}/${mcqCount} MCQs`
+        : `${chapCount} C • ${mcqCount} MCQs • ${flashCount} FC • ${notesCount} N`
 
       return {
         subjectKey: s.subjectKey,

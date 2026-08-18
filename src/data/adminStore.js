@@ -387,18 +387,35 @@ export function updateSubject(id, { name, icon, desc, color, status }) {
 }
 
 export function deleteSubject(id) {
-  const target = subjects.find((s) => s.id === id)
+  const target = subjects.find((s) => s.id === id || s.name === id)
   let impacted = { name: '', chapters: 0, mcqs: 0, flashcards: 0 }
   if (target) {
-    const chapterCount = chapters.filter((c) => c.subject === target.name && c.courseId === target.courseId).length
-    const mcqCount = mcqs.filter((m) => m.subject === target.name && m.courseId === target.courseId).length
-    const flashcardCount = flashcards.filter((f) => f.subject === target.name && f.courseId === target.courseId).length
+    const isTargetChapter = (c) =>
+      c.subjectId === target.id ||
+      c.subject_id === target.id ||
+      (c.subject && String(c.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
+    const isTargetMcq = (m) =>
+      m.subjectId === target.id ||
+      m.subject_id === target.id ||
+      (m.subject && String(m.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
+    const isTargetFlashcard = (f) =>
+      f.subjectId === target.id ||
+      f.subject_id === target.id ||
+      (f.subject && String(f.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
+    const chapterCount = chapters.filter(isTargetChapter).length
+    const mcqCount = mcqs.filter(isTargetMcq).length
+    const flashcardCount = flashcards.filter(isTargetFlashcard).length
     impacted = { name: target.name, chapters: chapterCount, mcqs: mcqCount, flashcards: flashcardCount }
-    chapters = chapters.filter((c) => !(c.subject === target.name && c.courseId === target.courseId))
-    mcqs = mcqs.filter((m) => !(m.subject === target.name && m.courseId === target.courseId))
-    flashcards = flashcards.filter((f) => !(f.subject === target.name && f.courseId === target.courseId))
+
+    // CASCADE DELETE: Remove all chapters, MCQs, and flashcards belonging to this subject
+    chapters = chapters.filter((c) => !isTargetChapter(c))
+    mcqs = mcqs.filter((m) => !isTargetMcq(m))
+    flashcards = flashcards.filter((f) => !isTargetFlashcard(f))
   }
-  subjects = subjects.filter((s) => s.id !== id)
+  subjects = subjects.filter((s) => s.id !== id && s.name !== id)
   if (target) {
     updateWorkspaceMetadata(target.courseId, 'subjects', subjects.filter((s) => s.courseId === target.courseId).length)
   }
@@ -449,13 +466,29 @@ export function toggleSubjectLock(id) {
  * WITHOUT deleting. Used to preview confirmation dialogs.
  */
 export function getDeleteSubjectImpact(id) {
-  const target = subjects.find((s) => s.id === id)
+  const target = subjects.find((s) => s.id === id || s.name === id)
   if (!target) return { name: '', chapters: 0, mcqs: 0, flashcards: 0 }
+
+  const isTargetChapter = (c) =>
+    c.subjectId === target.id ||
+    c.subject_id === target.id ||
+    (c.subject && String(c.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
+  const isTargetMcq = (m) =>
+    m.subjectId === target.id ||
+    m.subject_id === target.id ||
+    (m.subject && String(m.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
+  const isTargetFlashcard = (f) =>
+    f.subjectId === target.id ||
+    f.subject_id === target.id ||
+    (f.subject && String(f.subject).trim().toLowerCase() === String(target.name).trim().toLowerCase())
+
   return {
     name: target.name,
-    chapters: chapters.filter((c) => c.subject === target.name && c.courseId === target.courseId).length,
-    mcqs: mcqs.filter((m) => m.subject === target.name && m.courseId === target.courseId).length,
-    flashcards: flashcards.filter((f) => f.subject === target.name && f.courseId === target.courseId).length,
+    chapters: chapters.filter(isTargetChapter).length,
+    mcqs: mcqs.filter(isTargetMcq).length,
+    flashcards: flashcards.filter(isTargetFlashcard).length,
   }
 }
 
@@ -469,7 +502,7 @@ export function addChapter(data) {
     subjectId: data.subjectId || data.subject || 'Computer Networks',
     subject: data.subject || data.subjectId || 'Computer Networks',
     name: data.name || 'New Chapter',
-    desc: data.desc || '',
+    desc: data.desc || data.description || '',
     mcqs: data.mcqs || 0,
     flashcards: data.flashcards || 0,
     notes: data.notes || 0,
@@ -477,6 +510,7 @@ export function addChapter(data) {
     statusText: data.status === 'disabled' ? 'Disabled' : 'Active',
     locked: Boolean(data.locked),
     number: data.number ? Number(data.number) : courseChapters.length + 1,
+    createdAt: data.createdAt || data.created_at || new Date().toISOString(),
   }
   chapters = [...chapters, chapter]
   recomputeAllSubjectStats()
@@ -552,11 +586,21 @@ export function deleteChapter(id) {
   const target = chapters.find((c) => c.id === id)
   let impacted = { name: '', subject: '', mcqs: 0, flashcards: 0 }
   if (target) {
-    const mcqCount = mcqs.filter((m) => m.chapter === target.name && m.courseId === target.courseId).length
-    const flashcardCount = flashcards.filter((f) => f.chapter === target.name && f.courseId === target.courseId).length
+    const mcqMatches = (m) =>
+      m.chapterId === id ||
+      m.chapter_id === id ||
+      (m.chapter && String(m.chapter).trim().toLowerCase() === String(target.name).trim().toLowerCase() && m.courseId === target.courseId)
+
+    const flashMatches = (f) =>
+      f.chapterId === id ||
+      f.chapter_id === id ||
+      (f.chapter && String(f.chapter).trim().toLowerCase() === String(target.name).trim().toLowerCase() && f.courseId === target.courseId)
+
+    const mcqCount = mcqs.filter(mcqMatches).length
+    const flashcardCount = flashcards.filter(flashMatches).length
     impacted = { name: target.name, subject: target.subject, mcqs: mcqCount, flashcards: flashcardCount }
-    mcqs = mcqs.filter((m) => !(m.chapter === target.name && m.courseId === target.courseId))
-    flashcards = flashcards.filter((f) => !(f.chapter === target.name && f.courseId === target.courseId))
+    mcqs = mcqs.filter((m) => !mcqMatches(m))
+    flashcards = flashcards.filter((f) => !flashMatches(f))
   }
   chapters = chapters.filter((c) => c.id !== id)
   recomputeAllSubjectStats()
@@ -571,6 +615,16 @@ export function deleteChapter(id) {
 export function getDeleteChapterImpact(id) {
   const target = chapters.find((c) => c.id === id)
   if (!target) return { name: '', subject: '', mcqs: 0, flashcards: 0 }
+  const mcqMatches = (m) =>
+    m.chapterId === id ||
+    m.chapter_id === id ||
+    (m.chapter && String(m.chapter).trim().toLowerCase() === String(target.name).trim().toLowerCase() && m.courseId === target.courseId)
+
+  const flashMatches = (f) =>
+    f.chapterId === id ||
+    f.chapter_id === id ||
+    (f.chapter && String(f.chapter).trim().toLowerCase() === String(target.name).trim().toLowerCase() && f.courseId === target.courseId)
+
   return {
     name: target.name,
     subject: target.subject,

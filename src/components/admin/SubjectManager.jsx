@@ -16,16 +16,34 @@ import {
   duplicateSubject,
   toggleSubjectLock,
   getDeleteSubjectImpact,
+  getDeleteChapterImpact,
   seedDefaultSubjects,
   hydrateAdminStoreFromSupabase,
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
-import { subjectService } from '../../services/subjectService'
+import { subjectService, getSubjectIconByName } from '../../services/subjectService'
 import { chapterService } from '../../services/chapterService'
 import IconPicker from './IconPicker'
 
-const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
+const COLOR_PRESETS = [
+  '#F1621B',
+  '#2E5CE6',
+  '#12B76A',
+  '#7C3AED',
+  '#0E9494',
+  '#E8491D',
+  '#D92D20',
+  '#4F46E5',
+  '#8B5CF6',
+  '#EC4899',
+  '#F59E0B',
+  '#06B6D4',
+  '#84CC16',
+  '#0284C7',
+  '#475569',
+  '#101828',
+]
 
 const SUBJECT_DOMAINS = {
   'digital electronics': [
@@ -187,6 +205,14 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
     }
   }
 
+  const handleNameChange = (val) => {
+    setName(val)
+    if (!isEditing || icon === 'chapters') {
+      const suggestedIcon = getSubjectIconByName(val, icon)
+      setIcon(suggestedIcon)
+    }
+  }
+
   return (
     <div className="sm-modal-overlay" onClick={onClose}>
       <div className="sm-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -230,7 +256,7 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
               className="sm-input"
               placeholder="e.g., Data Structures & Algorithms"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               required
               autoFocus
             />
@@ -252,7 +278,12 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
           </div>
 
           <div className="sm-field">
-            <label className="sm-label">Color Theme</label>
+            <label className="sm-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Color Theme</span>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                Selected: <strong style={{ color }}>{color}</strong>
+              </span>
+            </label>
             <div className="sm-color-swatches">
               {COLOR_PRESETS.map((c) => (
                 <button
@@ -261,8 +292,44 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
                   className={`sm-color-btn${color === c ? ' active' : ''}`}
                   style={{ background: c }}
                   onClick={() => setColor(c)}
+                  title={c}
                 />
               ))}
+            </div>
+
+            {/* Custom Color Input Controls for 100% flexibility */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  background: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#334155',
+                }}
+              >
+                <input
+                  type="color"
+                  value={color || '#F1621B'}
+                  onChange={(e) => setColor(e.target.value)}
+                  style={{ width: '22px', height: '22px', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                />
+                <span>Custom Color Picker</span>
+              </label>
+              <input
+                type="text"
+                className="sm-input"
+                style={{ width: '110px', padding: '4px 8px', fontSize: '12px', fontWeight: 700 }}
+                value={color || ''}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="#F1621B"
+              />
             </div>
           </div>
 
@@ -309,12 +376,56 @@ function SubjectModal({ initialData, workspaces, activeCourseId, isSaving, onSav
   )
 }
 
+function formatChapterDate(dateVal) {
+  if (!dateVal) return 'Recently added'
+  try {
+    const d = new Date(dateVal)
+    if (isNaN(d.getTime())) return 'Recently added'
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return 'Recently added'
+  }
+}
+
 /* ── Chapter Create & Edit Modal ────────────────────────────── */
-function ChapterModal({ subjectName, initialData, onSave, onClose }) {
+function ChapterModal({ subjectName, initialData, existingChapters = [], onSave, onClose }) {
   const isEditing = Boolean(initialData && initialData.id)
+
+  // Last added chapter for this subject
+  const lastAddedChapter = useMemo(() => {
+    if (!existingChapters || existingChapters.length === 0) return null
+    const sorted = [...existingChapters].sort((a, b) => {
+      const timeA = a.createdAt || a.created_at ? new Date(a.createdAt || a.created_at).getTime() : 0
+      const timeB = b.createdAt || b.created_at ? new Date(b.createdAt || b.created_at).getTime() : 0
+      if (timeA !== timeB && timeA > 0 && timeB > 0) return timeB - timeA
+      return (Number(b.number) || 0) - (Number(a.number) || 0)
+    })
+    return sorted[0]
+  }, [existingChapters])
+
+  // Default auto-incremented chapter number
+  const defaultNextNumber = useMemo(() => {
+    if (isEditing && initialData?.number) return initialData.number
+    if (!existingChapters || existingChapters.length === 0) return 1
+    const maxNum = Math.max(...existingChapters.map((c) => Number(c.number) || 0), 0)
+    return maxNum + 1
+  }, [existingChapters, isEditing, initialData])
+
   const [name, setName] = useState(initialData?.name || '')
   const [desc, setDesc] = useState(initialData?.desc || '')
-  const [number, setNumber] = useState(initialData?.number || 1)
+  const [number, setNumber] = useState(initialData?.number ?? defaultNextNumber)
+
+  useEffect(() => {
+    if (!isEditing) {
+      setNumber(defaultNextNumber)
+    }
+  }, [defaultNextNumber, isEditing])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -324,7 +435,7 @@ function ChapterModal({ subjectName, initialData, onSave, onClose }) {
       subject: subjectName,
       name: name.trim(),
       desc: desc.trim(),
-      number: Number(number) || 1,
+      number: Number(number) || defaultNextNumber,
     })
   }
 
@@ -346,10 +457,50 @@ function ChapterModal({ subjectName, initialData, onSave, onClose }) {
           <span>Subject: <strong>{subjectName}</strong></span>
         </div>
 
+        {!isEditing && (
+          <div
+            className="sm-last-added-info-box"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              backgroundColor: 'rgba(46, 92, 230, 0.05)',
+              border: '1px solid rgba(46, 92, 230, 0.15)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              marginTop: '12px',
+              fontSize: '12px',
+              color: '#334155',
+            }}
+          >
+            <AppIcon name="clock" size={15} style={{ color: '#2E5CE6', flexShrink: 0 }} />
+            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 600, color: '#475569' }}>Last Added Chapter: </span>
+              {lastAddedChapter ? (
+                <span style={{ fontWeight: 700, color: '#0F172A' }}>
+                  Chapter {lastAddedChapter.number}: {lastAddedChapter.name}{' '}
+                  <span style={{ fontWeight: 500, color: '#64748B', fontSize: '11px', marginLeft: '4px' }}>
+                    ({formatChapterDate(lastAddedChapter.createdAt || lastAddedChapter.created_at)})
+                  </span>
+                </span>
+              ) : (
+                <span style={{ fontStyle: 'italic', color: '#64748B' }}>No chapters added yet (Next will be Chapter 1)</span>
+              )}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="sm-modal-form">
           <div className="sm-form-row-2">
             <div className="sm-field">
-              <label className="sm-label">Chapter Number</label>
+              <label className="sm-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Chapter Number</span>
+                {!isEditing && (
+                  <span style={{ fontSize: '10px', color: '#12B76A', fontWeight: 600, backgroundColor: 'rgba(18, 183, 106, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>
+                    Auto-Incremented
+                  </span>
+                )}
+              </label>
               <input
                 type="number"
                 className="sm-input"
@@ -397,8 +548,89 @@ function ChapterModal({ subjectName, initialData, onSave, onClose }) {
   )
 }
 
-/* ── Compact Left Subject List Row ───────────────────────────── */
-function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplicate, onDelete: _onDelete, onToggleLock }) {
+/* ── Subject Delete Security Modal ─────────────────────────────── */
+function DeleteSubjectSecurityModal({
+  isOpen,
+  subject,
+  impact,
+  securityCode,
+  onSecurityCodeChange,
+  error,
+  onConfirm,
+  onClose,
+}) {
+  if (!isOpen || !subject) return null
+
+  return (
+    <div className="cm-security-modal-overlay" onClick={onClose}>
+      <div className="cm-security-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-security-header">
+          <div className="cm-security-badge-icon" style={{ background: '#FEF3F2', color: '#D92D20' }}>
+            <AppIcon name="delete" size={20} />
+          </div>
+          <div>
+            <h3 className="cm-security-title">Delete Subject "{subject.name}"?</h3>
+            <p className="cm-security-sub">Security verification code required to confirm this deletion.</p>
+          </div>
+        </div>
+
+        {impact && (
+          <div style={{ background: '#FFF5F5', border: '1px solid #FEE2E2', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: '#991B1B' }}>
+            <strong>Impact Warning:</strong> Deleting this subject will permanently remove <strong>{impact.chapters || 0} Chapters</strong>, <strong>{impact.mcqs || 0} MCQs</strong>, and <strong>{impact.flashcards || 0} Flashcards</strong>.
+          </div>
+        )}
+
+        <div className="cm-security-code-field">
+          <label className="cm-label" style={{ fontWeight: 700, color: '#0F172A' }}>
+            Enter Change Code *
+          </label>
+          <input
+            type="password"
+            className="cm-security-input"
+            value={securityCode}
+            onChange={(e) => onSecurityCodeChange(e.target.value)}
+            placeholder="Enter change code (e.g. Abhisheka)..."
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onConfirm()
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#64748B' }}>
+            🔒 Enter security passcode "Abhisheka" to confirm deletion.
+          </span>
+        </div>
+
+        {error && (
+          <div className="cm-security-error">
+            <AppIcon name="help" size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="cm-form-actions" style={{ marginTop: '8px' }}>
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="danger" type="button" onClick={onConfirm}>
+            Confirm & Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Subject Row Item ─────────────────────────────────────────── */
+function SubjectListRow({
+  subject,
+  isSelected,
+  stats,
+  onSelect,
+  onEdit,
+  onDuplicate,
+  onToggleLock,
+  onOpenDeleteModal,
+}) {
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef(null)
 
@@ -408,34 +640,25 @@ function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplic
         setShowMenu(false)
       }
     }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowMenu(false)
+      }
+    }
     if (showMenu) {
       document.addEventListener('mousedown', handleClick)
-      return () => document.removeEventListener('mousedown', handleClick)
+      document.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('mousedown', handleClick)
+        document.removeEventListener('keydown', handleKeyDown)
+      }
     }
   }, [showMenu])
 
   const handleDelete = (e) => {
     e.stopPropagation()
-    const impact = getDeleteSubjectImpact(subject.id)
-    showConfirm({
-      title: `Delete Subject "${subject.name}"?`,
-      message: `This will permanently remove this subject and all associated chapters and practice content.`,
-      impact: [
-        { icon: 'document', label: 'Chapters', value: impact.chapters },
-        { icon: 'help', label: 'MCQs', value: impact.mcqs },
-        { icon: 'flashcardsTab', label: 'Flashcards', value: impact.flashcards },
-      ],
-      onConfirm: async () => {
-        dismissConfirm()
-        const res = await subjectService.deleteSubject(subject.id)
-        if (res.success) {
-          showToast({ type: 'success', title: 'Subject Deleted', message: `"${subject.name}" deleted.` })
-        } else {
-          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete subject from database.' })
-        }
-      },
-      onCancel: dismissConfirm,
-    })
+    setShowMenu(false)
+    onOpenDeleteModal(subject)
   }
 
   return (
@@ -493,11 +716,92 @@ function SubjectListRow({ subject, isSelected, stats, onSelect, onEdit, onDuplic
   )
 }
 
+/* ── Chapter Delete Security Modal ─────────────────────────────── */
+function DeleteChapterSecurityModal({
+  isOpen,
+  chapter,
+  impact,
+  securityCode,
+  onSecurityCodeChange,
+  error,
+  onConfirm,
+  onClose,
+}) {
+  if (!isOpen || !chapter) return null
+
+  return (
+    <div className="cm-security-modal-overlay" onClick={onClose}>
+      <div className="cm-security-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-security-header">
+          <div className="cm-security-badge-icon" style={{ background: '#FEF3F2', color: '#D92D20' }}>
+            <AppIcon name="delete" size={20} />
+          </div>
+          <div>
+            <h3 className="cm-security-title">Delete Chapter "{chapter.name}"?</h3>
+            <p className="cm-security-sub">Security verification code required to confirm this deletion.</p>
+          </div>
+        </div>
+
+        {impact && (impact.mcqs > 0 || impact.flashcards > 0) && (
+          <div style={{ background: '#FFF5F5', border: '1px solid #FEE2E2', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: '#991B1B' }}>
+            <strong>Impact Warning:</strong> Deleting this chapter will also remove <strong>{impact.mcqs || 0} MCQs</strong> and <strong>{impact.flashcards || 0} Flashcards</strong>.
+          </div>
+        )}
+
+        <div className="cm-security-code-field">
+          <label className="cm-label" style={{ fontWeight: 700, color: '#0F172A' }}>
+            Enter Change Code *
+          </label>
+          <input
+            type="password"
+            className="cm-security-input"
+            value={securityCode}
+            onChange={(e) => onSecurityCodeChange(e.target.value)}
+            placeholder="Enter change code (e.g. Abhisheka)..."
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onConfirm()
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#64748B' }}>
+            🔒 Enter security passcode "Abhisheka" to confirm deletion.
+          </span>
+        </div>
+
+        {error && (
+          <div className="cm-security-error">
+            <AppIcon name="help" size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="cm-form-actions" style={{ marginTop: '8px' }}>
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="danger" type="button" onClick={onConfirm}>
+            Confirm & Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Right Selected Subject Analytics & Chapter Workspace Panel ──── */
 function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onEditSubject, onToggleLock, activeCourseId }) {
   const [activeTab, setActiveTab] = useState('chapters')
   const [showChapterModal, setShowChapterModal] = useState(false)
   const [editingChapter, setEditingChapter] = useState(null)
+
+  // Chapter Delete Security Modal State
+  const [deleteSecurityModal, setDeleteSecurityModal] = useState({
+    open: false,
+    chapter: null,
+    impact: null,
+    securityCode: '',
+    error: '',
+  })
 
   if (!selectedSubject) {
     return (
@@ -642,31 +946,47 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
     }
   }
 
-const handleDeleteChapter = async (ch) => {
-  const impact = getDeleteChapterImpact(ch.id)
-  showConfirm({
-    title: `Delete Chapter "${ch.name}"?`,
-    message: 'Are you sure you want to remove this chapter?',
-    impact: [
-      { icon: 'help', label: 'MCQs', value: impact.mcqs },
-      { icon: 'flashcardsTab', label: 'Flashcards', value: impact.flashcards },
-    ],
-    onConfirm: async () => {
-      try {
-        const res = await chapterService.deleteChapter(ch.id)
-        if (res.success) {
-          showToast({ type: 'success', title: 'Chapter Deleted', message: `"${ch.name}" deleted.` })
-        } else {
-          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete chapter.' })
-        }
-      } catch (err) {
-        showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+  const handleDeleteChapter = (ch) => {
+    if (!ch || !ch.id) {
+      showToast({ type: 'error', title: 'Error', message: 'Selected chapter is invalid.' })
+      return
+    }
+    const impact = typeof getDeleteChapterImpact === 'function' ? getDeleteChapterImpact(ch.id) : getChapterContentCounts(ch)
+    setDeleteSecurityModal({
+      open: true,
+      chapter: ch,
+      impact,
+      securityCode: '',
+      error: '',
+    })
+  }
+
+  const handleExecuteChapterDelete = async () => {
+    if (deleteSecurityModal.securityCode.trim() !== 'Abhisheka') {
+      setDeleteSecurityModal((prev) => ({
+        ...prev,
+        error: 'Invalid Security Code! Enter "Abhisheka" to confirm.',
+      }))
+      showToast({ type: 'error', title: 'Security Check Failed', message: 'Invalid change code entered.' })
+      return
+    }
+
+    const ch = deleteSecurityModal.chapter
+    if (!ch) return
+
+    try {
+      const res = await chapterService.deleteChapter(ch.id)
+      if (res.success) {
+        showToast({ type: 'success', title: 'Chapter Deleted', message: `Chapter "${ch.name}" deleted successfully.` })
+      } else {
+        showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete chapter.' })
       }
-      dismissConfirm()
-    },
-    onCancel: dismissConfirm,
-  })
-}
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+    } finally {
+      setDeleteSecurityModal({ open: false, chapter: null, impact: null, securityCode: '', error: '' })
+    }
+  }
 
   return (
     <div className="sm-analytics-panel sm-subject-card-panel">
@@ -880,10 +1200,23 @@ const handleDeleteChapter = async (ch) => {
         <ChapterModal
           subjectName={selectedSubject.name}
           initialData={editingChapter}
+          existingChapters={subjectChapters}
           onSave={handleSaveChapter}
           onClose={() => setShowChapterModal(false)}
         />
       )}
+
+      {/* Delete Chapter Security Code Modal */}
+      <DeleteChapterSecurityModal
+        isOpen={deleteSecurityModal.open}
+        chapter={deleteSecurityModal.chapter}
+        impact={deleteSecurityModal.impact}
+        securityCode={deleteSecurityModal.securityCode}
+        onSecurityCodeChange={(val) => setDeleteSecurityModal((prev) => ({ ...prev, securityCode: val, error: '' }))}
+        error={deleteSecurityModal.error}
+        onConfirm={handleExecuteChapterDelete}
+        onClose={() => setDeleteSecurityModal({ open: false, chapter: null, impact: null, securityCode: '', error: '' })}
+      />
     </div>
   )
 }
@@ -899,6 +1232,53 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState(null)
   const [selectedSubjectId, setSelectedSubjectId] = useState(null)
+
+  // Subject Delete Security Modal State
+  const [deleteSubjectModal, setDeleteSubjectModal] = useState({
+    open: false,
+    subject: null,
+    impact: null,
+    securityCode: '',
+    error: '',
+  })
+
+  const handleOpenDeleteSubject = (subject) => {
+    const impact = typeof getDeleteSubjectImpact === 'function' ? getDeleteSubjectImpact(subject.id) : { name: subject.name, chapters: 0, mcqs: 0, flashcards: 0 }
+    setDeleteSubjectModal({
+      open: true,
+      subject,
+      impact,
+      securityCode: '',
+      error: '',
+    })
+  }
+
+  const handleExecuteSubjectDelete = async () => {
+    if (deleteSubjectModal.securityCode.trim() !== 'Abhisheka') {
+      setDeleteSubjectModal((prev) => ({
+        ...prev,
+        error: 'Invalid Security Code! Enter "Abhisheka" to confirm.',
+      }))
+      showToast({ type: 'error', title: 'Security Check Failed', message: 'Invalid change code entered.' })
+      return
+    }
+
+    const subject = deleteSubjectModal.subject
+    if (!subject) return
+
+    try {
+      const res = await subjectService.deleteSubject(subject.id)
+      if (res.success) {
+        showToast({ type: 'success', title: 'Subject Deleted', message: `Subject "${subject.name}" and all associated chapters deleted successfully.` })
+      } else {
+        showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete subject.' })
+      }
+    } catch (err) {
+      showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+    } finally {
+      setDeleteSubjectModal({ open: false, subject: null, impact: null, securityCode: '', error: '' })
+    }
+  }
 
   // Current active workspace
   const activeCourse = useMemo(() => {
@@ -1194,6 +1574,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
                   onEdit={handleOpenEdit}
                   onDuplicate={duplicateSubject}
                   onToggleLock={toggleSubjectLock}
+                  onOpenDeleteModal={handleOpenDeleteSubject}
                 />
               ))}
             </div>
@@ -1226,6 +1607,18 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
           onClose={() => setShowSubjectModal(false)}
         />
       )}
+
+      {/* Delete Subject Security Code Modal */}
+      <DeleteSubjectSecurityModal
+        isOpen={deleteSubjectModal.open}
+        subject={deleteSubjectModal.subject}
+        impact={deleteSubjectModal.impact}
+        securityCode={deleteSubjectModal.securityCode}
+        onSecurityCodeChange={(val) => setDeleteSubjectModal((prev) => ({ ...prev, securityCode: val, error: '' }))}
+        error={deleteSubjectModal.error}
+        onConfirm={handleExecuteSubjectDelete}
+        onClose={() => setDeleteSubjectModal({ open: false, subject: null, impact: null, securityCode: '', error: '' })}
+      />
     </div>
   )
 }

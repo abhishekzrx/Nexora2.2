@@ -134,7 +134,7 @@ export default function ChapterMcqInjection() {
           (c.name === activeChapter.name || c.id === activeChapter.id) &&
           (!selectedCourseId || c.courseId === selectedCourseId)
       )
-      setChapterDescription(found?.desc || activeChapter?.desc || '')
+      setChapterDescription(found?.desc || found?.description || activeChapter?.desc || activeChapter?.description || '')
     } else {
       setChapterDescription('')
     }

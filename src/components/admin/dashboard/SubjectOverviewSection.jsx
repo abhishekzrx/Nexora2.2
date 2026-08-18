@@ -39,11 +39,13 @@ export default function SubjectOverviewSection({ subjectBreakdown = [], onNaviga
               <div>
                 <h4 className="sub-row-name">{sub.name}</h4>
                 <div className="sub-row-meta">
-                  <span>{sub.chaptersCount} Chapters</span>
+                  <span>{sub.chaptersCount} C</span>
                   <span className="dot-sep">•</span>
                   <span>{sub.mcqsCount} MCQs</span>
                   <span className="dot-sep">•</span>
-                  <span>{sub.flashcardsCount} Flashcards</span>
+                  <span>{sub.flashcardsCount} FC</span>
+                  <span className="dot-sep">•</span>
+                  <span>{sub.notesCount || 0} N</span>
                 </div>
               </div>
             </div>

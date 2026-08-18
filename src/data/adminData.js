@@ -58,7 +58,7 @@ export const adminSubjects = [
   {
     id: 'os',
     name: 'Operating Systems',
-    icon: 'chapters',
+    icon: 'operatingSystems',
     desc: 'Process management, concurrency, memory allocation, deadlocks, and virtual memory',
     stats: [
       { value: '8', label: 'Chapters' },
@@ -82,7 +82,7 @@ export const adminSubjects = [
   {
     id: 'coa',
     name: 'Computer Organization & Architecture (COA)',
-    icon: 'dataStructures',
+    icon: 'computerOrganization',
     desc: 'CPU design, instruction sets, ALU, memory hierarchy, cache mapping, and I/O interface',
     stats: [
       { value: '7', label: 'Chapters' },

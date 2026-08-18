@@ -18,6 +18,7 @@ import {
   publishWorkspace,
   unpublishWorkspace,
   deleteWorkspace,
+  toggleLockWorkspace,
   setActiveWorkspace,
 } from '../../data/workspaceStore'
 import { useAdminStore } from '../../data/adminStore'
@@ -227,101 +228,137 @@ function AddSubjectUnderCourseModal({ course, onSubmit, onClose }) {
   )
 }
 
+/* ── Security Passcode Confirmation Modal ───────────────────────── */
+function SecurityCodeConfirmModal({
+  isOpen,
+  actionType,
+  course,
+  newName,
+  onNewNameChange,
+  securityCode,
+  onSecurityCodeChange,
+  error,
+  onConfirm,
+  onClose,
+}) {
+  if (!isOpen || !course) return null
+
+  const getTitle = () => {
+    switch (actionType) {
+      case 'rename':
+        return `Rename Course "${course.name}"`
+      case 'delete':
+        return `Delete Course "${course.name}"`
+      case 'lock':
+        return `Lock Course "${course.name}"`
+      case 'unlock':
+        return `Unlock Course "${course.name}"`
+      case 'publish':
+        return `Publish Course "${course.name}"`
+      case 'unpublish':
+        return `Unpublish Course "${course.name}"`
+      case 'archive':
+        return `Archive Course "${course.name}"`
+      case 'activate':
+        return `Activate Course "${course.name}"`
+      case 'duplicate':
+        return `Duplicate Course "${course.name}"`
+      default:
+        return `Modify Course "${course.name}"`
+    }
+  }
+
+  const getActionBadgeColor = () => {
+    if (actionType === 'delete') return { bg: '#FEF3F2', color: '#D92D20' }
+    if (actionType === 'lock' || actionType === 'unlock') return { bg: '#F1EDFC', color: '#7C3AED' }
+    if (actionType === 'publish') return { bg: '#E9F9F1', color: '#12B76A' }
+    return { bg: '#FFF1E6', color: '#F1621B' }
+  }
+
+  const badgeStyle = getActionBadgeColor()
+
+  return (
+    <div className="cm-security-modal-overlay" onClick={onClose}>
+      <div className="cm-security-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-security-header">
+          <div className="cm-security-badge-icon" style={{ background: badgeStyle.bg, color: badgeStyle.color }}>
+            <AppIcon name={actionType === 'delete' ? 'delete' : actionType === 'lock' || actionType === 'unlock' ? 'lock' : 'key'} size={20} />
+          </div>
+          <div>
+            <h3 className="cm-security-title">{getTitle()}</h3>
+            <p className="cm-security-sub">Security verification code required to confirm this change.</p>
+          </div>
+        </div>
+
+        {actionType === 'rename' && (
+          <div className="cm-field" style={{ marginTop: '4px' }}>
+            <label className="cm-label">New Course Name *</label>
+            <input
+              type="text"
+              className="cm-input"
+              value={newName}
+              onChange={(e) => onNewNameChange(e.target.value)}
+              placeholder="Enter new course name..."
+              required
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="cm-security-code-field">
+          <label className="cm-label" style={{ fontWeight: 700, color: '#0F172A' }}>
+            Enter Change Code *
+          </label>
+          <input
+            type="password"
+            className="cm-security-input"
+            value={securityCode}
+            onChange={(e) => onSecurityCodeChange(e.target.value)}
+            placeholder="Enter change code (e.g. Abhisheka)..."
+            autoFocus={actionType !== 'rename'}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onConfirm()
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#64748B' }}>
+            🔒 Action will only execute if valid security code is entered.
+          </span>
+        </div>
+
+        {error && (
+          <div className="cm-security-error">
+            <AppIcon name="help" size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="cm-form-actions" style={{ marginTop: '8px' }}>
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant={actionType === 'delete' ? 'danger' : 'primary'}
+            type="button"
+            onClick={onConfirm}
+          >
+            Confirm & Execute
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Compact Name-Only Course List Row ─────────────────────────── */
 function CourseListItem({
   course,
   isSelected,
   onSelect,
-  onRename,
-  onDuplicate,
-  onArchive,
-  onActivate,
-  onPublish,
-  onUnpublish,
-  onDelete,
+  onOpenActionModal,
 }) {
-  const [showMenu, setShowMenu] = useState(false)
-  const menuRef = useRef(null)
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowMenu(false)
-      }
-    }
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setShowMenu(false)
-      }
-    }
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClick)
-      document.addEventListener('keydown', handleKeyDown)
-      return () => {
-        document.removeEventListener('mousedown', handleClick)
-        document.removeEventListener('keydown', handleKeyDown)
-      }
-    }
-  }, [showMenu])
-
-  const handleRename = (e) => {
+  const triggerAction = (e, actionType) => {
     e.stopPropagation()
-    setShowMenu(false)
-    const newName = prompt('Enter new course name:', course.name)
-    if (newName && newName.trim() && newName.trim() !== course.name) {
-      onRename(course.id, newName.trim())
-      showToast({ type: 'success', title: 'Renamed', message: `Course renamed to "${newName.trim()}".` })
-    }
-  }
-
-  const handleDuplicate = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    onDuplicate(course.id)
-    showToast({ type: 'success', title: 'Duplicated', message: `Copy of "${course.name}" created.` })
-  }
-
-  const handleToggleArchive = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    if (course.status === 'archived') {
-      onActivate(course.id)
-      showToast({ type: 'success', title: 'Activated', message: `"${course.name}" activated.` })
-    } else {
-      onArchive(course.id)
-      showToast({ type: 'info', title: 'Archived', message: `"${course.name}" archived.` })
-    }
-  }
-
-  const handleTogglePublish = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    if (course.published || course.status === 'published') {
-      onUnpublish(course.id)
-      showToast({ type: 'info', title: 'Unpublished', message: `"${course.name}" set to draft.` })
-    } else {
-      onPublish(course.id)
-      showToast({ type: 'success', title: 'Published', message: `"${course.name}" published.` })
-    }
-  }
-
-  const handleDelete = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    showConfirm({
-      title: `Delete Course "${course.name}"?`,
-      message: 'This will permanently remove this course workspace.',
-      onConfirm: async () => {
-        dismissConfirm()
-        const res = await courseService.deleteCourse(course.id)
-        if (res.success) {
-          showToast({ type: 'success', title: 'Deleted', message: `"${course.name}" deleted.` })
-        } else {
-          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Unable to delete course from database.' })
-        }
-      },
-      onCancel: dismissConfirm,
-    })
+    onOpenActionModal(course, actionType)
   }
 
   return (
@@ -342,39 +379,64 @@ function CourseListItem({
       </div>
 
       <div className="cm-row-right" onClick={(e) => e.stopPropagation()}>
-        <StatusBadge status={course.status || 'draft'} />
+        <StatusBadge status={course.status || 'draft'} locked={course.locked} />
 
-        <div className="cm-action-menu-wrap" ref={menuRef}>
+        {/* Embedded Action Icon Toolbar matching design reference */}
+        <div className="cm-row-embedded-actions">
+          {/* Rename / Edit */}
           <button
             type="button"
-            className="cm-three-dots-btn"
-            onClick={() => setShowMenu(!showMenu)}
-            aria-label="Course Actions"
+            className="cm-row-action-icon-btn"
+            onClick={(e) => triggerAction(e, 'rename')}
+            title="Rename Course"
+            aria-label="Rename Course"
           >
-            <AppIcon name="moreVert" size={15} />
+            <AppIcon name="edit" size={14} />
           </button>
 
-          {showMenu && (
-            <div className="cm-dropdown">
-              <button type="button" onClick={handleRename}>
-                <AppIcon name="edit" size={14} /> Rename
-              </button>
-              <button type="button" onClick={handleDuplicate}>
-                <AppIcon name="copy" size={14} /> Duplicate
-              </button>
-              <button type="button" onClick={handleTogglePublish}>
-                <AppIcon name={course.published ? 'unpublish' : 'publish'} size={14} />
-                {course.published || course.status === 'published' ? 'Unpublish' : 'Publish'}
-              </button>
-              <button type="button" onClick={handleToggleArchive}>
-                <AppIcon name={course.status === 'archived' ? 'check' : 'lock'} size={14} />
-                {course.status === 'archived' ? 'Activate' : 'Archive'}
-              </button>
-              <button type="button" className="danger" onClick={handleDelete}>
-                <AppIcon name="delete" size={14} /> Delete
-              </button>
-            </div>
-          )}
+          {/* Lock / Unlock */}
+          <button
+            type="button"
+            className={`cm-row-action-icon-btn${course.locked ? ' active-lock' : ''}`}
+            onClick={(e) => triggerAction(e, course.locked ? 'unlock' : 'lock')}
+            title={course.locked ? 'Unlock Course' : 'Lock Course'}
+            aria-label={course.locked ? 'Unlock Course' : 'Lock Course'}
+          >
+            <AppIcon name={course.locked ? 'lockOpen' : 'lock'} size={14} />
+          </button>
+
+          {/* Activate / Disable */}
+          <button
+            type="button"
+            className={`cm-row-action-icon-btn${course.status === 'active' || course.published ? ' active-status' : ''}`}
+            onClick={(e) => triggerAction(e, course.status === 'archived' || course.status === 'draft' ? 'activate' : 'archive')}
+            title={course.status === 'archived' || course.status === 'draft' ? 'Activate Course' : 'Disable / Archive Course'}
+            aria-label={course.status === 'archived' || course.status === 'draft' ? 'Activate Course' : 'Disable / Archive Course'}
+          >
+            <AppIcon name={course.status === 'archived' || course.status === 'draft' ? 'check' : 'unpublish'} size={14} />
+          </button>
+
+          {/* Duplicate */}
+          <button
+            type="button"
+            className="cm-row-action-icon-btn"
+            onClick={(e) => triggerAction(e, 'duplicate')}
+            title="Duplicate Course"
+            aria-label="Duplicate Course"
+          >
+            <AppIcon name="copy" size={14} />
+          </button>
+
+          {/* Delete (Red) */}
+          <button
+            type="button"
+            className="cm-row-action-icon-btn danger"
+            onClick={(e) => triggerAction(e, 'delete')}
+            title="Delete Course"
+            aria-label="Delete Course"
+          >
+            <AppIcon name="delete" size={14} />
+          </button>
         </div>
 
         <span className="cm-row-chevron">&rsaquo;</span>
@@ -746,6 +808,16 @@ function CourseManager({ courseName: _courseName }) {
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false)
   const [selectedCourseId, setSelectedCourseId] = useState(activeWorkspaceId || workspaces[0]?.id)
 
+  // Security Passcode Modal State
+  const [securityModal, setSecurityModal] = useState({
+    open: false,
+    actionType: '',
+    course: null,
+    newName: '',
+    securityCode: '',
+    error: '',
+  })
+
   useEffect(() => {
     if (activeWorkspaceId && workspaces.some((w) => w.id === activeWorkspaceId)) {
       setSelectedCourseId(activeWorkspaceId)
@@ -821,6 +893,70 @@ function CourseManager({ courseName: _courseName }) {
     return getCourseStats(selectedCourse.id)
   }, [selectedCourse, allSubjects, allChapters, allMcqs, allFlashcards])
 
+  // Security Action Handlers
+  const handleOpenActionModal = (course, actionType) => {
+    setSecurityModal({
+      open: true,
+      actionType,
+      course,
+      newName: course.name,
+      securityCode: '',
+      error: '',
+    })
+  }
+
+  const handleExecuteSecurityAction = async () => {
+    if (securityModal.securityCode.trim() !== 'Abhisheka') {
+      setSecurityModal((prev) => ({
+        ...prev,
+        error: 'Invalid Security Code! Enter "Abhisheka" to confirm.',
+      }))
+      showToast({ type: 'error', title: 'Security Check Failed', message: 'Invalid change code entered.' })
+      return
+    }
+
+    const { course, actionType, newName } = securityModal
+    if (!course) return
+
+    try {
+      if (actionType === 'rename') {
+        if (!newName.trim()) return
+        renameWorkspace(course.id, newName.trim())
+        await courseService.updateCourse(course.id, { name: newName.trim() })
+        showToast({ type: 'success', title: 'Renamed', message: `Course renamed to "${newName.trim()}".` })
+      } else if (actionType === 'delete') {
+        deleteWorkspace(course.id)
+        await courseService.deleteCourse(course.id)
+        showToast({ type: 'success', title: 'Deleted', message: `Course "${course.name}" deleted successfully.` })
+      } else if (actionType === 'lock' || actionType === 'unlock') {
+        toggleLockWorkspace(course.id)
+        showToast({ type: 'success', title: course.locked ? 'Unlocked' : 'Locked', message: `Course "${course.name}" status updated.` })
+      } else if (actionType === 'publish') {
+        publishWorkspace(course.id)
+        await courseService.updateCourse(course.id, { status: 'published' })
+        showToast({ type: 'success', title: 'Published', message: `Course "${course.name}" published.` })
+      } else if (actionType === 'unpublish') {
+        unpublishWorkspace(course.id)
+        await courseService.updateCourse(course.id, { status: 'draft' })
+        showToast({ type: 'info', title: 'Unpublished', message: `Course "${course.name}" set to draft.` })
+      } else if (actionType === 'archive') {
+        archiveWorkspace(course.id)
+        await courseService.updateCourse(course.id, { status: 'archived' })
+        showToast({ type: 'info', title: 'Archived', message: `Course "${course.name}" archived.` })
+      } else if (actionType === 'activate') {
+        activateWorkspace(course.id)
+        await courseService.updateCourse(course.id, { status: 'active' })
+        showToast({ type: 'success', title: 'Activated', message: `Course "${course.name}" activated.` })
+      } else if (actionType === 'duplicate') {
+        duplicateWorkspace(course.id)
+        showToast({ type: 'success', title: 'Duplicated', message: `Copy of "${course.name}" created.` })
+      }
+      setSecurityModal({ open: false, actionType: '', course: null, newName: '', securityCode: '', error: '' })
+    } catch (err) {
+      showToast({ type: 'error', title: 'Action Failed', message: err.message || 'An error occurred.' })
+    }
+  }
+
   // Handlers
   const handleCreateCourse = async (values) => {
     try {
@@ -877,68 +1013,84 @@ function CourseManager({ courseName: _courseName }) {
         <div className="cm-course-list-col">
           {/* 8 Stat Cards Grid (2 rows x 4 columns) */}
           <div className="cm-stats-grid-8">
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
-                <AppIcon name="folder" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#F1621B' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
+                  <AppIcon name="folder" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Total</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.totalCourses}</div>
-              <div className="cm-stat-mini-lbl">Total</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
-                <AppIcon name="check" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#12B76A' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
+                  <AppIcon name="check" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Published</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.published}</div>
-              <div className="cm-stat-mini-lbl">Published</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>
-                <AppIcon name="edit" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#F59E0B' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>
+                  <AppIcon name="edit" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Draft</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.draft}</div>
-              <div className="cm-stat-mini-lbl">Draft</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
-                <AppIcon name="lock" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#7C3AED' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
+                  <AppIcon name="lock" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Archived</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.archived}</div>
-              <div className="cm-stat-mini-lbl">Archived</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
-                <AppIcon name="chapters" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#2E5CE6' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
+                  <AppIcon name="chapters" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Subjects</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.subjects}</div>
-              <div className="cm-stat-mini-lbl">Subjects</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
-                <AppIcon name="document" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#0E9494' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
+                  <AppIcon name="document" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Chapters</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.chapters}</div>
-              <div className="cm-stat-mini-lbl">Chapters</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
-                <AppIcon name="help" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#F1621B' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
+                  <AppIcon name="help" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">MCQs</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.mcqs}</div>
-              <div className="cm-stat-mini-lbl">MCQs</div>
             </div>
 
-            <div className="cm-stat-card-compact">
-              <span className="cm-stat-mini-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
-                <AppIcon name="flashcardsTab" size={14} />
-              </span>
+            <div className="cm-stat-card-compact" style={{ '--card-accent': '#7C3AED' }}>
+              <div className="cm-stat-mini-header">
+                <span className="cm-stat-mini-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
+                  <AppIcon name="flashcardsTab" size={14} />
+                </span>
+                <span className="cm-stat-mini-lbl">Flashcards</span>
+              </div>
               <div className="cm-stat-val-bold">{globalKpis.flashcards}</div>
-              <div className="cm-stat-mini-lbl">Flashcards</div>
             </div>
           </div>
 
@@ -986,13 +1138,7 @@ function CourseManager({ courseName: _courseName }) {
                   course={c}
                   isSelected={c.id === selectedCourseId}
                   onSelect={handleSelectCourse}
-                  onRename={renameWorkspace}
-                  onDuplicate={duplicateWorkspace}
-                  onArchive={archiveWorkspace}
-                  onActivate={activateWorkspace}
-                  onPublish={publishWorkspace}
-                  onUnpublish={unpublishWorkspace}
-                  onDelete={deleteWorkspace}
+                  onOpenActionModal={handleOpenActionModal}
                 />
               ))}
             </div>
@@ -1036,6 +1182,20 @@ function CourseManager({ courseName: _courseName }) {
           />
         </div>
       </div>
+
+      {/* Security Passcode Confirmation Modal */}
+      <SecurityCodeConfirmModal
+        isOpen={securityModal.open}
+        actionType={securityModal.actionType}
+        course={securityModal.course}
+        newName={securityModal.newName}
+        onNewNameChange={(val) => setSecurityModal((prev) => ({ ...prev, newName: val, error: '' }))}
+        securityCode={securityModal.securityCode}
+        onSecurityCodeChange={(val) => setSecurityModal((prev) => ({ ...prev, securityCode: val, error: '' }))}
+        error={securityModal.error}
+        onConfirm={handleExecuteSecurityAction}
+        onClose={() => setSecurityModal({ open: false, actionType: '', course: null, newName: '', securityCode: '', error: '' })}
+      />
 
       {/* Add Subject Modal under Selected Course */}
       {showAddSubjectModal && selectedCourse && (

@@ -404,39 +404,24 @@ function SubjectCard({ subject, onSelect }) {
       </div>
       <div className="subject-name">{subject.title}</div>
 
-      {/* Subject Coverage & Progress Header */}
-      <div className="subject-trend-wrap">
-        <div className="subject-trend-header">
-          <span className="subject-trend-lbl">Subject Coverage</span>
-          <span className="subject-trend-val" style={{ color: ringColor }}>
-            {Math.round(coveragePct)}% ({subject.attemptedMcqs || 0}/{subject.counts?.mcqs || subject.totalMcqs || 0} Qs)
-          </span>
-        </div>
-        <div className="subject-trend-track">
-          <div
-            className="subject-trend-fill"
-            style={{
-              width: `${Math.max(8, coveragePct)}%`,
-              backgroundColor: ringColor,
-            }}
-          />
-        </div>
-      </div>
-
       <div className="subject-stats">
-        <span className="subject-stat">
+        <span className="subject-stat" title={`${subject.chapters} Chapters`}>
           <AppIcon name="document" size={11} />
-          {subject.chapters} Chs
+          {subject.chapters} Chapters
         </span>
-        <span className={`subject-stat ${subject.hasAttempts ? 'highlight-acc-stat' : ''}`}>
+        <span className={`subject-stat ${subject.hasAttempts ? 'highlight-acc-stat' : ''}`} title={`${subject.mcqs} MCQs`}>
           <AppIcon name="mcqs" size={11} />
           {subject.hasAttempts
             ? `${subject.attemptedMcqs}/${subject.mcqs} MCQs`
             : `${subject.mcqs} MCQs`}
         </span>
-        <span className="subject-stat">
+        <span className="subject-stat" title={`${subject.flashcards || 0} Flashcards`}>
           <AppIcon name="flashcardsTab" size={11} />
-          {subject.flashcards} Flash
+          {subject.flashcards || 0} Flashcards
+        </span>
+        <span className="subject-stat" title={`${subject.notes || 0} Notes`}>
+          <AppIcon name="notesTab" size={11} />
+          {subject.notes || 0} Notes
         </span>
       </div>
 

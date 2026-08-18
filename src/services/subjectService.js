@@ -10,13 +10,33 @@ import {
   deleteSubject as deleteSubjectFromStore,
 } from '../data/adminStore'
 
+export function getSubjectIconByName(name, fallback = 'chapters') {
+  if (!name) return fallback
+  const n = name.toLowerCase().trim()
+  if (n.includes('network')) return 'computerNetworks'
+  if (n.includes('operating system') || n.includes('os')) return 'operatingSystems'
+  if (n.includes('database') || n.includes('dbms') || n.includes('sql')) return 'dbms'
+  if (n.includes('digital') || n.includes('circuit') || n.includes('electronics')) return 'digitalElectronics'
+  if (n.includes('architecture') || n.includes('organization') || n.includes('coa')) return 'computerOrganization'
+  if (n.includes('structure') || n.includes('algo') || n.includes('dsa') || n.includes('python') || n.includes('code') || n.includes('programming')) return 'dataStructures'
+  if (n.includes('theory') || n.includes('toc') || n.includes('automata')) return 'code'
+  if (n.includes('compiler') || n.includes('design')) return 'computer'
+  if (n.includes('physics') || n.includes('kinematic') || n.includes('motion') || n.includes('thermo')) return 'physics'
+  if (n.includes('chem')) return 'chemistry'
+  if (n.includes('bio')) return 'biology'
+  if (n.includes('math') || n.includes('calculus') || n.includes('algebra')) return 'analytics'
+  if (n.includes('aptitude') || n.includes('reasoning') || n.includes('intelligence') || n.includes('fund')) return 'computer'
+  return fallback || 'chapters'
+}
+
 function mapRowToSubject(row) {
   if (!row) return null
+  const inferredIcon = getSubjectIconByName(row.name, row.icon_type)
   return {
     id: row.id,
     courseId: row.course_id || row.courseId,
     name: row.name,
-    icon: row.icon_type || 'chapters',
+    icon: (row.icon_type && row.icon_type !== 'chapters') ? row.icon_type : inferredIcon,
     desc: row.description || '',
     color: row.color || '#F1621B',
     status: row.status || 'active',
@@ -120,10 +140,19 @@ export const subjectService = {
 
   async deleteSubject(subjectId) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
-    const res = await apiService.delete(`/subjects?id=eq.${subjectId}`)
 
-    if (!res.success) {
-      return { success: false, error: res.error || 'Failed to delete subject from database' }
+    const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectId)
+
+    if (isValidUuid) {
+      try {
+        // Cascade delete dependent child records from Supabase to prevent FK constraint violations
+        await apiService.delete(`/mcqs?subject_id=eq.${encodeURIComponent(subjectId)}`)
+        await apiService.delete(`/flashcards?subject_id=eq.${encodeURIComponent(subjectId)}`)
+        await apiService.delete(`/chapters?subject_id=eq.${encodeURIComponent(subjectId)}`)
+        await apiService.delete(`/subjects?id=eq.${encodeURIComponent(subjectId)}`)
+      } catch (err) {
+        console.warn('Supabase subject cascade delete warning:', err)
+      }
     }
 
     deleteSubjectFromStore(subjectId)

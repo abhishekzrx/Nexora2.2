@@ -429,6 +429,12 @@ export function archiveWorkspace(id) {
   updateWorkspace(id, { status: 'archived', published: false })
 }
 
+export function toggleLockWorkspace(id) {
+  const target = findWorkspace(id)
+  if (!target) return
+  updateWorkspace(id, { locked: !target.locked })
+}
+
 export function activateWorkspace(id) {
   updateWorkspace(id, { status: 'active', published: true })
 }
