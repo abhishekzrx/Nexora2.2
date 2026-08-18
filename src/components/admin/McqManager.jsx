@@ -322,18 +322,9 @@ export default function McqManager() {
   const selectedChapter = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
 
   return (
-    <div className="mcq-notebook-wrapper">
-      {/* Notebook Binder Rings Accent */}
-      <div className="notebook-binder-rings" aria-hidden="true">
-        {[...Array(9)].map((_, i) => (
-          <span key={i} className="ring-hole" />
-        ))}
-      </div>
-
-      <div className="mcq-manager-container notebook-paper-sheet">
-        {/* Notebook Left Red Margin Accent */}
-        <div className="notebook-margin-line" aria-hidden="true" />
-
+    <div className="mcq-manager-container edutech-clean-container">
+      {/* Sticky Top Controls Wrapper */}
+      <div className="mcq-sticky-top-controls">
         {/* EduTech Premium Header */}
         <div className="mcq-manager-header edutech-header">
           <div className="header-left">
@@ -522,6 +513,7 @@ export default function McqManager() {
             <span className="count-active">{filteredMcqs.length}</span> / {chapterMcqs.length} Questions
           </div>
         </div>
+      </div>
 
         {/* MCQs Notebook Questions List */}
         {loading ? (
@@ -766,6 +758,5 @@ export default function McqManager() {
           </div>
         )}
       </div>
-    </div>
   )
 }
