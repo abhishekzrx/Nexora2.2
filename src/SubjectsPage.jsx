@@ -70,7 +70,10 @@ function SubjectCard({ subject, onSelect }) {
       <div className="subj-name">{subject.title}</div>
       <div className="subj-meta">{subject.meta}</div>
       <div className="subj-bottom">
-        <span className="subj-pct" style={{ color: ringColor }}>{coveragePct}%</span>
+        <div className="subj-coverage-info" style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '42px' }}>
+          <span className="subj-cov-label" style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Coverage</span>
+          <span className="subj-pct" style={{ color: ringColor }}>{coveragePct}%</span>
+        </div>
         <div className="subj-track">
           <div
             className={`subj-fill ${subject.progressClass}`}

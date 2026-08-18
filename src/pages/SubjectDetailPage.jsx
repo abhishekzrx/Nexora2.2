@@ -92,12 +92,27 @@ function SubjectDetailPage({
               </button>
             </div>
           </div>
-          <div className="chapter-list">
-            {subject.chapters.map((chapter) => (
-              <ChapterCard key={chapter.id || chapter.num} chapter={chapter} onClick={onChapterClick} />
-            ))}
-          </div>
-          <CoverageLegendCard />
+          {subject.chapters.length === 0 ? (
+            <div className="empty-chapters-card">
+              <div className="empty-chapters-icon-badge">
+                <AppIcon name="document" size={32} />
+              </div>
+              <h3 className="empty-chapters-title">No Chapters Added Yet</h3>
+              <p className="empty-chapters-sub">
+                There are currently no chapters available for <strong>{subject.title}</strong>. Our curriculum team is actively preparing content for this subject!
+              </p>
+              <button type="button" className="empty-chapters-btn" onClick={onBackToSubjects}>
+                ← Back to All Subjects
+              </button>
+            </div>
+          ) : (
+            <div className="chapter-list">
+              {subject.chapters.map((chapter) => (
+                <ChapterCard key={chapter.id || chapter.num} chapter={chapter} onClick={onChapterClick} />
+              ))}
+            </div>
+          )}
+          <CoverageLegendCard subject={subject} />
           <div className="banner">
             <div className="banner-left">
               <div className="banner-icon">

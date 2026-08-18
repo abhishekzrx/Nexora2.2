@@ -357,6 +357,46 @@ export const mcqService = {
     }
   },
 
+  async deleteTargetedMcqs(chapterId, targetCount = 1, position = 'end') {
+    if (!chapterId) {
+      return { success: false, error: 'Chapter ID required for targeted deletion' }
+    }
+
+    const count = Math.max(1, parseInt(targetCount, 10) || 1)
+    const getRes = await this.getMcqs('', '', chapterId)
+    if (!getRes.success || !Array.isArray(getRes.data)) {
+      return { success: false, error: getRes.error || 'Failed to fetch chapter MCQs' }
+    }
+
+    const currentMcqs = getRes.data
+    if (currentMcqs.length === 0) {
+      return { success: false, error: 'Chapter has no MCQs to delete' }
+    }
+
+    let toDelete = []
+    if (position === 'start') {
+      toDelete = currentMcqs.slice(0, count)
+    } else {
+      toDelete = currentMcqs.slice(-count)
+    }
+
+    const toDeleteIds = toDelete.map((m) => m.id).filter(Boolean)
+    if (toDeleteIds.length === 0) {
+      return { success: false, error: 'No valid questions found to delete' }
+    }
+
+    const delRes = await this.deleteMcqs(toDeleteIds)
+    if (delRes.success) {
+      return {
+        success: true,
+        deletedCount: toDeleteIds.length,
+        totalRemaining: Math.max(0, currentMcqs.length - toDeleteIds.length),
+      }
+    }
+
+    return delRes
+  },
+
   async trimChapterMcqs(chapterId, maxCount = 50) {
     if (!chapterId) {
       return { success: false, error: 'Chapter ID required for trimming' }

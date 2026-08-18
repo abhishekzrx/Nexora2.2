@@ -404,16 +404,12 @@ function SubjectCard({ subject, onSelect }) {
       </div>
       <div className="subject-name">{subject.title}</div>
 
-      {/* Subject Coverage & Mastery Header */}
+      {/* Subject Coverage & Progress Header */}
       <div className="subject-trend-wrap">
         <div className="subject-trend-header">
-          <span className="subject-trend-lbl">
-            {subject.hasAttempts ? 'Subject Coverage' : 'Course Coverage'}
-          </span>
+          <span className="subject-trend-lbl">Subject Coverage</span>
           <span className="subject-trend-val" style={{ color: ringColor }}>
-            {subject.hasAttempts
-              ? `${masteryPct}% Mastery`
-              : `${Math.round(coveragePct)}% Coverage`}
+            {Math.round(coveragePct)}% ({subject.attemptedMcqs || 0}/{subject.counts?.mcqs || subject.totalMcqs || 0} Qs)
           </span>
         </div>
         <div className="subject-trend-track">

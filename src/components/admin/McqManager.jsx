@@ -23,9 +23,26 @@ export default function McqManager() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState('ALL')
-  const [maxMcqsLimit, setMaxMcqsLimit] = useState('50')
+  const [maxMcqsLimit, setMaxMcqsLimit] = useState('')
+  const [targetedDeleteCount, setTargetedDeleteCount] = useState('')
+  const [targetedDeletePos, setTargetedDeletePos] = useState('end')
+  const [isDeletingTargeted, setIsDeletingTargeted] = useState(false)
   const [isTrimming, setIsTrimming] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
+
+  // Visual Satisfying Delete Confirmation Modal State
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    chapterName: '',
+    countText: '',
+    questionPreview: null,
+    warningNote: '',
+    dangerLevel: 'medium',
+    onConfirm: null,
+  })
+  const [isExecutingDelete, setIsExecutingDelete] = useState(false)
 
   // Interactive option selection test per question
   const [userSelectedOpts, setUserSelectedOpts] = useState({})
@@ -152,69 +169,163 @@ export default function McqManager() {
     }))
   }
 
-  // Delete Single MCQ (without deleting chapter)
-  const handleDeleteSingleMcq = async (mcqId, qText) => {
-    if (!window.confirm(`Delete this MCQ from chapter without deleting the parent chapter?\n\n"${qText?.slice(0, 70)}..."`)) {
-      return
-    }
+  // Helper to open visual deletion confirmation modal
+  const openDeleteConfirmModal = ({
+    title,
+    subtitle,
+    chapterName,
+    countText,
+    questionPreview = null,
+    warningNote = 'Chapter structure & metadata remain safe and preserved.',
+    dangerLevel = 'medium',
+    onConfirm,
+  }) => {
+    setDeleteConfirmModal({
+      isOpen: true,
+      title,
+      subtitle,
+      chapterName,
+      countText,
+      questionPreview,
+      warningNote,
+      dangerLevel,
+      onConfirm,
+    })
+  }
 
-    const res = await mcqService.deleteMcqs([mcqId])
-    if (res.success) {
-      showToast({
-        type: 'success',
-        title: 'Question Deleted',
-        message: 'Question removed successfully. Chapter structure remains intact.',
-        duration: 4000,
-      })
-      setChapterMcqs((prev) => prev.filter((m) => String(m.id) !== String(mcqId)))
-    } else {
-      showToast({
-        type: 'error',
-        title: 'Delete Failed',
-        message: res.error || 'Failed to delete MCQ from database.',
-        duration: 5000,
-      })
-    }
+  // Delete Single MCQ (without deleting chapter)
+  const handleDeleteSingleMcq = (mcqId, qText) => {
+    const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
+    const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
+
+    openDeleteConfirmModal({
+      title: 'Delete MCQ Question?',
+      subtitle: 'Remove this question from chapter bank without deleting the parent chapter.',
+      chapterName: chapName,
+      countText: '1 Question',
+      questionPreview: qText,
+      warningNote: 'Parent chapter structure & all other questions remain completely safe.',
+      dangerLevel: 'medium',
+      onConfirm: async () => {
+        const res = await mcqService.deleteMcqs([mcqId])
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Question Deleted',
+            message: 'Question removed successfully. Chapter structure remains intact.',
+            duration: 4000,
+          })
+          setChapterMcqs((prev) => prev.filter((m) => String(m.id) !== String(mcqId)))
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Delete Failed',
+            message: res.error || 'Failed to delete MCQ from database.',
+            duration: 5000,
+          })
+        }
+      },
+    })
   }
 
   // Delete All MCQs in Chapter (without deleting chapter)
-  const handleDeleteAllChapterMcqs = async () => {
+  const handleDeleteAllChapterMcqs = () => {
     if (chapterMcqs.length === 0) return
     const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
-    const chapName = currentChap?.name || currentChap?.title || 'this chapter'
+    const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
 
-    if (
-      !window.confirm(
-        `DANGER ZONE: Are you sure you want to delete ALL ${chapterMcqs.length} MCQs from "${chapName}"?\n\nThe chapter record will NOT be deleted.`
-      )
-    ) {
+    openDeleteConfirmModal({
+      title: `Clear ALL ${chapterMcqs.length} Chapter Questions?`,
+      subtitle: `DANGER ZONE: You are about to wipe all ${chapterMcqs.length} MCQs from "${chapName}".`,
+      chapterName: chapName,
+      countText: `ALL ${chapterMcqs.length} Questions`,
+      warningNote: 'The chapter record itself will NOT be deleted, but all contained questions will be removed.',
+      dangerLevel: 'high',
+      onConfirm: async () => {
+        setIsDeletingAll(true)
+        const res = await mcqService.deleteChapterMcqs(selectedChapterId)
+        setIsDeletingAll(false)
+
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Chapter MCQs Cleared',
+            message: `Cleared all questions from "${chapName}". Chapter structure preserved.`,
+            duration: 4000,
+          })
+          setChapterMcqs([])
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Clear Failed',
+            message: res.error || 'Failed to clear chapter MCQs.',
+            duration: 5000,
+          })
+        }
+      },
+    })
+  }
+
+  // Delete Targeted Number of MCQs (without deleting chapter)
+  const handleDeleteTargetedMcqs = () => {
+    const count = parseInt(targetedDeleteCount, 10)
+    if (isNaN(count) || count <= 0) {
+      showToast({
+        type: 'warning',
+        title: 'Invalid Number',
+        message: 'Enter a valid number of questions to delete.',
+      })
       return
     }
 
-    setIsDeletingAll(true)
-    const res = await mcqService.deleteChapterMcqs(selectedChapterId)
-    setIsDeletingAll(false)
-
-    if (res.success) {
+    if (chapterMcqs.length === 0) {
       showToast({
-        type: 'success',
-        title: 'Chapter MCQs Cleared',
-        message: `Cleared all questions from "${chapName}". Chapter structure preserved.`,
-        duration: 4000,
+        type: 'info',
+        title: 'No Questions',
+        message: 'This chapter has no MCQs to delete.',
       })
-      setChapterMcqs([])
-    } else {
-      showToast({
-        type: 'error',
-        title: 'Clear Failed',
-        message: res.error || 'Failed to clear chapter MCQs.',
-        duration: 5000,
-      })
+      return
     }
+
+    const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
+    const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
+    const actualToDelete = Math.min(count, chapterMcqs.length)
+    const positionLabel = targetedDeletePos === 'start' ? 'First' : 'Last'
+
+    openDeleteConfirmModal({
+      title: `Delete ${actualToDelete} Targeted Question${actualToDelete > 1 ? 's' : ''}?`,
+      subtitle: `Removes the ${positionLabel.toLowerCase()} ${actualToDelete} question(s) from this chapter bank.`,
+      chapterName: chapName,
+      countText: `${actualToDelete} Question${actualToDelete > 1 ? 's' : ''} (${positionLabel} ${actualToDelete})`,
+      warningNote: 'Chapter structure and remaining questions stay intact.',
+      dangerLevel: 'medium',
+      onConfirm: async () => {
+        setIsDeletingTargeted(true)
+        const res = await mcqService.deleteTargetedMcqs(selectedChapterId, actualToDelete, targetedDeletePos)
+        setIsDeletingTargeted(false)
+
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Targeted MCQs Deleted',
+            message: `Deleted ${res.deletedCount} question(s) from "${chapName}". ${res.totalRemaining} question(s) remaining.`,
+            duration: 4000,
+          })
+          loadChapterMcqs()
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Delete Failed',
+            message: res.error || 'Failed to delete targeted MCQs.',
+            duration: 5000,
+          })
+        }
+      },
+    })
   }
 
   // Trim MCQs to Max Limit (without deleting chapter)
-  const handleApplyMaxLimit = async () => {
+  const handleApplyMaxLimit = () => {
     const limit = parseInt(maxMcqsLimit, 10)
     if (isNaN(limit) || limit < 0) {
       showToast({ type: 'warning', title: 'Invalid Limit', message: 'Enter a valid max limit number.' })
@@ -232,34 +343,39 @@ export default function McqManager() {
     }
 
     const excessCount = chapterMcqs.length - limit
-    if (
-      !window.confirm(
-        `Trim ${excessCount} excess questions from this chapter?\n\nWill preserve the first ${limit} questions and delete ${excessCount} extra questions without deleting the chapter.`
-      )
-    ) {
-      return
-    }
+    const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
+    const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
 
-    setIsTrimming(true)
-    const res = await mcqService.trimChapterMcqs(selectedChapterId, limit)
-    setIsTrimming(false)
+    openDeleteConfirmModal({
+      title: `Trim ${excessCount} Excess Question${excessCount > 1 ? 's' : ''}?`,
+      subtitle: `Will cap total questions at ${limit} by deleting ${excessCount} excess question(s).`,
+      chapterName: chapName,
+      countText: `${excessCount} Excess Qs (Capped at ${limit})`,
+      warningNote: `First ${limit} questions will be preserved intact.`,
+      dangerLevel: 'medium',
+      onConfirm: async () => {
+        setIsTrimming(true)
+        const res = await mcqService.trimChapterMcqs(selectedChapterId, limit)
+        setIsTrimming(false)
 
-    if (res.success) {
-      showToast({
-        type: 'success',
-        title: 'MCQs Trimmed Successfully',
-        message: `Trimmed ${res.trimmedCount} excess MCQs. Chapter capped at ${limit} MCQs.`,
-        duration: 4000,
-      })
-      loadChapterMcqs()
-    } else {
-      showToast({
-        type: 'error',
-        title: 'Trim Failed',
-        message: res.error || 'Failed to trim chapter MCQs.',
-        duration: 5000,
-      })
-    }
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'MCQs Trimmed Successfully',
+            message: `Trimmed ${res.trimmedCount} excess MCQs. Chapter capped at ${limit} MCQs.`,
+            duration: 4000,
+          })
+          loadChapterMcqs()
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Trim Failed',
+            message: res.error || 'Failed to trim chapter MCQs.',
+            duration: 5000,
+          })
+        }
+      },
+    })
   }
 
   // Open Edit Modal
@@ -420,7 +536,7 @@ export default function McqManager() {
           <div className="mcq-manager-panel edutech-chap-banner">
             <div className="panel-info">
               <div className="panel-badge-icon">
-                <AppIcon name="chapters" size={20} />
+                <AppIcon name="chapters" size={16} />
               </div>
               <div>
                 <h3 className="panel-chap-name">
@@ -431,23 +547,54 @@ export default function McqManager() {
                     Total MCQs: <strong>{chapterMcqs.length}</strong>
                   </span>
                   <span className="meta-chip success">
-                    Chapter ID: <code className="id-code">{String(selectedChapter.id).slice(0, 12)}...</code>
+                    Chapter ID: <code className="id-code">{String(selectedChapter.id).slice(0, 10)}...</code>
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="panel-controls">
+              {/* Targeted MCQ Culling / Delete Control */}
+              <div className="trim-control-box edutech-input-group targeted-del-box">
+                <span className="control-lbl">Delete Targeted:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={chapterMcqs.length || 999}
+                  className="admin-input-sm limit-input"
+                  value={targetedDeleteCount}
+                  onChange={(e) => setTargetedDeleteCount(e.target.value)}
+                  placeholder="Qty"
+                />
+                <select
+                  className="admin-select-sm pos-select"
+                  value={targetedDeletePos}
+                  onChange={(e) => setTargetedDeletePos(e.target.value)}
+                >
+                  <option value="end">From End (Last Qs)</option>
+                  <option value="start">From Start (First Qs)</option>
+                </select>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="btn-targeted-action"
+                  onClick={handleDeleteTargetedMcqs}
+                  disabled={isDeletingTargeted || chapterMcqs.length === 0}
+                >
+                  {isDeletingTargeted ? 'Deleting...' : `Delete Targeted Qs`}
+                </Button>
+              </div>
+
               {/* Trim MCQs Control */}
               <div className="trim-control-box edutech-input-group">
-                <span className="control-lbl">Max MCQs Limit:</span>
+                <span className="control-lbl">Max Limit:</span>
                 <input
                   type="number"
                   min="0"
                   className="admin-input-sm limit-input"
                   value={maxMcqsLimit}
                   onChange={(e) => setMaxMcqsLimit(e.target.value)}
-                  placeholder="50"
+                  placeholder="Cap"
                 />
                 <Button
                   variant="outline"
@@ -456,7 +603,7 @@ export default function McqManager() {
                   onClick={handleApplyMaxLimit}
                   disabled={isTrimming || chapterMcqs.length === 0}
                 >
-                  {isTrimming ? 'Trimming...' : 'Apply Max Limit'}
+                  {isTrimming ? 'Trimming...' : 'Apply Cap'}
                 </Button>
               </div>
 
@@ -754,6 +901,84 @@ export default function McqManager() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Visual Satisfying Delete Confirmation Modal (Desktop & Mobile) */}
+        {deleteConfirmModal?.isOpen && (
+          <div className="mcq-delete-modal-overlay">
+            <div
+              className={`mcq-delete-modal-card ${
+                deleteConfirmModal.dangerLevel === 'high' ? 'danger-high' : ''
+              }`}
+            >
+              {/* Modal Pulse Icon */}
+              <div className="mcq-delete-badge-ring">
+                <div className="mcq-delete-badge-icon">
+                  <AppIcon name="close" size={20} />
+                </div>
+              </div>
+
+              {/* Header Info */}
+              <h3 className="mcq-delete-modal-title">{deleteConfirmModal.title}</h3>
+              <p className="mcq-delete-modal-subtitle">{deleteConfirmModal.subtitle}</p>
+
+              {/* Summary Details Box */}
+              <div className="mcq-delete-details-box">
+                <div className="detail-row">
+                  <span className="detail-lbl">Target Chapter:</span>
+                  <span className="detail-val chapter-tag" title={deleteConfirmModal.chapterName}>
+                    {deleteConfirmModal.chapterName}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-lbl">Deletion Scope:</span>
+                  <span className="detail-val count-tag">{deleteConfirmModal.countText}</span>
+                </div>
+                {deleteConfirmModal.questionPreview ? (
+                  <div className="detail-preview-box">
+                    <span className="detail-lbl">Question Preview:</span>
+                    <div className="detail-preview-text">
+                      "{deleteConfirmModal.questionPreview.slice(0, 110)}
+                      {deleteConfirmModal.questionPreview.length > 110 ? '...' : ''}"
+                    </div>
+                  </div>
+                ) : null}
+                <div className="detail-row protection-row">
+                  <span className="protection-icon">🛡️</span>
+                  <span className="protection-text">{deleteConfirmModal.warningNote}</span>
+                </div>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="mcq-delete-modal-actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="btn-cancel-modal"
+                  disabled={isExecutingDelete}
+                  onClick={() => setDeleteConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  className="btn-confirm-delete-modal"
+                  disabled={isExecutingDelete}
+                  onClick={async () => {
+                    if (deleteConfirmModal.onConfirm) {
+                      setIsExecutingDelete(true)
+                      await deleteConfirmModal.onConfirm()
+                      setIsExecutingDelete(false)
+                      setDeleteConfirmModal((prev) => ({ ...prev, isOpen: false }))
+                    }
+                  }}
+                >
+                  {isExecutingDelete ? 'Deleting...' : 'Yes, Confirm Delete'}
+                </Button>
+              </div>
             </div>
           </div>
         )}

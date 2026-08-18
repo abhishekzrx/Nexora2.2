@@ -65,35 +65,31 @@ export function AggregateMcqSummaryCard({ subject }) {
             {formatInteger(masteredMcqs)}
           </span>
           <span className="agg-metric-sub">
-            {attemptedMcqs > 0 ? `${masteryPercent}% Mastery` : '0% Mastery'}
+            {attemptedMcqs > 0 ? `${Math.round((masteredMcqs / attemptedMcqs) * 100)}% Mastery` : '0% Mastery'}
           </span>
         </div>
 
         <div className="agg-metric-box">
-          <span className="agg-metric-lbl">Remaining</span>
+          <span className="agg-metric-lbl">Unseen Questions</span>
           <span className="agg-metric-val" style={{ color: '#F1621B' }}>
-            {totalMcqs > 0 ? `${Math.round(((totalMcqs - attemptedMcqs) / totalMcqs) * 100)}%` : '0%'}
+            {formatInteger(Math.max(0, totalMcqs - attemptedMcqs))}
           </span>
-          <span className="agg-metric-sub">
-            {formatInteger(Math.max(0, totalMcqs - attemptedMcqs))} Unattempted MCQs
-          </span>
+          <span className="agg-metric-sub">Pending Practice</span>
         </div>
       </div>
 
       <div className="agg-progress-bars">
         <div className="agg-bar-item">
           <div className="agg-bar-labels">
-            <span>Overall Attempt Coverage</span>
-            <span style={{ color: coverageLevel?.color || '#12B76A', fontWeight: 700 }}>
-              {coveragePercent}%
-            </span>
+            <span>Overall Question Coverage</span>
+            <span style={{ color: '#2E5CE6', fontWeight: 700 }}>{coveragePercent}%</span>
           </div>
           <div className="agg-bar-track">
             <div
               className="agg-bar-fill"
               style={{
                 width: `${coveragePercent}%`,
-                backgroundColor: coverageLevel?.color || '#12B76A',
+                backgroundColor: '#2E5CE6',
               }}
             />
           </div>
@@ -140,61 +136,60 @@ export function ChapterMcqsBarChart({ subject }) {
         </div>
       </div>
 
-      <div className="barchart-list">
-        {chapters.map((ch, idx) => {
-          const total = ch.totalMcqs || 0
-          const attempted = ch.attemptedMcqs || 0
-          const mastered = ch.masteredMcqs || 0
-          const coveragePct = ch.coveragePercent || 0
-          const masteryPct = ch.masteryPercent || 0
-          const color = ch.coverageLevel?.color || '#12B76A'
+      {chapters.length === 0 ? (
+        <div className="empty-chapters-card">
+          <div className="empty-chapters-icon-badge">
+            <AppIcon name="document" size={32} />
+          </div>
+          <h3 className="empty-chapters-title">No Chapters Found</h3>
+          <p className="empty-chapters-sub">
+            There are no chapters created for <strong>{subject.title || 'this subject'}</strong> yet.
+          </p>
+        </div>
+      ) : (
+        <div className="barchart-list">
+          {chapters.map((ch, idx) => {
+            const total = ch.totalMcqs || 0
+            const attempted = ch.attemptedMcqs || 0
+            const color = ch.coverageLevel?.color || '#12B76A'
 
-          const relativeWidth = Math.max(8, Math.round((total / maxMcqs) * 100))
-          const attemptedRelativeWidth = total > 0 ? Math.round((attempted / total) * relativeWidth) : 0
+            const relativeWidth = Math.max(8, Math.round((total / maxMcqs) * 100))
 
-          return (
-            <div key={ch.id || ch.num || idx} className="barchart-item">
-              <div className="barchart-item-header">
-                <div className="barchart-chap-info">
-                  <span className="barchart-chap-num">Ch {ch.num}</span>
-                  <span className="barchart-chap-title">{ch.title}</span>
-                </div>
-                <div className="barchart-chap-values">
-                  <span className="barchart-val-badge main-val-badge">
-                    {formatInteger(total)} MCQs
-                  </span>
-                  {attempted > 0 ? (
-                    <span className="barchart-val-badge sub-val-badge" style={{ color }}>
-                      {attempted} Attempted ({masteryPct}% Mastery)
+            return (
+              <div key={ch.id || idx} className="barchart-item">
+                <div className="barchart-item-header">
+                  <div className="barchart-chap-info">
+                    <span className="barchart-chap-num">Ch. {idx + 1}</span>
+                    <span className="barchart-chap-title">{ch.name || ch.title}</span>
+                  </div>
+                  <div className="barchart-chap-values">
+                    <span className="barchart-val-badge main-val-badge">
+                      {attempted}/{total} MCQs
                     </span>
-                  ) : (
-                    <span className="barchart-val-badge muted-val-badge">
-                      Not Started
-                    </span>
-                  )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Stacked relative visual bar */}
-              <div className="barchart-track-wrap">
-                <div
-                  className="barchart-total-track"
-                  style={{ width: `${relativeWidth}%` }}
-                >
+                {/* Stacked relative visual bar */}
+                <div className="barchart-track-wrap">
                   <div
-                    className="barchart-attempted-fill"
-                    style={{
-                      width: `${total > 0 ? Math.round((attempted / total) * 100) : 0}%`,
-                      backgroundColor: color,
-                    }}
-                  />
+                    className="barchart-total-track"
+                    style={{ width: `${relativeWidth}%` }}
+                  >
+                    <div
+                      className="barchart-attempted-fill"
+                      style={{
+                        width: `${total > 0 ? Math.round((attempted / total) * 100) : 0}%`,
+                        backgroundColor: color,
+                      }}
+                    />
+                  </div>
+                  <span className="barchart-bar-count-label">{total} MCQs</span>
                 </div>
-                <span className="barchart-bar-count-label">{total} MCQs</span>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
