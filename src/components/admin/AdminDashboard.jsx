@@ -734,7 +734,9 @@ function AdminDashboard({ activeSection, onNavigate }) {
             <div className="admin-dashboard-sub">
               {activeSection === 'dashboard'
                 ? "Here's what's happening in your active course today."
-                : `${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Management`}
+                : activeSection === 'mcq-manager'
+                ? 'MCQ Bank Management & Operations'
+                : `${activeSection.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} Management`}
             </div>
           </div>
         </div>

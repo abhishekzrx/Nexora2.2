@@ -1,7 +1,7 @@
 /**
  * McqManager.jsx
- * Relevant Admin Panel UI for managing, modifying, trimming, and deleting chapter MCQs
- * WITHOUT deleting the parent chapter record.
+ * Notebook-Themed Interactive MCQ Manager with EduTech Platform aesthetic & smooth micro-interactions.
+ * Supports searching, filtering by difficulty, interactive answer testing, bulk trimming, and individual MCQ editing/deletion.
  */
 import { useState, useEffect, useMemo } from 'react'
 import AppIcon from '../ui/AppIcon'
@@ -22,9 +22,14 @@ export default function McqManager() {
   const [chapterMcqs, setChapterMcqs] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState('ALL')
   const [maxMcqsLimit, setMaxMcqsLimit] = useState('50')
   const [isTrimming, setIsTrimming] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
+
+  // Interactive option selection test per question
+  const [userSelectedOpts, setUserSelectedOpts] = useState({})
+  const [expandedExplanations, setExpandedExplanations] = useState({})
 
   // Edit Modal State
   const [editingMcq, setEditingMcq] = useState(null)
@@ -85,7 +90,7 @@ export default function McqManager() {
     if (res.success && Array.isArray(res.data)) {
       setChapterMcqs(res.data)
     } else {
-      // Fallback to local adminStore filtered by chapter_id
+      // Fallback to local store
       const storeFiltered = allMcqs.filter(
         (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
       )
@@ -96,22 +101,44 @@ export default function McqManager() {
 
   useEffect(() => {
     loadChapterMcqs()
+    setUserSelectedOpts({})
+    setExpandedExplanations({})
   }, [selectedCourseId, selectedSubjectId, selectedChapterId, allMcqs])
 
-  // Search filter
+  // Filtered MCQs by search and difficulty
   const filteredMcqs = useMemo(() => {
-    if (!searchQuery.trim()) return chapterMcqs
-    const q = searchQuery.toLowerCase().trim()
-    return chapterMcqs.filter(
-      (m) =>
-        (m.question && m.question.toLowerCase().includes(q)) ||
-        (m.explanation && m.explanation.toLowerCase().includes(q))
-    )
-  }, [chapterMcqs, searchQuery])
+    return chapterMcqs.filter((m) => {
+      // Search text match
+      const q = searchQuery.toLowerCase().trim()
+      const matchesText = !q || (m.question && m.question.toLowerCase().includes(q)) || (m.explanation && m.explanation.toLowerCase().includes(q))
+      
+      // Difficulty match
+      const diff = (m.difficultyText || m.difficulty || 'Easy').toLowerCase()
+      const matchesDiff = difficultyFilter === 'ALL' || diff.includes(difficultyFilter.toLowerCase())
+
+      return matchesText && matchesDiff
+    })
+  }, [chapterMcqs, searchQuery, difficultyFilter])
+
+  // Single Option Selection handler (interactive quiz mode inside admin manager)
+  const handleSelectOption = (mcqId, optIdx) => {
+    setUserSelectedOpts((prev) => ({
+      ...prev,
+      [mcqId]: prev[mcqId] === optIdx ? null : optIdx,
+    }))
+  }
+
+  // Toggle Explanation visibility
+  const toggleExplanation = (mcqId) => {
+    setExpandedExplanations((prev) => ({
+      ...prev,
+      [mcqId]: !prev[mcqId],
+    }))
+  }
 
   // Delete Single MCQ (without deleting chapter)
   const handleDeleteSingleMcq = async (mcqId, qText) => {
-    if (!window.confirm(`Delete this MCQ without deleting the chapter?\n\n"${qText?.slice(0, 60)}..."`)) {
+    if (!window.confirm(`Delete this MCQ from chapter without deleting the parent chapter?\n\n"${qText?.slice(0, 70)}..."`)) {
       return
     }
 
@@ -119,8 +146,8 @@ export default function McqManager() {
     if (res.success) {
       showToast({
         type: 'success',
-        title: 'MCQ Deleted',
-        message: 'Question deleted successfully. Chapter remains intact.',
+        title: 'Question Deleted',
+        message: 'Question removed successfully. Chapter structure remains intact.',
         duration: 4000,
       })
       setChapterMcqs((prev) => prev.filter((m) => String(m.id) !== String(mcqId)))
@@ -142,7 +169,7 @@ export default function McqManager() {
 
     if (
       !window.confirm(
-        `WARNING: Are you sure you want to delete ALL ${chapterMcqs.length} MCQs from "${chapName}"?\n\nThe parent chapter will NOT be deleted.`
+        `DANGER ZONE: Are you sure you want to delete ALL ${chapterMcqs.length} MCQs from "${chapName}"?\n\nThe chapter record will NOT be deleted.`
       )
     ) {
       return
@@ -156,7 +183,7 @@ export default function McqManager() {
       showToast({
         type: 'success',
         title: 'Chapter MCQs Cleared',
-        message: `All MCQs deleted from "${chapName}". Chapter structure preserved.`,
+        message: `Cleared all questions from "${chapName}". Chapter structure preserved.`,
         duration: 4000,
       })
       setChapterMcqs([])
@@ -181,8 +208,8 @@ export default function McqManager() {
     if (chapterMcqs.length <= limit) {
       showToast({
         type: 'info',
-        title: 'No Trimming Needed',
-        message: `Chapter currently has ${chapterMcqs.length} MCQs, which is already within the limit of ${limit}.`,
+        title: 'No Trimming Required',
+        message: `Chapter has ${chapterMcqs.length} MCQs, which is already within limit of ${limit}.`,
         duration: 4000,
       })
       return
@@ -191,7 +218,7 @@ export default function McqManager() {
     const excessCount = chapterMcqs.length - limit
     if (
       !window.confirm(
-        `Trim ${excessCount} excess MCQs from this chapter?\n\nWill keep the first ${limit} MCQs and remove ${excessCount} extra MCQs without deleting the chapter.`
+        `Trim ${excessCount} excess questions from this chapter?\n\nWill preserve the first ${limit} questions and delete ${excessCount} extra questions without deleting the chapter.`
       )
     ) {
       return
@@ -205,7 +232,7 @@ export default function McqManager() {
       showToast({
         type: 'success',
         title: 'MCQs Trimmed Successfully',
-        message: `Trimmed ${res.trimmedCount} excess MCQs. Chapter now has ${limit} MCQs.`,
+        message: `Trimmed ${res.trimmedCount} excess MCQs. Chapter capped at ${limit} MCQs.`,
         duration: 4000,
       })
       loadChapterMcqs()
@@ -279,309 +306,450 @@ export default function McqManager() {
   const selectedChapter = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
 
   return (
-    <div className="mcq-manager-container">
-      <div className="mcq-manager-header">
-        <div>
-          <h2 className="mcq-manager-title">MCQ Manager</h2>
-          <p className="mcq-manager-subtitle">
-            Modify, trim, and delete chapter MCQs individually or in bulk without deleting parent chapters
-          </p>
-        </div>
+    <div className="mcq-notebook-wrapper">
+      {/* Notebook Binder Rings Accent */}
+      <div className="notebook-binder-rings" aria-hidden="true">
+        {[...Array(9)].map((_, i) => (
+          <span key={i} className="ring-hole" />
+        ))}
       </div>
 
-      {/* Target Hierarchy Selection */}
-      <div className="mcq-manager-selectors">
-        <div className="select-group">
-          <label>Course</label>
-          <select
-            className="admin-select"
-            value={selectedCourseId}
-            onChange={(e) => {
-              setSelectedCourseId(e.target.value)
-              setSelectedSubjectId('')
-              setSelectedChapterId('')
-            }}
-          >
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="mcq-manager-container notebook-paper-sheet">
+        {/* Notebook Left Red Margin Accent */}
+        <div className="notebook-margin-line" aria-hidden="true" />
 
-        <div className="select-group">
-          <label>Subject</label>
-          <select
-            className="admin-select"
-            value={selectedSubjectId}
-            onChange={(e) => {
-              setSelectedSubjectId(e.target.value)
-              setSelectedChapterId('')
-            }}
-          >
-            {availableSubjects.map((s) => (
-              <option key={s.id || s.name} value={s.id || s.name}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="select-group">
-          <label>Chapter</label>
-          <select
-            className="admin-select"
-            value={selectedChapterId}
-            onChange={(e) => setSelectedChapterId(e.target.value)}
-          >
-            {availableChapters.map((c) => (
-              <option key={c.id || c.name} value={c.id || c.name}>
-                Ch {c.number || ''}: {c.name || c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Chapter Overview & Trimming Control Panel */}
-      {selectedChapter ? (
-        <div className="mcq-manager-panel">
-          <div className="panel-info">
-            <div className="panel-badge">
-              <AppIcon name="chapters" size={16} />
+        {/* EduTech Premium Header */}
+        <div className="mcq-manager-header edutech-header">
+          <div className="header-left">
+            <div className="header-badge-icon">
+              <AppIcon name="mcqs" size={22} />
             </div>
             <div>
-              <h3 className="panel-chap-name">
-                {selectedChapter.name || selectedChapter.title}
-              </h3>
-              <div className="panel-chap-meta">
-                Total MCQs in Chapter: <strong>{chapterMcqs.length}</strong>
+              <div className="edutech-pill-tag">
+                <span className="live-dot" /> Academic Question Bank Studio
               </div>
+              <h2 className="mcq-manager-title">MCQ Manager</h2>
+              <p className="mcq-manager-subtitle">
+                Manage, edit, & trim chapter MCQs up to dynamic pool size without altering chapter structures.
+              </p>
             </div>
           </div>
 
-          <div className="panel-controls">
-            {/* Trim MCQs Control */}
-            <div className="trim-control-box">
-              <span className="control-lbl">Max MCQs Limit:</span>
-              <input
-                type="number"
-                min="0"
-                className="admin-input-sm"
-                value={maxMcqsLimit}
-                onChange={(e) => setMaxMcqsLimit(e.target.value)}
-                placeholder="50"
-              />
+          <div className="header-stats-row">
+            <div className="stat-pill-chip">
+              <span className="stat-num">{chapterMcqs.length}</span>
+              <span className="stat-lbl">Questions</span>
+            </div>
+            <div className="stat-pill-chip highlight">
+              <span className="stat-num">{availableChapters.length}</span>
+              <span className="stat-lbl">Chapters</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Target Hierarchy Selection */}
+        <div className="mcq-manager-selectors edutech-card-elevated">
+          <div className="select-group">
+            <label className="select-label">
+              <AppIcon name="folder" size={13} /> Course Workspace
+            </label>
+            <select
+              className="admin-select custom-select"
+              value={selectedCourseId}
+              onChange={(e) => {
+                setSelectedCourseId(e.target.value)
+                setSelectedSubjectId('')
+                setSelectedChapterId('')
+              }}
+            >
+              {workspaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="select-group">
+            <label className="select-label">
+              <AppIcon name="chapters" size={13} /> Subject
+            </label>
+            <select
+              className="admin-select custom-select"
+              value={selectedSubjectId}
+              onChange={(e) => {
+                setSelectedSubjectId(e.target.value)
+                setSelectedChapterId('')
+              }}
+            >
+              {availableSubjects.map((s) => (
+                <option key={s.id || s.name} value={s.id || s.name}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="select-group">
+            <label className="select-label">
+              <AppIcon name="document" size={13} /> Target Chapter
+            </label>
+            <select
+              className="admin-select custom-select"
+              value={selectedChapterId}
+              onChange={(e) => setSelectedChapterId(e.target.value)}
+            >
+              {availableChapters.map((c) => (
+                <option key={c.id || c.name} value={c.id || c.name}>
+                  Ch {c.number || ''}: {c.name || c.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Chapter Overview & Trimming Control Panel */}
+        {selectedChapter ? (
+          <div className="mcq-manager-panel edutech-chap-banner">
+            <div className="panel-info">
+              <div className="panel-badge-icon">
+                <AppIcon name="chapters" size={20} />
+              </div>
+              <div>
+                <h3 className="panel-chap-name">
+                  {selectedChapter.name || selectedChapter.title}
+                </h3>
+                <div className="panel-chap-meta">
+                  <span className="meta-chip">
+                    Total MCQs: <strong>{chapterMcqs.length}</strong>
+                  </span>
+                  <span className="meta-chip success">
+                    Chapter ID: <code className="id-code">{String(selectedChapter.id).slice(0, 12)}...</code>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-controls">
+              {/* Trim MCQs Control */}
+              <div className="trim-control-box edutech-input-group">
+                <span className="control-lbl">Max MCQs Limit:</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="admin-input-sm limit-input"
+                  value={maxMcqsLimit}
+                  onChange={(e) => setMaxMcqsLimit(e.target.value)}
+                  placeholder="50"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="btn-trim-action"
+                  onClick={handleApplyMaxLimit}
+                  disabled={isTrimming || chapterMcqs.length === 0}
+                >
+                  {isTrimming ? 'Trimming...' : 'Apply Max Limit'}
+                </Button>
+              </div>
+
+              {/* Clear All MCQs */}
               <Button
-                variant="outline"
+                variant="danger"
                 size="sm"
-                onClick={handleApplyMaxLimit}
-                disabled={isTrimming || chapterMcqs.length === 0}
+                className="btn-clear-action"
+                onClick={handleDeleteAllChapterMcqs}
+                disabled={isDeletingAll || chapterMcqs.length === 0}
               >
-                {isTrimming ? 'Trimming...' : 'Apply Max Limit'}
+                {isDeletingAll ? 'Clearing...' : 'Clear All Chapter MCQs'}
               </Button>
             </div>
-
-            {/* Clear All MCQs */}
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleDeleteAllChapterMcqs}
-              disabled={isDeletingAll || chapterMcqs.length === 0}
-            >
-              {isDeletingAll ? 'Clearing...' : 'Clear All Chapter MCQs'}
-            </Button>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Search & Filter Bar */}
-      <div className="mcq-manager-toolbar">
-        <div className="search-box">
-          <AppIcon name="search" size={14} className="search-icon" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search questions by keyword..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="toolbar-count">
-          Showing {filteredMcqs.length} of {chapterMcqs.length} MCQs
-        </div>
-      </div>
-
-      {/* MCQs List */}
-      {loading ? (
-        <div className="mcq-manager-loading">Loading chapter MCQs...</div>
-      ) : filteredMcqs.length === 0 ? (
-        <div className="mcq-manager-empty">
-          <AppIcon name="mcqs" size={32} />
-          <p>No MCQs found for this chapter.</p>
-        </div>
-      ) : (
-        <div className="mcq-cards-grid">
-          {filteredMcqs.map((mcq, index) => {
-            const opts = mcq.options || [mcq.option_a, mcq.option_b, mcq.option_c, mcq.option_d]
-            const correctIdx = typeof mcq.correct === 'number' ? mcq.correct : (mcq.correct_answer ?? 0)
-
-            return (
-              <div key={mcq.id || index} className="mcq-item-card">
-                <div className="mcq-card-header">
-                  <span className="mcq-q-num">Q{index + 1}</span>
-                  <div className="mcq-card-actions">
-                    <button
-                      type="button"
-                      className="btn-icon-text btn-edit"
-                      onClick={() => handleOpenEditModal(mcq)}
-                    >
-                      <AppIcon name="edit" size={13} /> Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-icon-text btn-delete"
-                      onClick={() => handleDeleteSingleMcq(mcq.id, mcq.question)}
-                    >
-                      <AppIcon name="close" size={13} /> Delete
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mcq-card-question">{mcq.question || mcq.text}</div>
-
-                <div className="mcq-card-options">
-                  {opts.map((opt, oIdx) => {
-                    const isCorrect = oIdx === correctIdx
-                    const letter = String.fromCharCode(65 + oIdx)
-                    return (
-                      <div
-                        key={oIdx}
-                        className={`mcq-opt-chip ${isCorrect ? 'opt-correct' : ''}`}
-                      >
-                        <span className="opt-letter">{letter}.</span>
-                        <span className="opt-text">{opt || `Option ${letter}`}</span>
-                        {isCorrect && <span className="correct-tag">Correct</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {mcq.explanation ? (
-                  <div className="mcq-card-explanation">
-                    <strong>Explanation:</strong> {mcq.explanation}
-                  </div>
-                ) : null}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Edit MCQ Modal Dialog */}
-      {editingMcq && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-card">
-            <div className="modal-header">
-              <h3 className="modal-title">Edit MCQ</h3>
-              <button type="button" className="close-btn" onClick={() => setEditingMcq(null)}>
-                <AppIcon name="close" size={16} />
+        {/* Search, Difficulty Filter & Stats Toolbar */}
+        <div className="mcq-manager-toolbar notebook-toolbar">
+          <div className="search-box notebook-search-box">
+            <AppIcon name="search" size={15} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search questions by text or explanation..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                ×
               </button>
-            </div>
+            )}
+          </div>
 
-            <form onSubmit={handleSaveEdit} className="modal-form">
-              <div className="form-group">
-                <label>Question Text</label>
-                <textarea
-                  className="admin-textarea"
-                  rows={3}
-                  value={editQuestion}
-                  onChange={(e) => setEditQuestion(e.target.value)}
-                  required
-                />
-              </div>
+          <div className="filter-pills-group">
+            {['ALL', 'Easy', 'Medium', 'Hard'].map((diff) => (
+              <button
+                key={diff}
+                type="button"
+                className={`filter-pill ${difficultyFilter === diff ? 'active' : ''}`}
+                onClick={() => setDifficultyFilter(diff)}
+              >
+                {diff === 'ALL' ? 'All Difficulties' : diff}
+              </button>
+            ))}
+          </div>
 
-              <div className="form-options-grid">
-                <div className="form-group">
-                  <label>Option A</label>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={editOptA}
-                    onChange={(e) => setEditOptA(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Option B</label>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={editOptB}
-                    onChange={(e) => setEditOptB(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Option C</label>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={editOptC}
-                    onChange={(e) => setEditOptC(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Option D</label>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={editOptD}
-                    onChange={(e) => setEditOptD(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Correct Answer</label>
-                <select
-                  className="admin-select"
-                  value={editCorrect}
-                  onChange={(e) => setEditCorrect(Number(e.target.value))}
-                >
-                  <option value={0}>Option A</option>
-                  <option value={1}>Option B</option>
-                  <option value={2}>Option C</option>
-                  <option value={3}>Option D</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Explanation</label>
-                <textarea
-                  className="admin-textarea"
-                  rows={2}
-                  value={editExplanation}
-                  onChange={(e) => setEditExplanation(e.target.value)}
-                  placeholder="Detailed explanation for the correct answer..."
-                />
-              </div>
-
-              <div className="modal-footer">
-                <Button type="button" variant="secondary" onClick={() => setEditingMcq(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" disabled={isSavingEdit}>
-                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
+          <div className="toolbar-count-badge">
+            <span className="count-active">{filteredMcqs.length}</span> / {chapterMcqs.length} Questions
           </div>
         </div>
-      )}
+
+        {/* MCQs Notebook Questions List */}
+        {loading ? (
+          <div className="mcq-manager-loading edutech-loading-state">
+            <div className="loading-spinner" />
+            <p>Loading notebook questions from Supabase...</p>
+          </div>
+        ) : filteredMcqs.length === 0 ? (
+          <div className="mcq-manager-empty edutech-empty-card">
+            <div className="empty-icon-wrap">
+              <AppIcon name="mcqs" size={36} />
+            </div>
+            <h4>No Questions Found</h4>
+            <p>
+              {searchQuery || difficultyFilter !== 'ALL'
+                ? 'No MCQs match your current search and difficulty filters.'
+                : 'This chapter does not contain any MCQs yet. Use the AI Content Studio or JSON Injector to add questions.'}
+            </p>
+          </div>
+        ) : (
+          <div className="mcq-cards-grid notebook-questions-list">
+            {filteredMcqs.map((mcq, index) => {
+              const opts = mcq.options || [mcq.option_a, mcq.option_b, mcq.option_c, mcq.option_d]
+              const correctIdx = typeof mcq.correct === 'number' ? mcq.correct : (mcq.correct_answer ?? 0)
+              const userChoice = userSelectedOpts[mcq.id]
+              const isExplanationOpen = expandedExplanations[mcq.id]
+              const difficultyTag = mcq.difficultyText || (mcq.difficulty === 'danger' ? 'Hard' : mcq.difficulty === 'warning' ? 'Medium' : 'Easy')
+
+              return (
+                <div
+                  key={mcq.id || index}
+                  className={`mcq-item-card notebook-question-card ${
+                    userChoice !== undefined && userChoice !== null
+                      ? userChoice === correctIdx
+                        ? 'answered-correct'
+                        : 'answered-wrong'
+                      : ''
+                  }`}
+                  style={{ animationDelay: `${Math.min(index * 0.04, 0.4)}s` }}
+                >
+                  {/* Notebook Card Header */}
+                  <div className="mcq-card-header">
+                    <div className="card-header-left">
+                      <span className="notebook-q-badge">Q{index + 1}</span>
+                      <span className={`difficulty-tag tag-${difficultyTag.toLowerCase()}`}>
+                        {difficultyTag}
+                      </span>
+                    </div>
+
+                    <div className="mcq-card-actions">
+                      <button
+                        type="button"
+                        className="btn-icon-text btn-edit-interactive"
+                        onClick={() => handleOpenEditModal(mcq)}
+                        title="Edit question text and options"
+                      >
+                        <AppIcon name="edit" size={13} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-icon-text btn-delete-interactive"
+                        onClick={() => handleDeleteSingleMcq(mcq.id, mcq.question)}
+                        title="Delete this question"
+                      >
+                        <AppIcon name="close" size={13} /> Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Question Prompt */}
+                  <div className="mcq-card-question notebook-question-text">
+                    {mcq.question || mcq.text}
+                  </div>
+
+                  {/* Interactive Options Grid */}
+                  <div className="mcq-card-options notebook-options-grid">
+                    {opts.map((opt, oIdx) => {
+                      const isCorrect = oIdx === correctIdx
+                      const isSelected = userChoice === oIdx
+                      const letter = String.fromCharCode(65 + oIdx)
+
+                      let optStateClass = ''
+                      if (isCorrect) optStateClass += ' opt-correct-key'
+                      if (isSelected) {
+                        optStateClass += isCorrect ? ' user-selected-correct' : ' user-selected-wrong'
+                      }
+
+                      return (
+                        <div
+                          key={oIdx}
+                          className={`mcq-opt-chip notebook-opt-chip ${optStateClass}`}
+                          onClick={() => handleSelectOption(mcq.id, oIdx)}
+                          title="Click option to preview interactive student feedback"
+                        >
+                          <span className="opt-letter-circle">{letter}</span>
+                          <span className="opt-text">{opt || `Option ${letter}`}</span>
+                          {isCorrect && (
+                            <span className="correct-tag-badge">
+                              <span className="check-icon">✓</span> CORRECT
+                            </span>
+                          )}
+                          {isSelected && !isCorrect && (
+                            <span className="wrong-tag-badge">SELECTED</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Interactive Explanation Box / Accordion */}
+                  {mcq.explanation ? (
+                    <div className="explanation-accordion-wrapper">
+                      <button
+                        type="button"
+                        className="explanation-toggle-btn"
+                        onClick={() => toggleExplanation(mcq.id)}
+                      >
+                        <span className="toggle-icon">{isExplanationOpen ? '▼' : '►'}</span>
+                        <span className="toggle-title">Solution Explanation</span>
+                      </button>
+
+                      {(isExplanationOpen || userChoice !== undefined) && (
+                        <div className="mcq-card-explanation notebook-explanation-box">
+                          <div className="explanation-header-tag">💡 Pedagogical Explanation:</div>
+                          <div className="explanation-body-text">{mcq.explanation}</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Edit MCQ Notebook Modal */}
+        {editingMcq && (
+          <div className="admin-modal-overlay notebook-modal-overlay">
+            <div className="admin-modal-card notebook-modal-card">
+              <div className="modal-header notebook-modal-header">
+                <div className="modal-title-wrap">
+                  <span className="modal-badge-icon">
+                    <AppIcon name="edit" size={16} />
+                  </span>
+                  <h3 className="modal-title">Edit Notebook Question</h3>
+                </div>
+                <button type="button" className="close-btn" onClick={() => setEditingMcq(null)}>
+                  <AppIcon name="close" size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEdit} className="modal-form">
+                <div className="form-group">
+                  <label className="input-label">Question Text</label>
+                  <textarea
+                    className="admin-textarea notebook-textarea"
+                    rows={3}
+                    value={editQuestion}
+                    onChange={(e) => setEditQuestion(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-options-grid">
+                  <div className="form-group">
+                    <label className="input-label">Option A</label>
+                    <input
+                      type="text"
+                      className="admin-input notebook-input"
+                      value={editOptA}
+                      onChange={(e) => setEditOptA(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="input-label">Option B</label>
+                    <input
+                      type="text"
+                      className="admin-input notebook-input"
+                      value={editOptB}
+                      onChange={(e) => setEditOptB(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="input-label">Option C</label>
+                    <input
+                      type="text"
+                      className="admin-input notebook-input"
+                      value={editOptC}
+                      onChange={(e) => setEditOptC(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="input-label">Option D</label>
+                    <input
+                      type="text"
+                      className="admin-input notebook-input"
+                      value={editOptD}
+                      onChange={(e) => setEditOptD(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Correct Answer</label>
+                  <select
+                    className="admin-select notebook-select"
+                    value={editCorrect}
+                    onChange={(e) => setEditCorrect(Number(e.target.value))}
+                  >
+                    <option value={0}>Option A (Correct)</option>
+                    <option value={1}>Option B (Correct)</option>
+                    <option value={2}>Option C (Correct)</option>
+                    <option value={3}>Option D (Correct)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Explanation</label>
+                  <textarea
+                    className="admin-textarea notebook-textarea"
+                    rows={3}
+                    value={editExplanation}
+                    onChange={(e) => setEditExplanation(e.target.value)}
+                    placeholder="Detailed step-by-step solution for students..."
+                  />
+                </div>
+
+                <div className="modal-footer notebook-modal-footer">
+                  <Button type="button" variant="secondary" onClick={() => setEditingMcq(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={isSavingEdit}>
+                    {isSavingEdit ? 'Saving Changes...' : 'Save Question Changes'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
