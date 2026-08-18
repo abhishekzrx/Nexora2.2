@@ -12,6 +12,7 @@ import CourseSelector from './CourseSelector'
 import CourseManager from './CourseManager'
 import SubjectManager from './SubjectManager'
 import ChapterMcqInjection from './ChapterMcqInjection'
+import McqManager from './McqManager'
 import FeedbackUI from './FeedbackUI'
 import { useAdminStore } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
@@ -29,12 +30,14 @@ const MOBILE_SECTION_MAP = {
   courses: 'Courses',
   subjects: 'Subjects',
   'mcq-injection': 'Chapter MCQs Injection',
+  'mcq-manager': 'MCQ Manager',
   analytics: 'Analytics',
 }
 
 const QUICK_ACTIONS = [
   { id: 'add-subject', section: 'subjects', label: 'Add Subject', desc: 'Create a new subject', icon: 'add', color: '#F1621B' },
   { id: 'add-chapter', section: 'subjects', label: 'Add Chapter', desc: 'Create & manage chapters', icon: 'document', color: '#2E5CE6' },
+  { id: 'manage-mcqs', section: 'mcq-manager', label: 'MCQ Manager', desc: 'Modify & trim MCQs', icon: 'mcqs', color: '#0E9494' },
   { id: 'mcqs-injection', section: 'mcq-injection', label: 'MCQs Injection', desc: 'AI prompt & JSON inject', icon: 'help', color: '#12B76A' },
   { id: 'flashcards-injection', section: 'mcq-injection', label: 'Flashcards', desc: 'Manage chapter flashcards', icon: 'flashcardsTab', color: '#7C3AED' },
 ]
@@ -664,6 +667,8 @@ function AdminDashboard({ activeSection, onNavigate }) {
       case 'subjects':
       case 'chapters':
         return <SubjectManager key={activeWorkspaceId} courseName={activeCourse?.name} onNavigate={onNavigate} />
+      case 'mcq-manager':
+        return <McqManager key={activeWorkspaceId} />
       case 'mcq-injection':
       case 'mcqs':
       case 'flashcards':

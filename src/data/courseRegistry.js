@@ -75,9 +75,13 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
         totalMcqs: metrics.totalMcqs,
         attemptedMcqs: metrics.attemptedMcqs,
         masteredMcqs: metrics.masteredMcqs,
+        remainingQuestions: metrics.remainingQuestions,
         coveragePercent: metrics.coveragePercent,
         masteryPercent: metrics.masteryPercentage,
+        accuracyPercent: metrics.accuracyPercentage,
         coverageLevel: metrics.coverageLevel,
+        totalCorrectResponses: metrics.totalCorrectResponses,
+        totalResponses: metrics.totalResponses,
         progress: metrics.coveragePercent, // Circular coverage %
         pct: `${metrics.masteryPercentage}%`, // Numeric mastery %
         complete: metrics.coveragePercent === 100 && metrics.masteryPercentage === 100,
@@ -112,6 +116,8 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
     accuracy: subjectMetrics.subjectMasteryPercentage,
     coveragePercent: subjectMetrics.subjectCoveragePercent,
     masteryPercent: subjectMetrics.subjectMasteryPercentage,
+    accuracyPercent: subjectMetrics.subjectAccuracyPercentage,
+    remainingQuestions: subjectMetrics.subjectRemainingQuestions,
     coverageLevel: subjectMetrics.subjectCoverageLevel,
     totalMcqs: subjectMetrics.subjectTotalMcqs,
     attemptedMcqs: subjectMetrics.subjectAttemptedMcqs,

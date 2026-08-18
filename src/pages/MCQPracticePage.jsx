@@ -400,7 +400,11 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
           const seenIds = new Set()
           const validList = []
 
-          mcqRes.data.forEach((m, idx) => {
+          const filteredMcqs = chapterId
+            ? mcqRes.data.filter((m) => m && (String(m.chapter_id || m.chapterId) === String(chapterId)))
+            : mcqRes.data
+
+          filteredMcqs.forEach((m, idx) => {
             if (!m) return
             const qId = m.id || `q-${idx + 1}`
             if (seenIds.has(qId)) return

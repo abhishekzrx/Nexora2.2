@@ -243,12 +243,13 @@ function nextId(items) {
 export function matchContentToChapter(item, chapter) {
   if (!item || !chapter) return false
 
-  if (item.chapterId && chapter.id && String(item.chapterId) === String(chapter.id)) {
-    return true
+  const itemChapId = item.chapter_id || item.chapterId
+  if (itemChapId && chapter.id) {
+    return String(itemChapId) === String(chapter.id)
   }
 
-  const itemSub = String(item.subject || item.subjectId || '').trim().toLowerCase()
-  const chapSub = String(chapter.subject || chapter.subjectId || '').trim().toLowerCase()
+  const itemSub = String(item.subject_id || item.subjectId || item.subject || '').trim().toLowerCase()
+  const chapSub = String(chapter.subject_id || chapter.subjectId || chapter.subject || '').trim().toLowerCase()
   if (itemSub && chapSub && itemSub !== chapSub && !chapSub.includes(itemSub) && !itemSub.includes(chapSub)) {
     return false
   }
@@ -926,5 +927,31 @@ export function replaceFlashcards(newFlashcards) {
 
 export function replaceWorkspaces(newWorkspaces) {
   workspaces = Array.isArray(newWorkspaces) ? newWorkspaces : []
+  emit()
+}
+
+export function removeMcqsFromStore(mcqIdsToRemove = []) {
+  const idsSet = new Set(mcqIdsToRemove.map((id) => String(id)))
+  mcqs = mcqs.filter((m) => !idsSet.has(String(m.id)))
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function removeMcqsForChapterFromStore(chapterId) {
+  if (!chapterId) return
+  mcqs = mcqs.filter((m) => String(m.chapterId || m.chapter_id) !== String(chapterId))
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function updateMcqInStore(updatedMcq) {
+  if (!updatedMcq || !updatedMcq.id) return
+  mcqs = mcqs.map((m) => {
+    if (String(m.id) === String(updatedMcq.id)) {
+      return { ...m, ...updatedMcq }
+    }
+    return m
+  })
+  recomputeAllSubjectStats()
   emit()
 }

@@ -62,12 +62,15 @@ export function CircularCoverageRing({ percent = 0, color = '#12B76A', size = 20
 function ChapterCard({ chapter, onClick }) {
   const coveragePercent = typeof chapter.coveragePercent === 'number' ? chapter.coveragePercent : (chapter.progress || 0)
   const masteryPercent = typeof chapter.masteryPercent === 'number' ? chapter.masteryPercent : (parseInt(chapter.pct, 10) || 0)
-  
+  const accuracyPercent = typeof chapter.accuracyPercent === 'number' ? chapter.accuracyPercent : masteryPercent
+
   const coverageLevel = chapter.coverageLevel || getAttemptCoverageLevel(coveragePercent)
   const levelColor = coverageLevel.color || '#12B76A'
 
   const totalMcqs = chapter.totalMcqs ?? (typeof chapter.mcqs === 'number' ? chapter.mcqs : 0)
   const attemptedMcqs = chapter.attemptedMcqs ?? 0
+  const remainingQuestions = chapter.remainingQuestions ?? Math.max(0, totalMcqs - attemptedMcqs)
+  const remainingPercent = totalMcqs > 0 ? Math.round((remainingQuestions / totalMcqs) * 100) : 0
 
   const subText = attemptedMcqs > 0
     ? `${attemptedMcqs} / ${totalMcqs} MCQs`
@@ -78,8 +81,26 @@ function ChapterCard({ chapter, onClick }) {
       <div className="chapter-row-inner">
         <div className="chapter-num">{chapter.num}</div>
         <div className="chapter-body">
-          <div className="chapter-title">{chapter.title}</div>
-          <div className="chapter-sub">{chapter.sub || subText}</div>
+          <div className="chapter-title-row">
+            <span className="chapter-title">{chapter.title}</span>
+            <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
+          </div>
+          
+          <div className="chapter-metrics-chips">
+            <span className="chap-chip chip-cov" style={{ color: levelColor }}>
+              Cov {Math.round(coveragePercent)}%
+            </span>
+            <span className="chap-chip chip-mast">
+              Mast {Math.round(masteryPercent)}%
+            </span>
+            <span className="chap-chip chip-rem" title={`${remainingQuestions} remaining out of ${totalMcqs}`}>
+              Rem {remainingPercent}% ({remainingQuestions})
+            </span>
+            <span className="chap-chip chip-acc">
+              Acc {Math.round(accuracyPercent)}%
+            </span>
+          </div>
+
           <div className="chapter-progress-track">
             <div
               className="chapter-progress-fill"
@@ -90,13 +111,11 @@ function ChapterCard({ chapter, onClick }) {
             />
           </div>
         </div>
+
         <div className="chapter-right">
-          <div className="chapter-meta">
-            {attemptedMcqs > 0 ? `${masteryPercent}% Mastery` : 'Not Started'}
-          </div>
           <div className="chapter-status">
-            <span className="chapter-pct" style={{ color: levelColor }}>
-              {masteryPercent}%
+            <span className="chapter-pct" style={{ color: levelColor }} title="Mastery %">
+              {Math.round(masteryPercent)}%
             </span>
             <CircularCoverageRing percent={coveragePercent} color={levelColor} />
             <span className="chevron">

@@ -103,6 +103,8 @@ export function getAttemptCoverageLevel(percent) {
  *
  * COVERAGE = attemptedUniqueQuestions / totalChapterMcqs * 100
  * MASTERY  = masteredUniqueQuestions / attemptedUniqueQuestions * 100
+ * ACCURACY = totalCorrectResponses / totalResponses * 100
+ * REMAINING = totalChapterMcqs - attemptedUniqueQuestions
  *
  * @param {number} totalMcqs - Actual count of MCQs belonging to the chapter in DB
  * @param {Array} progressRecords - Supabase progress records for this chapter
@@ -114,6 +116,9 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
   const attemptedSet = new Set()
   const masteredSet = new Set()
   const incorrectSet = new Set()
+
+  let totalCorrectResponses = 0
+  let totalResponses = 0
 
   records.forEach((rec) => {
     if (!rec) return
@@ -127,6 +132,14 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
     } else if (status === 'INCORRECT') {
       incorrectSet.add(mcqId)
     }
+
+    const attempts = Math.max(Number(rec.attempts) || 0, (Number(rec.correct_count) || 0) + (Number(rec.incorrect_count) || 0), 1)
+    const correct = Number(rec.correct_count) !== undefined && !isNaN(Number(rec.correct_count))
+      ? Number(rec.correct_count)
+      : (status === 'MASTERED' ? 1 : 0)
+
+    totalResponses += attempts
+    totalCorrectResponses += Math.min(correct, attempts)
   })
 
   const attemptedMcqs = Math.min(total, attemptedSet.size)
@@ -134,11 +147,16 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
   const incorrectMcqs = Math.min(attemptedMcqs - masteredMcqs, incorrectSet.size)
 
   const unseenMcqs = Math.max(0, total - attemptedMcqs)
+  const remainingQuestions = Math.max(0, total - attemptedMcqs)
   const remainingUnmastered = Math.max(0, total - masteredMcqs)
 
   const rawCoverage = total > 0 ? (attemptedMcqs / total) * 100 : 0
   const coveragePercent = Math.round(rawCoverage * 10) / 10
   const masteryPercentage = attemptedMcqs > 0 ? Math.round((masteredMcqs / attemptedMcqs) * 100) : 0
+  const accuracyPercentage = totalResponses > 0
+    ? Math.round((totalCorrectResponses / totalResponses) * 100)
+    : (attemptedMcqs > 0 ? masteryPercentage : 0)
+
   const coverageLevel = getAttemptCoverageLevel(coveragePercent)
 
   let state = 'IN_PROGRESS'
@@ -156,10 +174,14 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
     masteredMcqs,
     incorrectMcqs,
     unseenMcqs,
+    remainingQuestions,
     remainingUnmastered,
     coveragePercent,
     masteryPercentage,
+    accuracyPercentage,
     coverageLevel,
+    totalCorrectResponses,
+    totalResponses,
     state,
     isCompleted: state === 'MASTERED',
   }
@@ -168,8 +190,10 @@ export function calculateChapterMetrics(totalMcqs = 0, progressRecords = []) {
 /**
  * Aggregate chapter metrics into Subject metrics.
  *
+ * Always aggregate raw counts first, then calculate percentages:
  * Subject Coverage = attempted / totalMCQs * 100
  * Subject Mastery  = mastered / attempted * 100
+ * Subject Accuracy = totalCorrectResponses / totalResponses * 100
  *
  * @param {Array} chapterMetricsList - Array of calculated chapter metrics objects
  */
@@ -184,6 +208,9 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
   let subjectRemainingUnmastered = 0
   let subjectCompletedChapters = 0
 
+  let subjectCorrectResponses = 0
+  let subjectTotalResponses = 0
+
   list.forEach((ch) => {
     if (!ch) return
     subjectTotalMcqs += ch.totalMcqs || 0
@@ -193,11 +220,15 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
     subjectUnseenMcqs += ch.unseenMcqs || 0
     subjectRemainingUnmastered += ch.remainingUnmastered || 0
 
+    subjectCorrectResponses += ch.totalCorrectResponses || 0
+    subjectTotalResponses += ch.totalResponses || 0
+
     if (ch.totalMcqs > 0 && ch.masteredMcqs === ch.totalMcqs) {
       subjectCompletedChapters += 1
     }
   })
 
+  const subjectRemainingQuestions = Math.max(0, subjectTotalMcqs - subjectAttemptedMcqs)
   const subjectTotalChapters = list.length
   const rawCoverage = subjectTotalMcqs > 0 ? (subjectAttemptedMcqs / subjectTotalMcqs) * 100 : 0
   const subjectCoveragePercent = Math.round(rawCoverage * 10) / 10
@@ -205,6 +236,11 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
     subjectAttemptedMcqs > 0
       ? Math.round((subjectMasteredMcqs / subjectAttemptedMcqs) * 100)
       : 0
+  const subjectAccuracyPercentage =
+    subjectTotalResponses > 0
+      ? Math.round((subjectCorrectResponses / subjectTotalResponses) * 100)
+      : (subjectAttemptedMcqs > 0 ? subjectMasteryPercentage : 0)
+
   const subjectCoverageLevel = getAttemptCoverageLevel(subjectCoveragePercent)
 
   let state = 'IN_PROGRESS'
@@ -222,12 +258,16 @@ export function calculateSubjectMetrics(chapterMetricsList = []) {
     subjectMasteredMcqs,
     subjectIncorrectMcqs,
     subjectUnseenMcqs,
+    subjectRemainingQuestions,
     subjectRemainingUnmastered,
     subjectCoveragePercent,
     subjectMasteryPercentage,
+    subjectAccuracyPercentage,
     subjectCoverageLevel,
     subjectCompletedChapters,
     subjectTotalChapters,
+    subjectCorrectResponses,
+    subjectTotalResponses,
     state,
     isCompleted: state === 'MASTERED',
   }

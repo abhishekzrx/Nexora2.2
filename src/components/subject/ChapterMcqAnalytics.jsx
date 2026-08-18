@@ -70,11 +70,13 @@ export function AggregateMcqSummaryCard({ subject }) {
         </div>
 
         <div className="agg-metric-box">
-          <span className="agg-metric-lbl">Unseen MCQs</span>
+          <span className="agg-metric-lbl">Remaining</span>
           <span className="agg-metric-val" style={{ color: '#F1621B' }}>
-            {formatInteger(Math.max(0, totalMcqs - attemptedMcqs))}
+            {totalMcqs > 0 ? `${Math.round(((totalMcqs - attemptedMcqs) / totalMcqs) * 100)}%` : '0%'}
           </span>
-          <span className="agg-metric-sub">Ready to Practice</span>
+          <span className="agg-metric-sub">
+            {formatInteger(Math.max(0, totalMcqs - attemptedMcqs))} Unattempted MCQs
+          </span>
         </div>
       </div>
 

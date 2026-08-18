@@ -8,6 +8,9 @@ import {
   injectMcqsIntoStore,
   injectFlashcardsIntoStore,
   hydrateAdminStoreFromSupabase,
+  removeMcqsFromStore,
+  removeMcqsForChapterFromStore,
+  updateMcqInStore,
 } from '../data/adminStore'
 
 function mapMcqToPayload(item, subjectId, chapterId) {
@@ -313,6 +316,108 @@ export const mcqService = {
         success: false,
         error: err?.message || 'Failed to update MCQ progress',
       }
+    }
+  },
+
+  async deleteMcqs(mcqIds = []) {
+    if (!Array.isArray(mcqIds) || mcqIds.length === 0) {
+      return { success: true, count: 0 }
+    }
+
+    try {
+      const idQuery = `?id=in.(${mcqIds.map((id) => encodeURIComponent(id)).join(',')})`
+      const res = await apiService.delete(`/mcqs${idQuery}`)
+
+      if (res && res.success) {
+        removeMcqsFromStore(mcqIds)
+        hydrateAdminStoreFromSupabase().catch(() => {})
+        return { success: true, count: mcqIds.length }
+      }
+      return { success: false, error: res?.error || 'Failed to delete MCQs from database' }
+    } catch (err) {
+      return { success: false, error: err.message || 'Network request failed' }
+    }
+  },
+
+  async deleteChapterMcqs(chapterId) {
+    if (!chapterId) {
+      return { success: false, error: 'Chapter ID required' }
+    }
+
+    try {
+      const res = await apiService.delete(`/mcqs?chapter_id=eq.${encodeURIComponent(chapterId)}`)
+      if (res && res.success) {
+        removeMcqsForChapterFromStore(chapterId)
+        hydrateAdminStoreFromSupabase().catch(() => {})
+        return { success: true }
+      }
+      return { success: false, error: res?.error || 'Failed to delete chapter MCQs from database' }
+    } catch (err) {
+      return { success: false, error: err.message || 'Network request failed' }
+    }
+  },
+
+  async trimChapterMcqs(chapterId, maxCount = 50) {
+    if (!chapterId) {
+      return { success: false, error: 'Chapter ID required for trimming' }
+    }
+
+    const limit = Math.max(0, parseInt(maxCount, 10) || 0)
+    const getRes = await this.getMcqs('', '', chapterId)
+    if (!getRes.success || !Array.isArray(getRes.data)) {
+      return { success: false, error: getRes.error || 'Failed to fetch chapter MCQs to trim' }
+    }
+
+    const currentMcqs = getRes.data
+    if (currentMcqs.length <= limit) {
+      return { success: true, trimmedCount: 0, message: `Chapter already has ${currentMcqs.length} MCQs (<= ${limit}).` }
+    }
+
+    // Keep first `limit` MCQs, delete excess
+    const excess = currentMcqs.slice(limit)
+    const excessIds = excess.map((m) => m.id).filter(Boolean)
+
+    if (excessIds.length === 0) {
+      return { success: true, trimmedCount: 0 }
+    }
+
+    const delRes = await this.deleteMcqs(excessIds)
+    if (delRes.success) {
+      return { success: true, trimmedCount: excessIds.length, totalRemaining: limit }
+    }
+
+    return delRes
+  },
+
+  async updateMcq(mcqId, updatePayload = {}) {
+    if (!mcqId) {
+      return { success: false, error: 'MCQ ID is required for update' }
+    }
+
+    const correctMap = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
+    const rawCorrect = updatePayload.correct !== undefined ? updatePayload.correct : updatePayload.correct_answer
+    const correctInt = typeof rawCorrect === 'number' ? rawCorrect : (correctMap[String(rawCorrect || 'A').trim().toUpperCase()] ?? 0)
+
+    const dbPayload = {
+      question: updatePayload.question,
+      option_a: updatePayload.options?.[0] || updatePayload.option_a || 'Option A',
+      option_b: updatePayload.options?.[1] || updatePayload.option_b || 'Option B',
+      option_c: updatePayload.options?.[2] || updatePayload.option_c || 'Option C',
+      option_d: updatePayload.options?.[3] || updatePayload.option_d || 'Option D',
+      correct_answer: correctInt,
+      explanation: updatePayload.explanation || '',
+    }
+
+    try {
+      const res = await apiService.patch(`/mcqs?id=eq.${encodeURIComponent(mcqId)}`, dbPayload)
+      if (res && res.success) {
+        updateMcqInStore({ id: mcqId, ...updatePayload, ...dbPayload })
+        hydrateAdminStoreFromSupabase().catch(() => {})
+        return { success: true }
+      }
+      return { success: false, error: res?.error || 'Failed to update MCQ in database' }
+    } catch (err) {
+      return { success: false, error: err.message || 'Network request failed' }
     }
   },
 }

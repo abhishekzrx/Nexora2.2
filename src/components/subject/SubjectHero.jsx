@@ -6,14 +6,13 @@ function SubjectHero({ subject }) {
   const counts = subject.counts || {}
   const chapters = subject.chapters || []
   const chapterCount = counts.chapters ?? chapters.length
-  
+
   const totalMcqCount = subject.totalMcqs ?? counts.mcqs ?? chapters.reduce((s, c) => s + (c.totalMcqs || 0), 0)
   const attemptedMcqCount = subject.attemptedMcqs ?? chapters.reduce((s, c) => s + (c.attemptedMcqs || 0), 0)
   const flashCount = counts.flashcards ?? 0
   const notesCount = counts.notes ?? chapterCount ?? 0
 
   const coveragePercent = subject.coveragePercent ?? subject.progress ?? 0
-  const masteryPercent = subject.masteryPercent ?? subject.accuracy ?? 0
 
   return (
     <section className="hero-card compact-hero">

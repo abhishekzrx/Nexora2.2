@@ -1162,6 +1162,151 @@
   min-width: 45px;
 }
 
+/* Chapter Card Metrics Chips */
+.chapter-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.chapter-mcq-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #475467;
+  background: #F2F4F7;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.chapter-metrics-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.chap-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #F8FAFC;
+  border: 1px solid #EAECF0;
+}
+
+.chip-cov {
+  background: rgba(18, 183, 106, 0.08);
+}
+
+.chip-mast {
+  color: #101828;
+}
+
+.chip-rem {
+  color: #F1621B;
+}
+
+.chip-acc {
+  color: #2E5CE6;
+}
+
+/* Subject Hero Insights Expansion */
+.hero-card.compact-hero {
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.hero-top-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.hero-insights-toggle-bar {
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.25);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+}
+
+.hero-insights-panel {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  color: #101828;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.hero-insights-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #EAECF0;
+}
+
+.insights-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.insights-pool {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #667085;
+}
+
+.hero-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .hero-insights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.hero-insight-box {
+  background: #F8FAFC;
+  border: 1px solid #EAECF0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-insight-lbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #475467;
+}
+
+.hero-insight-val {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 2px 0;
+}
+
+.hero-insight-sub {
+  font-size: 9.5px;
+  color: #98A2B3;
+}
+
+
 .subject-detail-shell .time-progress {
   flex: 1;
   height: 8px;
