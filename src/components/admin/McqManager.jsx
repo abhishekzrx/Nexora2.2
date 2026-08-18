@@ -105,15 +105,31 @@ export default function McqManager() {
     setExpandedExplanations({})
   }, [selectedCourseId, selectedSubjectId, selectedChapterId, allMcqs])
 
+  // Safe helper to extract difficulty text as a string
+  const getDifficultyText = (m) => {
+    if (!m) return 'Easy'
+    if (typeof m.difficultyText === 'string' && m.difficultyText.trim()) return m.difficultyText
+    if (typeof m.difficulty === 'string' && m.difficulty.trim()) {
+      if (m.difficulty === 'danger') return 'Hard'
+      if (m.difficulty === 'warning') return 'Medium'
+      if (m.difficulty === 'success') return 'Easy'
+      return m.difficulty
+    }
+    return 'Easy'
+  }
+
   // Filtered MCQs by search and difficulty
   const filteredMcqs = useMemo(() => {
     return chapterMcqs.filter((m) => {
       // Search text match
       const q = searchQuery.toLowerCase().trim()
-      const matchesText = !q || (m.question && m.question.toLowerCase().includes(q)) || (m.explanation && m.explanation.toLowerCase().includes(q))
-      
+      const matchesText =
+        !q ||
+        (m.question && typeof m.question === 'string' && m.question.toLowerCase().includes(q)) ||
+        (m.explanation && typeof m.explanation === 'string' && m.explanation.toLowerCase().includes(q))
+
       // Difficulty match
-      const diff = (m.difficultyText || m.difficulty || 'Easy').toLowerCase()
+      const diff = getDifficultyText(m).toLowerCase()
       const matchesDiff = difficultyFilter === 'ALL' || diff.includes(difficultyFilter.toLowerCase())
 
       return matchesText && matchesDiff
@@ -532,7 +548,7 @@ export default function McqManager() {
               const correctIdx = typeof mcq.correct === 'number' ? mcq.correct : (mcq.correct_answer ?? 0)
               const userChoice = userSelectedOpts[mcq.id]
               const isExplanationOpen = expandedExplanations[mcq.id]
-              const difficultyTag = mcq.difficultyText || (mcq.difficulty === 'danger' ? 'Hard' : mcq.difficulty === 'warning' ? 'Medium' : 'Easy')
+              const difficultyTag = getDifficultyText(mcq)
 
               return (
                 <div
