@@ -94,7 +94,7 @@ export const mcqService = {
 
     if (chapterId) {
       if (!isUuid(chapterId)) {
-        return { success: false, error: 'Unable to load MCQs: chapter information is missing or invalid.' }
+        return { success: true, data: [] }
       }
       if (subjectId && isUuid(subjectId)) {
         query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
@@ -143,7 +143,7 @@ export const mcqService = {
 
     if (chapterId) {
       if (!isUuid(chapterId)) {
-        return { success: false, error: 'Unable to load flashcards: chapter information is missing or invalid.' }
+        return { success: true, data: [] }
       }
       if (subjectId && isUuid(subjectId)) {
         query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`

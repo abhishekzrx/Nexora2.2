@@ -156,23 +156,23 @@ export function useCourseRegistry(courseId) {
   const progressList = userProgressState.progressList || []
 
   const courseSubjects = useMemo(() => {
-    if (!courseId) return []
-    return subjects.filter((s) => s.courseId === courseId)
+    if (!courseId) return subjects
+    return subjects.filter((s) => !s.courseId || s.courseId === courseId)
   }, [courseId, subjects])
 
   const courseChapters = useMemo(() => {
-    if (!courseId) return []
-    return chapters.filter((c) => c.courseId === courseId)
+    if (!courseId) return chapters
+    return chapters.filter((c) => !c.courseId || c.courseId === courseId)
   }, [courseId, chapters])
 
   const courseMcqs = useMemo(() => {
-    if (!courseId) return []
-    return mcqs.filter((m) => m.courseId === courseId)
+    if (!courseId) return mcqs
+    return mcqs.filter((m) => !m.courseId || m.courseId === courseId)
   }, [courseId, mcqs])
 
   const courseFlashcards = useMemo(() => {
-    if (!courseId) return []
-    return flashcards.filter((f) => f.courseId === courseId)
+    if (!courseId) return flashcards
+    return flashcards.filter((f) => !f.courseId || f.courseId === courseId)
   }, [courseId, flashcards])
 
   const snapshot = useMemo(() => {
@@ -181,21 +181,53 @@ export function useCourseRegistry(courseId) {
 
     courseSubjects.forEach((sub, index) => {
       const key = subjectKeyFor(sub.name, sub.id)
-      const subChapters = courseChapters.filter(
-        (c) => (c.subject === sub.name || c.subjectId === sub.id || c.subject === sub.id) && c.courseId === courseId
-      )
-      const subMcqs = courseMcqs.filter(
-        (m) => (m.subject === sub.name || m.subjectId === sub.id || m.subject === sub.id) && m.courseId === courseId
-      )
-      const subFlashcards = courseFlashcards.filter(
-        (f) => (f.subject === sub.name || f.subjectId === sub.id || f.subject === sub.id) && f.courseId === courseId
-      )
+      const subChapters = courseChapters.filter((c) => {
+        if (!c) return false
+        const chSubKey = subjectKeyFor(c.subject || c.subjectName, c.subjectId || c.subject_id)
+        return (
+          c.subject === sub.name ||
+          c.subjectId === sub.id ||
+          c.subject === sub.id ||
+          c.subject_id === sub.id ||
+          c.subject === key ||
+          c.subjectId === key ||
+          chSubKey === key
+        )
+      })
+
+      const subMcqs = courseMcqs.filter((m) => {
+        if (!m) return false
+        const mSubKey = subjectKeyFor(m.subject || m.subjectName, m.subjectId || m.subject_id)
+        return (
+          m.subject === sub.name ||
+          m.subjectId === sub.id ||
+          m.subject === sub.id ||
+          m.subject_id === sub.id ||
+          m.subject === key ||
+          m.subjectId === key ||
+          mSubKey === key
+        )
+      })
+
+      const subFlashcards = courseFlashcards.filter((f) => {
+        if (!f) return false
+        const fSubKey = subjectKeyFor(f.subject || f.subjectName, f.subjectId || f.subject_id)
+        return (
+          f.subject === sub.name ||
+          f.subjectId === sub.id ||
+          f.subject === sub.id ||
+          f.subject_id === sub.id ||
+          f.subject === key ||
+          f.subjectId === key ||
+          fSubKey === key
+        )
+      })
 
       const enrichedChapters = subChapters.map((ch) => {
         const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
         const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
 
-        const totalMcqs = chMcqs.length > 0 ? chMcqs.length : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
+        const totalMcqs = chMcqs.length
         const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
 
         return {
@@ -208,10 +240,12 @@ export function useCourseRegistry(courseId) {
         }
       })
 
+      const actualSubjectMcqs = enrichedChapters.reduce((sum, c) => sum + (c.totalMcqs || 0), 0)
+
       const enrichedSubject = {
         ...sub,
         chapters: enrichedChapters,
-        mcqs: subMcqs.length || sub.mcqs || 0,
+        mcqs: actualSubjectMcqs,
         flashcards: subFlashcards.length || sub.flashcards || 0,
         notes: sub.notes || 0,
       }

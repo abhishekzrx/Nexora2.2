@@ -280,8 +280,8 @@ function recomputeAllChapterStats() {
       return matchContentToChapter(f, ch)
     })
 
-    const countMcqs = matchingMcqs.length > 0 ? matchingMcqs.length : (typeof ch.mcqs === 'number' && ch.mcqs !== 1000 ? ch.mcqs : 0)
-    const countFlashcards = matchingFlashcards.length > 0 ? matchingFlashcards.length : (typeof ch.flashcards === 'number' && ch.flashcards !== 1000 ? ch.flashcards : 0)
+    const countMcqs = matchingMcqs.length
+    const countFlashcards = matchingFlashcards.length
 
     return {
       ...ch,
@@ -298,12 +298,16 @@ function currentCourseId() {
 }
 
 function recomputeSubjectStats(subject) {
-  const subjectChapters = chapters.filter((c) => c.subject === subject.name && c.courseId === subject.courseId)
-  const subjectMcqs = mcqs.filter((m) => m.subject === subject.name && m.courseId === subject.courseId)
-  const subjectFlashcards = flashcards.filter((f) => f.subject === subject.name && f.courseId === subject.courseId)
+  const subjectChapters = chapters.filter((c) => (c.subject === subject.name || c.subjectId === subject.id) && c.courseId === subject.courseId)
+  const subjectMcqs = mcqs.filter((m) => (m.subject === subject.name || m.subjectId === subject.id) && m.courseId === subject.courseId)
+  const subjectFlashcards = flashcards.filter((f) => (f.subject === subject.name || f.subjectId === subject.id) && f.courseId === subject.courseId)
+  
+  const totalChapterMcqs = subjectChapters.reduce((sum, c) => sum + (c.mcqs || 0), 0)
+  const finalMcqCount = subjectMcqs.length > 0 ? subjectMcqs.length : totalChapterMcqs
+  
   subject.stats = [
     { value: String(subjectChapters.length), label: 'Chapters' },
-    { value: String(subjectMcqs.length), label: 'MCQs' },
+    { value: String(finalMcqCount), label: 'MCQs' },
     { value: String(subjectFlashcards.length), label: 'Flashcards' },
     { value: 'Active', label: 'Status' },
   ]

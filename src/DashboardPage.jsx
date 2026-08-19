@@ -11,6 +11,8 @@ import StudentCourseSelector from './components/student/StudentCourseSelector'
 import RoleSwitch from './components/student/RoleSwitch'
 import EmptyCourseState from './components/admin/EmptyCourseState'
 import { formatCompactNumber, formatInteger } from './services/mcqAnalyticsService'
+import ConcentricRingGraph from './components/ui/ConcentricRingGraph'
+import SubjectCard from './components/subject/SubjectCard'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -363,81 +365,7 @@ function MiniCard({ theme, icon, title, value, tone, sub, action, onClick, child
   )
 }
 
-function SubjectCard({ subject, onSelect }) {
-  const handleCardClick = () => {
-    onSelect(subject.subjectKey)
-  }
 
-  const ringColor = subject.coverageLevel?.color || subject.ringColor || '#12B76A'
-  const coveragePct = subject.coveragePercent ?? subject.progress ?? 0
-  const masteryPct = subject.masteryPercent ?? subject.accuracy ?? 0
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      className={`subject-card${subject.highlight ? ' highlight' : ''}`}
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          handleCardClick()
-        }
-      }}
-    >
-      <div className="subject-card-header">
-        <div className={`subject-icon ${subject.iconClass}`}>
-          <AppIcon name={subject.icon} size={20} />
-        </div>
-        <div className="subject-progress-ring">
-          <ProgressRing
-            size={44}
-            radius={18}
-            strokeWidth={4}
-            progress={coveragePct}
-            trackColor="#E7EDFD"
-            fillColor={ringColor}
-          >
-            <span className="subject-progress-pct">{Math.round(coveragePct)}%</span>
-          </ProgressRing>
-        </div>
-      </div>
-      <div className="subject-name">{subject.title}</div>
-
-      <div className="subject-stats">
-        <span className="subject-stat" title={`${subject.chapters} Chapters`}>
-          <AppIcon name="document" size={11} />
-          {subject.chapters} Chapters
-        </span>
-        <span className={`subject-stat ${subject.hasAttempts ? 'highlight-acc-stat' : ''}`} title={`${subject.mcqs} MCQs`}>
-          <AppIcon name="mcqs" size={11} />
-          {subject.hasAttempts
-            ? `${subject.attemptedMcqs}/${subject.mcqs} MCQs`
-            : `${subject.mcqs} MCQs`}
-        </span>
-        <span className="subject-stat" title={`${subject.flashcards || 0} Flashcards`}>
-          <AppIcon name="flashcardsTab" size={11} />
-          {subject.flashcards || 0} Flashcards
-        </span>
-        <span className="subject-stat" title={`${subject.notes || 0} Notes`}>
-          <AppIcon name="notesTab" size={11} />
-          {subject.notes || 0} Notes
-        </span>
-      </div>
-
-      {subject.isRecent ? (
-        <div className="subject-recent-tag">
-          <AppIcon name="streak" size={10} />
-          Practiced Recently
-        </div>
-      ) : (
-        <div className={`subject-continue ${subject.iconClass.replace('icon-', 'cont-')}`}>
-          Continue Subject →
-        </div>
-      )}
-    </div>
-  )
-}
 
 function RecentPracticeSessions({ sessions, onSelectSubject }) {
   if (!sessions || sessions.length === 0) return null

@@ -197,6 +197,47 @@
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
+/* MCQ Set Size Selector Pills (Default 10 Qs vs 20 Qs) */
+.mcq-shell .mcq-set-size-pills {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.mcq-shell.theme-dark .mcq-set-size-pills {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mcq-shell .mcq-size-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4.5px 9px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748B);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mcq-shell.theme-dark .mcq-size-pill {
+  color: #94A3B8;
+}
+
+.mcq-shell .mcq-size-pill.active {
+  background: #2E5CE6;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(46, 92, 230, 0.3);
+}
+
 .mcq-shell .content {
   padding: 0 16px;
 }

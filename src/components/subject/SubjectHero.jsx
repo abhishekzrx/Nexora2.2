@@ -1,18 +1,22 @@
-import ProgressRing from '../ui/ProgressRing'
+import ConcentricRingGraph from '../ui/ConcentricRingGraph'
 import AppIcon from '../ui/AppIcon'
-import { formatCompactNumber, formatInteger } from '../../services/mcqAnalyticsService'
+import { formatInteger } from '../../services/mcqAnalyticsService'
 
 function SubjectHero({ subject }) {
   const counts = subject.counts || {}
   const chapters = subject.chapters || []
   const chapterCount = counts.chapters ?? chapters.length
 
-  const totalMcqCount = subject.totalMcqs ?? counts.mcqs ?? chapters.reduce((s, c) => s + (c.totalMcqs || 0), 0)
-  const attemptedMcqCount = subject.attemptedMcqs ?? chapters.reduce((s, c) => s + (c.attemptedMcqs || 0), 0)
+  // Dynamically sum the exact count of MCQs present across all chapters of this subject
+  const totalMcqCount = chapters.reduce((sum, ch) => sum + (Number(ch.totalMcqs || ch.mcqs || 0) || 0), 0)
+  const attemptedMcqCount = subject.attemptedMcqs ?? chapters.reduce((sum, ch) => sum + (Number(ch.attemptedMcqs || 0) || 0), 0)
+  const masteredMcqCount = subject.masteredMcqs ?? chapters.reduce((sum, ch) => sum + (Number(ch.masteredMcqs || 0) || 0), 0)
   const flashCount = counts.flashcards ?? 0
   const notesCount = counts.notes ?? chapterCount ?? 0
 
-  const coveragePercent = subject.coveragePercent ?? subject.progress ?? 0
+  const coveragePercent = subject.coveragePercent ?? (totalMcqCount > 0 ? Math.round((attemptedMcqCount / totalMcqCount) * 100) : 0)
+  const masteryPercent = subject.masteryPercent ?? (attemptedMcqCount > 0 ? Math.round((masteredMcqCount / attemptedMcqCount) * 100) : 0)
+  const accuracyPercent = subject.accuracyPercent ?? subject.accuracy ?? masteryPercent
 
   return (
     <section className="hero-card compact-hero">
@@ -85,23 +89,23 @@ function SubjectHero({ subject }) {
 
       <div className="hero-ring-divider" aria-hidden="true" />
 
-      <div className="hero-ring-zone">
-        <ProgressRing
-          size={74}
-          strokeWidth={6}
-          progress={coveragePercent}
-          trackColor="rgba(255, 255, 255, 0.28)"
-          fillColor="#ffffff"
-        >
-          <div className="hero-ring-inner">
-            <span className="hero-ring-num">{Math.round(coveragePercent)}%</span>
-            <span className="hero-ring-lbl">Coverage</span>
-          </div>
-        </ProgressRing>
+      <div className="hero-ring-zone" title="Multi-Layer Concentric Ring: Outer=Coverage, Middle=Mastery, Inner=Accuracy">
+        <ConcentricRingGraph
+          size={92}
+          coveragePercent={coveragePercent}
+          masteryPercent={masteryPercent}
+          accuracyPercent={accuracyPercent}
+          showLegend
+          colors={{
+            coverage: '#FFFFFF',
+            mastery: '#FFD700',
+            accuracy: '#34D399',
+            track: 'rgba(255, 255, 255, 0.28)',
+          }}
+        />
       </div>
     </section>
   )
 }
 
 export default SubjectHero
-
