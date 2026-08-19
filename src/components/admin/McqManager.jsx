@@ -105,13 +105,17 @@ export default function McqManager() {
     setLoading(true)
     const res = await mcqService.getMcqs(selectedCourseId, selectedSubjectId, selectedChapterId)
     if (res.success && Array.isArray(res.data)) {
-      setChapterMcqs(res.data)
+      setChapterMcqs(res.data.filter((m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)))
     } else {
-      // Fallback to local store
-      const storeFiltered = allMcqs.filter(
-        (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
-      )
-      setChapterMcqs(storeFiltered)
+      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+      if (isUuid(selectedChapterId)) {
+        const storeFiltered = allMcqs.filter(
+          (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
+        )
+        setChapterMcqs(storeFiltered)
+      } else {
+        setChapterMcqs([])
+      }
     }
     setLoading(false)
   }

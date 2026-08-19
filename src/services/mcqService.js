@@ -86,16 +86,29 @@ export const mcqService = {
 
   async getMcqs(courseId, subjectId, chapterId) {
     let query = ''
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
     if (chapterId) {
-      query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
+      if (!isUuid(chapterId)) {
+        return { success: false, error: 'Unable to load MCQs: chapter information is missing or invalid.' }
+      }
+      if (subjectId && isUuid(subjectId)) {
+        query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
+      } else {
+        query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
+      }
     } else if (subjectId) {
+      if (!isUuid(subjectId)) {
+        return { success: true, data: [] }
+      }
       query = `?subject_id=eq.${encodeURIComponent(subjectId)}`
     } else if (courseId) {
       const subRes = await apiService.get(`/subjects?course_id=eq.${encodeURIComponent(courseId)}`)
       if (!subRes.success || !Array.isArray(subRes.data) || subRes.data.length === 0) {
         return { success: true, data: [] }
       }
-      const subIds = subRes.data.map((s) => s.id)
+      const subIds = subRes.data.map((s) => s.id).filter(isUuid)
+      if (subIds.length === 0) return { success: true, data: [] }
       query = `?subject_id=in.(${subIds.map((id) => encodeURIComponent(id)).join(',')})`
     } else {
       return { success: true, data: [] }
@@ -122,16 +135,29 @@ export const mcqService = {
 
   async getFlashcards(courseId, subjectId, chapterId) {
     let query = ''
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
     if (chapterId) {
-      query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
+      if (!isUuid(chapterId)) {
+        return { success: false, error: 'Unable to load flashcards: chapter information is missing or invalid.' }
+      }
+      if (subjectId && isUuid(subjectId)) {
+        query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
+      } else {
+        query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
+      }
     } else if (subjectId) {
+      if (!isUuid(subjectId)) {
+        return { success: true, data: [] }
+      }
       query = `?subject_id=eq.${encodeURIComponent(subjectId)}`
     } else if (courseId) {
       const subRes = await apiService.get(`/subjects?course_id=eq.${encodeURIComponent(courseId)}`)
       if (!subRes.success || !Array.isArray(subRes.data) || subRes.data.length === 0) {
         return { success: true, data: [] }
       }
-      const subIds = subRes.data.map((s) => s.id)
+      const subIds = subRes.data.map((s) => s.id).filter(isUuid)
+      if (subIds.length === 0) return { success: true, data: [] }
       query = `?subject_id=in.(${subIds.map((id) => encodeURIComponent(id)).join(',')})`
     } else {
       return { success: true, data: [] }
@@ -157,6 +183,29 @@ export const mcqService = {
   async injectMcqs(courseId, subjectId, chapterId, payload, injectionType = 'mcqs', contextMeta = {}) {
     if (!courseId || !subjectId || !chapterId) {
       return { success: false, error: 'Hierarchy Violation: courseId, subjectId, and chapterId are required for injection.' }
+    }
+
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+    if (!isUuid(subjectId) || !isUuid(chapterId)) {
+      return { success: false, error: 'Hierarchy Violation: subjectId and chapterId must be valid database UUIDs.' }
+    }
+
+    // Verify chapter exists in Supabase and belongs to the requested subjectId
+    try {
+      const chapRes = await apiService.get(`/chapters?id=eq.${encodeURIComponent(chapterId)}`)
+      if (chapRes.success && Array.isArray(chapRes.data) && chapRes.data.length > 0) {
+        const dbChap = chapRes.data[0]
+        if (dbChap.subject_id && String(dbChap.subject_id) !== String(subjectId)) {
+          return {
+            success: false,
+            error: `Hierarchy Violation: Chapter "${dbChap.name || chapterId}" belongs to subject_id "${dbChap.subject_id}", not target subject_id "${subjectId}".`,
+          }
+        }
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn('[mcqService] Hierarchy check warning:', err)
+      }
     }
 
     const validation = this.validatePayload(payload, injectionType)

@@ -244,13 +244,20 @@ export function matchContentToChapter(item, chapter) {
   if (!item || !chapter) return false
 
   const itemChapId = item.chapter_id || item.chapterId
-  if (itemChapId && chapter.id) {
-    return String(itemChapId) === String(chapter.id)
+  const chapId = chapter.id
+
+  if (itemChapId && chapId) {
+    return String(itemChapId) === String(chapId)
+  }
+
+  if (itemChapId || chapId) {
+    // One has ID and the other doesn't, or IDs don't match
+    return false
   }
 
   const itemSub = String(item.subject_id || item.subjectId || item.subject || '').trim().toLowerCase()
   const chapSub = String(chapter.subject_id || chapter.subjectId || chapter.subject || '').trim().toLowerCase()
-  if (itemSub && chapSub && itemSub !== chapSub && !chapSub.includes(itemSub) && !itemSub.includes(chapSub)) {
+  if (itemSub && chapSub && itemSub !== chapSub) {
     return false
   }
 
@@ -258,22 +265,7 @@ export function matchContentToChapter(item, chapter) {
   const chapName = String(chapter.name || chapter.title || '').trim().toLowerCase()
   if (!itemChap || !chapName) return false
 
-  if (itemChap === chapName || chapName.includes(itemChap) || itemChap.includes(chapName)) {
-    return true
-  }
-
-  const normItem = itemChap.replace(/\bintro\b/g, 'introduction').replace(/[^a-z0-9]/g, '')
-  const normChap = chapName.replace(/\bintro\b/g, 'introduction').replace(/[^a-z0-9]/g, '')
-
-  if (normItem && normChap && (normItem === normChap || normChap.includes(normItem) || normItem.includes(normChap))) {
-    return true
-  }
-
-  if (chapter.number && item.chapterNumber && Number(chapter.number) === Number(item.chapterNumber)) {
-    return true
-  }
-
-  return false
+  return itemChap === chapName
 }
 
 function recomputeAllChapterStats() {

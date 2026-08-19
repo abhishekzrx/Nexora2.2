@@ -404,12 +404,20 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
       return
     }
 
-    if (activeSubject.courseId !== selectedCourseId) {
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
+    if (!isUuid(activeSubject.id) || !isUuid(activeChapter.id)) {
+      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Subject or Chapter is missing a valid database UUID.' })
+      return
+    }
+
+    if (activeSubject.courseId && activeSubject.courseId !== selectedCourseId) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Subject does not belong to the selected Course.' })
       return
     }
 
-    if (activeChapter.subjectId && activeChapter.subjectId !== activeSubject.id) {
+    const chapSubId = activeChapter.subject_id || activeChapter.subjectId
+    if (chapSubId && String(chapSubId) !== String(activeSubject.id)) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Chapter does not belong to the selected Subject.' })
       return
     }

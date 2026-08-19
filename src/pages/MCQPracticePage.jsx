@@ -386,23 +386,32 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       const chapterId = chapter?.id || null
       const userId = getUserId()
 
+      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
+      if (!chapterId || !isUuid(chapterId)) {
+        setLoadingMcqs(false)
+        setDbQuestions([])
+        setUserProgressMap(new Map())
+        setMcqError('Unable to load MCQs: chapter information is missing.')
+        return
+      }
+
       abortController = new AbortController()
 
       try {
         const [mcqRes, progressRes] = await Promise.all([
           mcqService.getMcqs(activeWorkspaceId, subjectId, chapterId),
-          chapterId ? mcqService.getUserProgress(userId, chapterId) : Promise.resolve({ success: true, data: [] }),
+          mcqService.getUserProgress(userId, chapterId),
         ])
 
         if (!isMounted || abortController.signal.aborted) return
 
-        if (mcqRes.success && Array.isArray(mcqRes.data) && mcqRes.data.length > 0) {
+        if (mcqRes.success && Array.isArray(mcqRes.data)) {
           const seenIds = new Set()
           const validList = []
 
-          const filteredMcqs = chapterId
-            ? mcqRes.data.filter((m) => m && (String(m.chapter_id || m.chapterId) === String(chapterId)))
-            : mcqRes.data
+          // Defensive client-side filter enforcing mcq.chapter_id === chapterId
+          const filteredMcqs = mcqRes.data.filter((m) => m && String(m.chapter_id || m.chapterId) === String(chapterId))
 
           filteredMcqs.forEach((m, idx) => {
             if (!m) return
@@ -447,10 +456,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             })
           }
           setUserProgressMap(pMap)
-          setMcqError(null)
-        } else if (mcqRes.success) {
-          setDbQuestions([])
-          setUserProgressMap(new Map())
           setMcqError(null)
         } else {
           setDbQuestions([])
