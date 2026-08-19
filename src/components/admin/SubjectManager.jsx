@@ -24,6 +24,7 @@ import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 import { subjectService, getSubjectIconByName } from '../../services/subjectService'
 import { chapterService } from '../../services/chapterService'
+import { mcqService } from '../../services/mcqService'
 import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = [
@@ -988,6 +989,61 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
     }
   }
 
+  const handleResetChapterState = (ch) => {
+    if (!ch || !ch.id) return
+    showConfirm({
+      title: `Reset Readiness & Accuracy for "${ch.name}"?`,
+      message: `This will clear all student attempt metrics, readiness score %, accuracy, and mastery progress for Chapter "${ch.name}". Chapter content and questions will remain safe.`,
+      confirmLabel: 'Reset State',
+      confirmVariant: 'warning',
+      onConfirm: async () => {
+        const res = await mcqService.resetChapterProgress(ch.id)
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Chapter State Reset',
+            message: `Cleared readiness score, accuracy %, and student metrics for "${ch.name}".`,
+            duration: 4000,
+          })
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Reset Failed',
+            message: res.error || 'Unable to reset chapter state.',
+          })
+        }
+      },
+    })
+  }
+
+  const handleResetSubjectState = () => {
+    if (!selectedSubject || !selectedSubject.id) return
+    const chapIds = subjectChapters.map((c) => c.id).filter(Boolean)
+    showConfirm({
+      title: `Reset All Chapter States for "${selectedSubject.name}"?`,
+      message: `This will clear student attempt metrics, readiness score %, accuracy, and mastery progress across all ${chapIds.length} chapters in "${selectedSubject.name}". All question bank content remains safe.`,
+      confirmLabel: 'Reset All Chapter States',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        const res = await mcqService.resetSubjectProgress(selectedSubject.id, chapIds)
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Subject Progress Reset',
+            message: `Cleared readiness & accuracy metrics across all chapters in "${selectedSubject.name}".`,
+            duration: 4000,
+          })
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Reset Failed',
+            message: res.error || 'Unable to reset subject progress.',
+          })
+        }
+      },
+    })
+  }
+
   return (
     <div className="sm-analytics-panel sm-subject-card-panel">
       {/* 1. SUBJECT TITLE AS PRIMARY PANEL HEADER */}
@@ -1078,9 +1134,20 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
         <div className="sm-tab-content">
           <div className="sm-chapter-section-header">
             <h4 className="sm-block-title">Chapters</h4>
-            <Button variant="primary" size="sm" onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}>
-              <AppIcon name="add" size={13} /> Add Chapter
-            </Button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleResetSubjectState}
+                disabled={subjectChapters.length === 0}
+                title="Reset readiness score, accuracy %, and student progress across all chapters in this subject"
+              >
+                <AppIcon name="timer" size={13} /> Reset All Chapter States
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}>
+                <AppIcon name="add" size={13} /> Add Chapter
+              </Button>
+            </div>
           </div>
 
           {subjectChapters.length === 0 ? (
@@ -1116,6 +1183,14 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
                     </div>
 
                     <div className="sm-ch-actions">
+                      <button
+                        type="button"
+                        className="sm-icon-action-btn"
+                        onClick={() => handleResetChapterState(ch)}
+                        title="Reset Readiness & Accuracy State for this Chapter"
+                      >
+                        <AppIcon name="timer" size={14} />
+                      </button>
                       <button
                         type="button"
                         className="sm-icon-action-btn"

@@ -29,6 +29,7 @@ export default function McqManager() {
   const [isDeletingTargeted, setIsDeletingTargeted] = useState(false)
   const [isTrimming, setIsTrimming] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
+  const [isResettingProgress, setIsResettingProgress] = useState(false)
 
   // Visual Satisfying Delete Confirmation Modal State
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({
@@ -382,6 +383,44 @@ export default function McqManager() {
     })
   }
 
+  // Reset Chapter Readiness, Accuracy, and Student Mastery State
+  const handleResetChapterProgress = () => {
+    if (!selectedChapterId) return
+    const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
+    const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
+
+    openDeleteConfirmModal({
+      title: `Reset Readiness & Accuracy State?`,
+      subtitle: `Clear all student attempt progress, readiness score, accuracy %, and mastery metrics for "${chapName}".`,
+      chapterName: chapName,
+      countText: 'Chapter Metrics & Attempt Progress',
+      warningNote: 'Questions and chapter structure remain completely safe. Only attempt metrics are reset to 0%.',
+      dangerLevel: 'medium',
+      onConfirm: async () => {
+        setIsResettingProgress(true)
+        const res = await mcqService.resetChapterProgress(selectedChapterId)
+        setIsResettingProgress(false)
+
+        if (res.success) {
+          showToast({
+            type: 'success',
+            title: 'Chapter Progress Reset',
+            message: `Cleared readiness score, accuracy %, and student progress for "${chapName}".`,
+            duration: 4000,
+          })
+          loadChapterMcqs()
+        } else {
+          showToast({
+            type: 'error',
+            title: 'Reset Failed',
+            message: res.error || 'Failed to reset chapter progress.',
+            duration: 5000,
+          })
+        }
+      },
+    })
+  }
+
   // Open Edit Modal
   const handleOpenEditModal = (mcq) => {
     setEditingMcq(mcq)
@@ -620,6 +659,19 @@ export default function McqManager() {
                 disabled={isDeletingAll || chapterMcqs.length === 0}
               >
                 {isDeletingAll ? 'Clearing...' : 'Clear All Chapter MCQs'}
+              </Button>
+
+              {/* Reset Readiness & Accuracy State */}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="btn-reset-state-action"
+                onClick={handleResetChapterProgress}
+                disabled={isResettingProgress || !selectedChapterId}
+                title="Reset readiness score, accuracy %, and student attempt progress for this chapter"
+              >
+                <AppIcon name="timer" size={13} />
+                {isResettingProgress ? 'Resetting...' : 'Reset Readiness & Accuracy'}
               </Button>
             </div>
           </div>

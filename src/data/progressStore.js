@@ -96,6 +96,39 @@ export function updateUserProgressStore(records) {
   emit()
 }
 
+export function resetChapterProgressInStore(chapterId) {
+  if (!chapterId) return
+  const strId = String(chapterId)
+  const updatedMap = new Map()
+  progressMap.forEach((val, key) => {
+    const recChapId = String(val.chapter_id || val.chapterId || '')
+    if (recChapId !== strId) {
+      updatedMap.set(key, val)
+    }
+  })
+  progressMap = updatedMap
+  progressList = Array.from(progressMap.values())
+  emit()
+}
+
+export function resetSubjectProgressInStore(subjectId, chapterIds = []) {
+  if (!subjectId && chapterIds.length === 0) return
+  const strSubId = String(subjectId || '')
+  const chapIdSet = new Set(chapterIds.map((id) => String(id)))
+
+  const updatedMap = new Map()
+  progressMap.forEach((val, key) => {
+    const recSubId = String(val.subject_id || val.subjectId || '')
+    const recChapId = String(val.chapter_id || val.chapterId || '')
+    if (recSubId !== strSubId && !chapIdSet.has(recChapId)) {
+      updatedMap.set(key, val)
+    }
+  })
+  progressMap = updatedMap
+  progressList = Array.from(progressMap.values())
+  emit()
+}
+
 export function useUserProgressStore() {
   return useSyncExternalStore(subscribeUserProgress, getUserProgressSnapshot, getUserProgressSnapshot)
 }

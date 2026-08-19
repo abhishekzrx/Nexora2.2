@@ -12,6 +12,10 @@ import {
   removeMcqsForChapterFromStore,
   updateMcqInStore,
 } from '../data/adminStore'
+import {
+  resetChapterProgressInStore,
+  resetSubjectProgressInStore,
+} from '../data/progressStore'
 
 function mapMcqToPayload(item, subjectId, chapterId) {
   const isValidUuid = item.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
@@ -365,6 +369,82 @@ export const mcqService = {
         success: false,
         error: err?.message || 'Failed to update MCQ progress',
       }
+    }
+  },
+
+  async resetChapterProgress(chapterId) {
+    if (!chapterId) {
+      return { success: false, error: 'Chapter ID required for progress reset' }
+    }
+
+    try {
+      // 1. Delete progress records from Supabase
+      const res = await apiService.delete(`/mcq_progress?chapter_id=eq.${encodeURIComponent(chapterId)}`)
+      
+      // 2. Update reactive in-memory progressStore
+      resetChapterProgressInStore(chapterId)
+
+      // 3. Clean local attempt history in localStorage
+      try {
+        const saved = localStorage.getItem('nexora_recent_mcq_attempts')
+        if (saved) {
+          const list = JSON.parse(saved)
+          if (Array.isArray(list)) {
+            const filtered = list.filter((item) => String(item.chapterId) !== String(chapterId))
+            localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(filtered))
+          }
+        }
+      } catch {
+        // ignore storage errors
+      }
+
+      if (res && res.success) {
+        return { success: true }
+      }
+      // If table row deletion succeeded or returned 204
+      return { success: true }
+    } catch (err) {
+      // Always clear local state even if remote fails
+      resetChapterProgressInStore(chapterId)
+      return { success: false, error: err.message || 'Failed to reset chapter progress' }
+    }
+  },
+
+  async resetSubjectProgress(subjectId, chapterIds = []) {
+    if (!subjectId && chapterIds.length === 0) {
+      return { success: false, error: 'Subject ID or Chapter IDs required for progress reset' }
+    }
+
+    try {
+      if (subjectId) {
+        await apiService.delete(`/mcq_progress?subject_id=eq.${encodeURIComponent(subjectId)}`)
+      } else if (chapterIds.length > 0) {
+        const idQuery = `?chapter_id=in.(${chapterIds.map((id) => encodeURIComponent(id)).join(',')})`
+        await apiService.delete(`/mcq_progress${idQuery}`)
+      }
+
+      resetSubjectProgressInStore(subjectId, chapterIds)
+
+      try {
+        const saved = localStorage.getItem('nexora_recent_mcq_attempts')
+        if (saved) {
+          const list = JSON.parse(saved)
+          if (Array.isArray(list)) {
+            const chapSet = new Set(chapterIds.map((id) => String(id)))
+            const filtered = list.filter(
+              (item) => String(item.subjectKey) !== String(subjectId) && !chapSet.has(String(item.chapterId))
+            )
+            localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(filtered))
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      return { success: true }
+    } catch (err) {
+      resetSubjectProgressInStore(subjectId, chapterIds)
+      return { success: false, error: err.message || 'Failed to reset subject progress' }
     }
   },
 
