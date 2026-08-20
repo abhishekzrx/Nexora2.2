@@ -85,7 +85,6 @@ export const subjectService = {
     }
     return { success: false, error: res.error || 'Failed to fetch subjects from database' }
   },
-
   async getSubject(subjectId) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
     const res = await apiService.get(`/subjects?id=eq.${subjectId}`)
@@ -94,26 +93,19 @@ export const subjectService = {
     }
     return { success: false, error: res.error || 'Subject not found in database' }
   },
-
   async createSubject(courseId, payload) {
     if (!courseId) return { success: false, error: 'Course ID is required to create a Subject' }
     if (!payload?.name) return { success: false, error: 'Subject name is required' }
-
     const dbPayload = mapSubjectToPayload(payload, courseId)
     const res = await apiService.post('/subjects', dbPayload)
-
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to create subject in database' }
     }
-
     const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
     const mapped = mapRowToSubject(rawRecord)
-
     addSubject(mapped)
-
     return { success: true, data: mapped }
   },
-
   async updateSubject(subjectId, patch) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
     const dbPatch = {
@@ -123,26 +115,18 @@ export const subjectService = {
       ...(patch.color ? { color: patch.color } : {}),
       ...(patch.status ? { status: patch.status } : {}),
     }
-
     const res = await apiService.patch(`/subjects?id=eq.${subjectId}`, dbPatch)
-
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to update subject in database' }
     }
-
     const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
     const mapped = mapRowToSubject(rawRecord)
-
     updateSubjectInStore(subjectId, mapped)
-
     return { success: true, data: mapped }
-  },
-
+  },  
   async deleteSubject(subjectId) {
     if (!subjectId) return { success: false, error: 'Subject ID is required' }
-
     const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectId)
-
     if (isValidUuid) {
       try {
         // Cascade delete dependent child records from Supabase to prevent FK constraint violations
@@ -154,7 +138,6 @@ export const subjectService = {
         console.warn('Supabase subject cascade delete warning:', err)
       }
     }
-
     deleteSubjectFromStore(subjectId)
     return { success: true, data: { id: subjectId } }
   },

@@ -67,15 +67,40 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
   const themeBg = subject.coverageLevel?.bg || gradeInfo.bg || 'rgba(18, 183, 106, 0.1)'
   const ringTrack = subject.coverageLevel?.ringTrack || 'rgba(0, 0, 0, 0.06)'
 
-  // Contextual CTA
+  // Contextual CTA and status badge logic based on user progress
+  let statusBadgeText = 'GETTING STARTED'
   let ctaText = 'Start Learning →'
+  let cardThemeColor = subject.accent || themeColor || '#F04438'
+  let cardThemeBg = subject.accentBg || themeBg || 'rgba(240, 68, 56, 0.08)'
+
   if (totalChapters === 0 && totalMcqs === 0) {
-    ctaText = 'Content Preparing'
+    statusBadgeText = 'PREPARING'
+    ctaText = 'Coming Soon'
   } else if (masteryPercent === 100 && coveragePercent === 100) {
-    ctaText = 'Review Mastery →'
-  } else if (hasAttempts) {
+    statusBadgeText = 'MASTERED'
+    ctaText = 'Revise →'
+    cardThemeColor = '#12B76A'
+    cardThemeBg = 'rgba(18, 183, 106, 0.1)'
+  } else if (masteryPercent >= 75 || coveragePercent >= 75) {
+    statusBadgeText = `${masteryPercent}% MASTERY`
+    ctaText = 'Keep Practicing →'
+    cardThemeColor = '#12B76A'
+    cardThemeBg = 'rgba(18, 183, 106, 0.1)'
+  } else if (hasAttempts || coveragePercent > 0) {
+    statusBadgeText = `${masteryPercent}% MASTERY`
     ctaText = 'Continue Learning →'
+    cardThemeColor = '#F1621B'
+    cardThemeBg = 'rgba(241, 98, 27, 0.1)'
+  } else {
+    statusBadgeText = 'GETTING STARTED'
+    ctaText = 'Continue Learning →'
+    cardThemeColor = '#F04438'
+    cardThemeBg = 'rgba(240, 68, 56, 0.08)'
   }
+
+  const formattedChapters = String(totalChapters).padStart(2, '0')
+  const formattedMcqs = `${formatInteger(attemptedMcqs)}/${formatInteger(totalMcqs)}`
+  const displayProgress = hasAttempts ? masteryPercent : coveragePercent
 
   const handleCardClick = (e) => {
     e.preventDefault()
@@ -101,22 +126,22 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
       <div className="smart-card-top flex-between">
         <div
           className="smart-subject-icon"
-          style={{ backgroundColor: subject.accentBg || themeBg }}
+          style={{ backgroundColor: cardThemeBg }}
         >
-          <AppIcon name={subject.icon || 'chapters'} size={20} color={subject.accent || themeColor} />
+          <AppIcon name={subject.icon || 'chapters'} size={18} color={cardThemeColor} />
         </div>
 
-        <div className="smart-ring-wrapper" title={`Progress: ${hasAttempts ? masteryPercent : coveragePercent}%`}>
+        <div className="smart-ring-wrapper" title={`Progress: ${displayProgress}%`}>
           <ProgressRing
-            size={42}
-            radius={16.5}
-            strokeWidth={4}
-            progress={hasAttempts ? masteryPercent : coveragePercent}
+            size={38}
+            radius={15}
+            strokeWidth={3.5}
+            progress={displayProgress}
             trackColor={ringTrack}
-            fillColor={themeColor}
+            fillColor={cardThemeColor}
           >
-            <span className="smart-ring-val" style={{ color: themeColor }}>
-              {hasAttempts ? `${masteryPercent}%` : `${coveragePercent}%`}
+            <span className="smart-ring-val" style={{ color: cardThemeColor }}>
+              {displayProgress}%
             </span>
           </ProgressRing>
         </div>
@@ -128,71 +153,51 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
         <div className="smart-badge-wrap">
           <span
             className="smart-grade-badge"
-            style={{ backgroundColor: themeBg, color: themeColor }}
+            style={{ backgroundColor: cardThemeBg, color: cardThemeColor }}
           >
-            <span className="dot" style={{ backgroundColor: themeColor }} />
-            {hasAttempts ? `${masteryPercent}% MASTERY` : gradeInfo.label.toUpperCase()}
+            <span className="dot" style={{ backgroundColor: cardThemeColor }} />
+            {statusBadgeText}
           </span>
         </div>
       </div>
 
-      {/* ROW 3: CONTENT SUMMARY (Top Labels: "CH", "MCQS", "CARDS", "NOTES") */}
+      {/* ROW 3: CONTENT SUMMARY (Top Labels: "Chapters", "MCQs") */}
       <div className="smart-content-box">
         <div className="smart-content-grid">
           {/* Column 1: Chapters */}
           <div className="smart-stat-col col-ch" title={`${totalChapters} Chapters`}>
-            <span className="smart-stat-lbl">CH</span>
+            <span className="smart-stat-lbl">Chapters</span>
             <div className="smart-stat-val-box">
-              <AppIcon name="chapters" size={12} />
-              <span className="smart-stat-num">{totalChapters}</span>
+              <AppIcon name="chapters" size={11} />
+              <span className="smart-stat-num">{formattedChapters}</span>
             </div>
           </div>
 
           {/* Column 2: MCQs (Covered / Total) */}
           <div className="smart-stat-col col-mcq" title={`Covered: ${formatInteger(attemptedMcqs)} / Total: ${formatInteger(totalMcqs)} MCQs`}>
-            <span className="smart-stat-lbl">MCQS</span>
+            <span className="smart-stat-lbl">MCQs</span>
             <div className="smart-stat-val-box highlight-box">
-              <AppIcon name="mcqs" size={12} />
-              <span className="smart-stat-num">{formatInteger(attemptedMcqs)}/{formatInteger(totalMcqs)}</span>
+              <AppIcon name="mcqs" size={11} />
+              <span className="smart-stat-num">{formattedMcqs}</span>
             </div>
           </div>
-
-          {totalFlashcards > 0 && (
-            <div className="smart-stat-col col-cards" title={`${totalFlashcards} Flashcards`}>
-              <span className="smart-stat-lbl">CARDS</span>
-              <div className="smart-stat-val-box">
-                <AppIcon name="flashcardsTab" size={12} />
-                <span className="smart-stat-num">{formatInteger(totalFlashcards)}</span>
-              </div>
-            </div>
-          )}
-
-          {totalNotes > 0 && (
-            <div className="smart-stat-col col-notes" title={`${totalNotes} Notes`}>
-              <span className="smart-stat-lbl">NOTES</span>
-              <div className="smart-stat-val-box">
-                <AppIcon name="notesTab" size={12} />
-                <span className="smart-stat-num">{formatInteger(totalNotes)}</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ROW 4: PROGRESS BAR */}
       <div className="smart-progress-section">
         <div className="smart-progress-meta flex-between">
-          <span className="smart-progress-label">Learning Progress</span>
-          <span className="smart-progress-val" style={{ color: themeColor }}>
-            {hasAttempts ? `${masteryPercent}% Mastery` : `${coveragePercent}% Coverage`}
+          <span className="smart-progress-label">Progress</span>
+          <span className="smart-progress-val" style={{ color: cardThemeColor }}>
+            {displayProgress}%
           </span>
         </div>
         <div className="smart-progress-track">
           <div
             className="smart-progress-fill"
             style={{
-              width: `${hasAttempts ? masteryPercent : coveragePercent}%`,
-              backgroundColor: themeColor,
+              width: `${displayProgress}%`,
+              backgroundColor: cardThemeColor,
             }}
           />
         </div>
@@ -214,3 +219,4 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
 }
 
 export default SubjectCard
+

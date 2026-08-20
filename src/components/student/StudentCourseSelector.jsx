@@ -34,10 +34,15 @@ function StudentCourseSelector({ onSelect }) {
 
   return (
     <div className="student-course-selector" ref={ref}>
-      <button type="button" className="student-course-selector-trigger" onClick={() => setOpen(!open)}>
+      <button
+        type="button"
+        className="student-course-selector-trigger"
+        onClick={() => setOpen(!open)}
+        title={activeCourse?.name || 'Select Course'}
+      >
         <span className="student-course-dot" style={{ background: activeCourse?.themeColor || '#F1621B' }} />
         <span className="student-course-name">{activeCourse?.name || 'Select Course'}</span>
-        <AppIcon name="chevronDown" size={16} />
+        <AppIcon name="chevronDown" size={14} />
       </button>
       {open && (
         <div className="student-course-dropdown">
@@ -64,3 +69,4 @@ function StudentCourseSelector({ onSelect }) {
 }
 
 export default StudentCourseSelector
+

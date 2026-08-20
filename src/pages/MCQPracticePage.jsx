@@ -68,6 +68,41 @@ const questions = [
     correct: 1,
     explanation: 'HTTPS uses port 443 by default, while HTTP uses port 80.',
   },
+  {
+    id: 6,
+    text: 'In SQL, which clause is used to filter groups created by the GROUP BY clause?',
+    options: ['WHERE', 'HAVING', 'ORDER BY', 'LIMIT'],
+    correct: 1,
+    explanation: 'The HAVING clause is used to filter aggregate groups produced by GROUP BY.',
+  },
+  {
+    id: 7,
+    text: 'Which CPU scheduling algorithm is non-preemptive by default?',
+    options: ['Round Robin', 'First-Come First-Served (FCFS)', 'Shortest Remaining Time First (SRTF)', 'Priority Preemptive'],
+    correct: 1,
+    explanation: 'FCFS executes processes strictly in arrival sequence without preemption.',
+  },
+  {
+    id: 8,
+    text: 'What is the average time complexity of searching an element in a balanced Binary Search Tree (BST)?',
+    options: ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)'],
+    correct: 1,
+    explanation: 'A balanced BST eliminates half the search space at each node, resulting in O(log n) average complexity.',
+  },
+  {
+    id: 9,
+    text: 'Which logic gate outputs HIGH (1) only when all of its inputs are HIGH (1)?',
+    options: ['OR Gate', 'AND Gate', 'NOR Gate', 'XOR Gate'],
+    correct: 1,
+    explanation: 'An AND gate requires every input to be true (1) for the output to be true (1).',
+  },
+  {
+    id: 10,
+    text: 'In Computer Architecture, what is the primary function of the Program Counter (PC)?',
+    options: ['Stores data operands', 'Holds the memory address of the next instruction to execute', 'Counts total instructions executed', 'Holds ALU status flags'],
+    correct: 1,
+    explanation: 'The Program Counter holds the memory address of the next instruction to be fetched and executed by the CPU.',
+  },
 ]
 
 const THEME_KEY = 'mcq-practice-theme'
@@ -350,11 +385,11 @@ const SummaryBar = memo(function SummaryBar({ totalQuestions, answeredCount, mar
 function getInitialSetSize() {
   try {
     const saved = localStorage.getItem(SET_SIZE_STORAGE_KEY)
-    if (saved === '10') return 10
+    if (saved === '10' || saved === '20') return parseInt(saved, 10)
   } catch {
     // ignore
   }
-  return 20 // Default: 20 MCQs per test set
+  return 10 // Default: 10 MCQs per test set
 }
 
 function getInitialTheme() {
@@ -564,8 +599,20 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     const eligiblePool = [...shuffledUnseen, ...shuffledIncorrect]
 
     // Practice Set Size: Fixed 10 MCQs
-    const targetSize = Math.min(10, eligiblePool.length)
-    const selected = eligiblePool.slice(0, targetSize)
+    let selected = eligiblePool.slice(0, 10)
+
+    // If eligible pool has fewer than 10 questions, backfill from mastered or fallback question library
+    if (selected.length < 10 && masteredList.length > 0) {
+      const needed = 10 - selected.length
+      const extraMastered = shuffleArray(masteredList).slice(0, needed)
+      selected = [...selected, ...extraMastered]
+    }
+    if (selected.length < 10) {
+      const needed = 10 - selected.length
+      const selectedIds = new Set(selected.map((q) => String(q.id)))
+      const extraFallback = questions.filter((fq) => !selectedIds.has(String(fq.id))).slice(0, needed)
+      selected = [...selected, ...extraFallback]
+    }
 
     const sessionUnseenCount = selected.filter((q) => {
       const p = userProgressMap.get(q.id)
@@ -577,7 +624,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       newCount: sessionUnseenCount,
       practicedCount: selected.length - sessionUnseenCount,
       masteredCount: masteredList.length,
-      totalPool: poolSize,
+      totalPool: Math.max(poolSize, selected.length),
     }
   }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState])
 
