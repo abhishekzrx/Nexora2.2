@@ -32,79 +32,6 @@ function shuffleArray(array) {
   return arr
 }
 
-const questions = [
-  {
-    id: 1,
-    text: 'Which of the following is a connectionless transport layer protocol?',
-    options: ['TCP', 'UDP', 'SCTP', 'SSL'],
-    correct: 1,
-    explanation: 'UDP (User Datagram Protocol) is a connectionless transport layer protocol that does not establish a connection before transmitting data.',
-  },
-  {
-    id: 2,
-    text: 'Which layer of the OSI model is responsible for routing?',
-    options: ['Data Link Layer', 'Network Layer', 'Transport Layer', 'Session Layer'],
-    correct: 1,
-    explanation: 'The Network Layer is responsible for routing packets across networks using IP addressing.',
-  },
-  {
-    id: 3,
-    text: 'What does TCP stand for?',
-    options: ['Transmission Control Protocol', 'Transfer Control Protocol', 'Transport Connection Protocol', 'Terminal Control Protocol'],
-    correct: 0,
-    explanation: 'TCP stands for Transmission Control Protocol, a connection-oriented transport protocol.',
-  },
-  {
-    id: 4,
-    text: 'Which protocol is used to resolve domain names to IP addresses?',
-    options: ['HTTP', 'FTP', 'DNS', 'SMTP'],
-    correct: 2,
-    explanation: 'DNS (Domain Name System) resolves human-readable domain names to IP addresses.',
-  },
-  {
-    id: 5,
-    text: 'What is the default port for HTTPS?',
-    options: ['80', '443', '8080', '21'],
-    correct: 1,
-    explanation: 'HTTPS uses port 443 by default, while HTTP uses port 80.',
-  },
-  {
-    id: 6,
-    text: 'In SQL, which clause is used to filter groups created by the GROUP BY clause?',
-    options: ['WHERE', 'HAVING', 'ORDER BY', 'LIMIT'],
-    correct: 1,
-    explanation: 'The HAVING clause is used to filter aggregate groups produced by GROUP BY.',
-  },
-  {
-    id: 7,
-    text: 'Which CPU scheduling algorithm is non-preemptive by default?',
-    options: ['Round Robin', 'First-Come First-Served (FCFS)', 'Shortest Remaining Time First (SRTF)', 'Priority Preemptive'],
-    correct: 1,
-    explanation: 'FCFS executes processes strictly in arrival sequence without preemption.',
-  },
-  {
-    id: 8,
-    text: 'What is the average time complexity of searching an element in a balanced Binary Search Tree (BST)?',
-    options: ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)'],
-    correct: 1,
-    explanation: 'A balanced BST eliminates half the search space at each node, resulting in O(log n) average complexity.',
-  },
-  {
-    id: 9,
-    text: 'Which logic gate outputs HIGH (1) only when all of its inputs are HIGH (1)?',
-    options: ['OR Gate', 'AND Gate', 'NOR Gate', 'XOR Gate'],
-    correct: 1,
-    explanation: 'An AND gate requires every input to be true (1) for the output to be true (1).',
-  },
-  {
-    id: 10,
-    text: 'In Computer Architecture, what is the primary function of the Program Counter (PC)?',
-    options: ['Stores data operands', 'Holds the memory address of the next instruction to execute', 'Counts total instructions executed', 'Holds ALU status flags'],
-    correct: 1,
-    explanation: 'The Program Counter holds the memory address of the next instruction to be fetched and executed by the CPU.',
-  },
-]
-
 const THEME_KEY = 'mcq-practice-theme'
 const SET_SIZE_STORAGE_KEY = 'mcq_test_set_size_pref'
 
@@ -407,11 +334,27 @@ function getIsMobile() {
   return window.innerWidth <= 640
 }
 
-function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, onSubmit, reviewMode = false }) {
+function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChapterId, chapter, onBack, onSubmit, reviewMode = false }) {
   const registry = useContentRegistry()
   const { activeWorkspaceId } = useWorkspaceStore()
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
+
+  const isUuid = useCallback((str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str), [])
+
+  // Resolve authoritative target chapter ID
+  const targetChapterId = useMemo(() => {
+    if (propChapterId && isUuid(propChapterId)) return propChapterId
+    if (chapter?.id && isUuid(chapter.id)) return chapter.id
+    if (testSession.chapter?.id && isUuid(testSession.chapter.id)) return testSession.chapter.id
+    if (typeof chapter === 'string' && isUuid(chapter)) return chapter
+
+    if (subject?.chapters && Array.isArray(subject.chapters) && subject.chapters.length > 0) {
+      const match = subject.chapters.find((c) => c.name === chapter?.name || c.title === chapter?.title || c.number === chapter?.number) || subject.chapters[0]
+      if (match?.id && isUuid(match.id)) return match.id
+    }
+    return null
+  }, [propChapterId, chapter, subject, isUuid])
 
   const [dbQuestions, setDbQuestions] = useState([])
   const [userProgressMap, setUserProgressMap] = useState(new Map())
@@ -433,16 +376,13 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       setMcqError(null)
       setLoadingMcqs(true)
 
-      if (!activeWorkspaceId) {
+      if (!activeWorkspaceId || !targetChapterId) {
         setLoadingMcqs(false)
         return
       }
 
       const subjectId = subject?.subjectId || subjectKey
-      const chapterId = chapter?.id || chapter?.chapterId || chapter?.number || chapter?.num || (typeof chapter === 'string' || typeof chapter === 'number' ? chapter : null)
       const userId = getUserId()
-
-      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
 
       abortController = new AbortController()
 
@@ -450,17 +390,22 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         let rawMcqs = []
         let progressData = []
 
-        if (chapterId && isUuid(chapterId)) {
-          const [mcqRes, progressRes] = await Promise.all([
-            mcqService.getMcqs(activeWorkspaceId, subjectId, chapterId),
-            mcqService.getUserProgress(userId, chapterId),
-          ])
-          if (mcqRes.success && Array.isArray(mcqRes.data)) {
-            rawMcqs = mcqRes.data.filter((m) => m && String(m.chapter_id || m.chapterId) === String(chapterId))
+        const [mcqRes, progressRes] = await Promise.all([
+          mcqService.getMcqs(activeWorkspaceId, subjectId, targetChapterId),
+          mcqService.getUserProgress(userId, targetChapterId),
+        ])
+
+        if (mcqRes.success && Array.isArray(mcqRes.data)) {
+          // Strictly chapter-scoped defensive filtering
+          rawMcqs = mcqRes.data.filter((m) => m && String(m.chapter_id || m.chapterId) === String(targetChapterId))
+        } else if (!mcqRes.success && mcqRes.error) {
+          if (import.meta.env.DEV) {
+            console.warn('[MCQPracticePage] Failed to fetch MCQs:', mcqRes.error)
           }
-          if (progressRes.success && Array.isArray(progressRes.data)) {
-            progressData = progressRes.data
-          }
+        }
+
+        if (progressRes.success && Array.isArray(progressRes.data)) {
+          progressData = progressRes.data
         }
 
         if (!isMounted || abortController.signal.aborted) return
@@ -495,27 +440,10 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
             options: opts,
             correct: correctIdx,
             explanation: m.explanation || 'No detailed explanation provided for this question.',
-            chapterId: m.chapter_id || chapterId,
+            chapterId: m.chapter_id || targetChapterId,
             subjectId: m.subject_id || subjectId,
           })
         })
-
-        // Fallback to high quality practice questions if validList is empty
-        if (validList.length === 0) {
-          const fallbackSource = Array.isArray(questions) && questions.length > 0 ? questions : []
-          fallbackSource.forEach((q, idx) => {
-            const qId = q.id || `seed-q-${idx + 1}`
-            validList.push({
-              id: qId,
-              text: q.text || q.question || `Practice Question #${idx + 1}`,
-              options: q.options || ['Option A', 'Option B', 'Option C', 'Option D'],
-              correct: typeof q.correct === 'number' ? q.correct : 0,
-              explanation: q.explanation || 'Detailed explanation provided for practice reinforcement.',
-              chapterId: chapterId || 'ch-1',
-              subjectId: subjectId || 'sub-1',
-            })
-          })
-        }
 
         setDbQuestions(validList)
 
@@ -533,7 +461,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         if (import.meta.env.DEV) {
           console.warn('[MCQPracticePage] MCQ/Progress load error:', message)
         }
-        setDbQuestions(questions || [])
+        setDbQuestions([])
         setUserProgressMap(new Map())
         setMcqError(null)
       } finally {
@@ -550,7 +478,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
         abortController.abort()
       }
     }
-  }, [activeWorkspaceId, subjectKey, subjectTitle, subject, chapter])
+  }, [activeWorkspaceId, subjectKey, subjectTitle, subject, targetChapterId, isUuid])
 
   // Practice session pool logic with persistent question retirement & mastery prioritization
   const { activeQuestions, newCount, practicedCount, masteredCount, totalPool } = useMemo(() => {
@@ -598,20 +526,14 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     const shuffledIncorrect = shuffleArray(incorrectList)
     const eligiblePool = [...shuffledUnseen, ...shuffledIncorrect]
 
-    // Practice Set Size: Fixed 10 MCQs
+    // Practice Set Size: Up to 10 MCQs
     let selected = eligiblePool.slice(0, 10)
 
-    // If eligible pool has fewer than 10 questions, backfill from mastered or fallback question library
+    // If eligible pool has fewer than 10 questions, backfill from mastered within THIS chapter only
     if (selected.length < 10 && masteredList.length > 0) {
       const needed = 10 - selected.length
       const extraMastered = shuffleArray(masteredList).slice(0, needed)
       selected = [...selected, ...extraMastered]
-    }
-    if (selected.length < 10) {
-      const needed = 10 - selected.length
-      const selectedIds = new Set(selected.map((q) => String(q.id)))
-      const extraFallback = questions.filter((fq) => !selectedIds.has(String(fq.id))).slice(0, needed)
-      selected = [...selected, ...extraFallback]
     }
 
     const sessionUnseenCount = selected.filter((q) => {
@@ -624,7 +546,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
       newCount: sessionUnseenCount,
       practicedCount: selected.length - sessionUnseenCount,
       masteredCount: masteredList.length,
-      totalPool: Math.max(poolSize, selected.length),
+      totalPool: poolSize,
     }
   }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState])
 
@@ -664,7 +586,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapter, onBack, on
     }
   }, [availableCount, displayed])
 
-  const current = activeQuestions[displayed] || activeQuestions[0] || (questions && questions[0]) || null
+  const current = activeQuestions[displayed] || activeQuestions[0] || null
   const answeredCount = Object.keys(answers).length
   const markedCount = marked.size
   const notVisitedCount = Math.max(0, totalGridSize - visited.size)

@@ -247,7 +247,11 @@ export function matchContentToChapter(item, chapter) {
   const chapId = chapter.id
 
   if (itemChapId && chapId) {
-    return String(itemChapId) === String(chapId)
+    if (String(itemChapId) !== String(chapId)) return false
+    const itemSubId = item.subject_id || item.subjectId
+    const chapSubId = chapter.subject_id || chapter.subjectId
+    if (itemSubId && chapSubId && String(itemSubId) !== String(chapSubId)) return false
+    return true
   }
 
   if (itemChapId || chapId) {
@@ -298,18 +302,32 @@ function currentCourseId() {
 }
 
 function recomputeSubjectStats(subject) {
-  const subjectChapters = chapters.filter((c) => (c.subject === subject.name || c.subjectId === subject.id) && c.courseId === subject.courseId)
-  const subjectMcqs = mcqs.filter((m) => (m.subject === subject.name || m.subjectId === subject.id) && m.courseId === subject.courseId)
-  const subjectFlashcards = flashcards.filter((f) => (f.subject === subject.name || f.subjectId === subject.id) && f.courseId === subject.courseId)
-  
+  const subjectChapters = chapters.filter(
+    (c) =>
+      c.courseId === subject.courseId &&
+      (c.subjectId === subject.id || c.subject_id === subject.id || c.subject === subject.name)
+  )
+
+  const subjectMcqs = mcqs.filter(
+    (m) =>
+      m.courseId === subject.courseId &&
+      (m.subjectId === subject.id || m.subject_id === subject.id || m.subject === subject.name)
+  )
+
+  const subjectFlashcards = flashcards.filter(
+    (f) =>
+      f.courseId === subject.courseId &&
+      (f.subjectId === subject.id || f.subject_id === subject.id || f.subject === subject.name)
+  )
+
   const totalChapterMcqs = subjectChapters.reduce((sum, c) => sum + (c.mcqs || 0), 0)
   const finalMcqCount = subjectMcqs.length > 0 ? subjectMcqs.length : totalChapterMcqs
-  
+
   subject.stats = [
     { value: String(subjectChapters.length), label: 'Chapters' },
     { value: String(finalMcqCount), label: 'MCQs' },
     { value: String(subjectFlashcards.length), label: 'Flashcards' },
-    { value: 'Active', label: 'Status' },
+    { value: subject.status === 'disabled' ? 'Disabled' : 'Active', label: 'Status' },
   ]
 }
 
@@ -624,8 +642,8 @@ export function getDeleteChapterImpact(id) {
   return {
     name: target.name,
     subject: target.subject,
-    mcqs: mcqs.filter((m) => m.chapter === target.name && m.courseId === target.courseId).length,
-    flashcards: flashcards.filter((f) => f.chapter === target.name && f.courseId === target.courseId).length,
+    mcqs: mcqs.filter(mcqMatches).length,
+    flashcards: flashcards.filter(flashMatches).length,
   }
 }
 
@@ -686,8 +704,18 @@ export function deleteMcq(id) {
 
 export function deleteMcqsByChapter(chapterName) {
   const courseId = currentCourseId()
-  const count = mcqs.filter((m) => m.chapter === chapterName && m.courseId === courseId).length
-  mcqs = mcqs.filter((m) => !(m.chapter === chapterName && m.courseId === courseId))
+  const count = mcqs.filter(
+    (m) =>
+      (m.chapter === chapterName || m.chapterId === chapterName || m.chapter_id === chapterName) &&
+      m.courseId === courseId
+  ).length
+  mcqs = mcqs.filter(
+    (m) =>
+      !(
+        (m.chapter === chapterName || m.chapterId === chapterName || m.chapter_id === chapterName) &&
+        m.courseId === courseId
+      )
+  )
   recomputeAllSubjectStats()
   emit()
   return count
@@ -695,8 +723,18 @@ export function deleteMcqsByChapter(chapterName) {
 
 export function deleteMcqsBySubject(subjectName) {
   const courseId = currentCourseId()
-  const count = mcqs.filter((m) => m.subject === subjectName && m.courseId === courseId).length
-  mcqs = mcqs.filter((m) => !(m.subject === subjectName && m.courseId === courseId))
+  const count = mcqs.filter(
+    (m) =>
+      (m.subject === subjectName || m.subjectId === subjectName || m.subject_id === subjectName) &&
+      m.courseId === courseId
+  ).length
+  mcqs = mcqs.filter(
+    (m) =>
+      !(
+        (m.subject === subjectName || m.subjectId === subjectName || m.subject_id === subjectName) &&
+        m.courseId === courseId
+      )
+  )
   recomputeAllSubjectStats()
   emit()
   return count
@@ -752,8 +790,18 @@ export function deleteFlashcard(id) {
 
 export function deleteFlashcardsByChapter(chapterName) {
   const courseId = currentCourseId()
-  const count = flashcards.filter((f) => f.chapter === chapterName && f.courseId === courseId).length
-  flashcards = flashcards.filter((f) => !(f.chapter === chapterName && f.courseId === courseId))
+  const count = flashcards.filter(
+    (f) =>
+      (f.chapter === chapterName || f.chapterId === chapterName || f.chapter_id === chapterName) &&
+      f.courseId === courseId
+  ).length
+  flashcards = flashcards.filter(
+    (f) =>
+      !(
+        (f.chapter === chapterName || f.chapterId === chapterName || f.chapter_id === chapterName) &&
+        f.courseId === courseId
+      )
+  )
   recomputeAllSubjectStats()
   emit()
   return count
@@ -761,8 +809,18 @@ export function deleteFlashcardsByChapter(chapterName) {
 
 export function deleteFlashcardsBySubject(subjectName) {
   const courseId = currentCourseId()
-  const count = flashcards.filter((f) => f.subject === subjectName && f.courseId === courseId).length
-  flashcards = flashcards.filter((f) => !(f.subject === subjectName && f.courseId === courseId))
+  const count = flashcards.filter(
+    (f) =>
+      (f.subject === subjectName || f.subjectId === subjectName || f.subject_id === subjectName) &&
+      f.courseId === courseId
+  ).length
+  flashcards = flashcards.filter(
+    (f) =>
+      !(
+        (f.subject === subjectName || f.subjectId === subjectName || f.subject_id === subjectName) &&
+        f.courseId === courseId
+      )
+  )
   recomputeAllSubjectStats()
   emit()
   return count
@@ -778,11 +836,6 @@ export function deleteAllFlashcards() {
 }
 
 // ── Bulk injection (AI Content Studio) ────────────────────────────
-/**
- * injectMcqs — bulk-import MCQs from AI-generated JSON.
- * Each record: { question, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, chapter }
- * Returns { imported, duplicates, failed, lastSubject, lastChapter }
- */
 export function injectMcqs(records) {
   const courseId = currentCourseId()
   let imported = 0
@@ -792,24 +845,43 @@ export function injectMcqs(records) {
   let lastChapter = ''
 
   records.forEach((record) => {
-    if (!record || !record.question || !record.subject || !record.chapter) {
+    if (!record || !record.question) {
       failed += 1
       return
     }
-    const exists = mcqs.some((m) => m.question.toLowerCase() === String(record.question).toLowerCase() && m.courseId === courseId)
+    const targetChapId = record.chapter_id || record.chapterId
+    const targetSubId = record.subject_id || record.subjectId
+
+    const exists = mcqs.some(
+      (m) =>
+        (record.id && String(m.id) === String(record.id)) ||
+        (m.question &&
+          record.question &&
+          m.question.toLowerCase() === String(record.question).toLowerCase() &&
+          String(m.chapter_id || m.chapterId || m.chapter) === String(targetChapId || record.chapter))
+    )
     if (exists) {
       duplicates += 1
       return
     }
-    const options = [record.optionA, record.optionB, record.optionC, record.optionD].map((o) => o || '')
-    const correctMap = { A: 0, B: 1, C: 2, D: 3 }
-    const correct = correctMap[String(record.correctAnswer || 'A').toUpperCase()] ?? 0
-    const difficulty = record.difficulty || 'Easy'
+
+    const options = Array.isArray(record.options)
+      ? record.options
+      : [record.optionA, record.optionB, record.optionC, record.optionD].map((o) => o || '')
+    const correctMap = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
+    const rawCorrect = record.correct !== undefined ? record.correct : (record.correct_answer !== undefined ? record.correct_answer : record.correctAnswer)
+    const correct = typeof rawCorrect === 'number' ? rawCorrect : (correctMap[String(rawCorrect || 'A').trim().toUpperCase()] ?? 0)
+    const difficulty = record.difficultyText || record.difficulty || 'Easy'
+
     mcqs = [
       ...mcqs,
       {
-        id: nextId(mcqs),
-        courseId,
+        id: record.id || nextId(mcqs),
+        courseId: record.courseId || courseId,
+        subject_id: targetSubId,
+        chapter_id: targetChapId,
+        subjectId: targetSubId,
+        chapterId: targetChapId,
         question: record.question,
         options,
         correct,
@@ -817,8 +889,8 @@ export function injectMcqs(records) {
         chapter: record.chapter,
         difficulty: difficulty === 'Hard' ? 'danger' : difficulty === 'Medium' ? 'warning' : 'success',
         difficultyText: difficulty,
-        attempts: '0',
-        accuracy: '—',
+        attempts: record.attempts || '0',
+        accuracy: record.accuracy || '—',
         explanation: record.explanation || '',
       },
     ]
@@ -832,11 +904,6 @@ export function injectMcqs(records) {
   return { imported, duplicates, failed, lastSubject, lastChapter }
 }
 
-/**
- * injectFlashcards — bulk-import flashcards from AI-generated JSON.
- * Each record: { front, back, subject, chapter }
- * Returns { imported, duplicates, failed, lastSubject, lastChapter }
- */
 export function injectFlashcards(records) {
   const courseId = currentCourseId()
   let imported = 0
@@ -846,25 +913,40 @@ export function injectFlashcards(records) {
   let lastChapter = ''
 
   records.forEach((record) => {
-    if (!record || !record.front || !record.back || !record.subject || !record.chapter) {
+    if (!record || !record.front || !record.back) {
       failed += 1
       return
     }
-    const exists = flashcards.some((f) => f.front.toLowerCase() === String(record.front).toLowerCase() && f.courseId === courseId)
+    const targetChapId = record.chapter_id || record.chapterId
+    const targetSubId = record.subject_id || record.subjectId
+
+    const exists = flashcards.some(
+      (f) =>
+        (record.id && String(f.id) === String(record.id)) ||
+        (f.front &&
+          record.front &&
+          f.front.toLowerCase() === String(record.front).toLowerCase() &&
+          String(f.chapter_id || f.chapterId || f.chapter) === String(targetChapId || record.chapter))
+    )
     if (exists) {
       duplicates += 1
       return
     }
+
     flashcards = [
       ...flashcards,
       {
-        id: nextId(flashcards),
-        courseId,
+        id: record.id || nextId(flashcards),
+        courseId: record.courseId || courseId,
+        subject_id: targetSubId,
+        chapter_id: targetChapId,
+        subjectId: targetSubId,
+        chapterId: targetChapId,
         subject: record.subject,
         chapter: record.chapter,
         front: record.front,
         back: record.back,
-        views: '0 views',
+        views: record.views || '0 views',
       },
     ]
     imported += 1
@@ -879,9 +961,6 @@ export function injectFlashcards(records) {
 
 export { injectMcqs as injectMcqsIntoStore, injectFlashcards as injectFlashcardsIntoStore }
 
-/**
- * checkDuplicateMcqs — check for potential duplicate MCQs against existing store.
- */
 export function checkDuplicateMcqs(records, targetCourseId) {
   const cId = targetCourseId || currentCourseId()
   const existingSet = new Set(
@@ -890,9 +969,6 @@ export function checkDuplicateMcqs(records, targetCourseId) {
   return records.filter((r) => r.question && existingSet.has(r.question.trim().toLowerCase()))
 }
 
-/**
- * checkDuplicateFlashcards — check for potential duplicate Flashcards against existing store.
- */
 export function checkDuplicateFlashcards(records, targetCourseId) {
   const cId = targetCourseId || currentCourseId()
   const existingSet = new Set(
@@ -901,7 +977,6 @@ export function checkDuplicateFlashcards(records, targetCourseId) {
   return records.filter((r) => r.front && existingSet.has(r.front.trim().toLowerCase()))
 }
 
-// ── Derived counts for dashboard summary cards ────────────────────
 export function getCounts() {
   const courseId = currentCourseId()
   return {
@@ -912,10 +987,9 @@ export function getCounts() {
   }
 }
 
-// ── Derived subject/chapter lookups ───────────────────────────────
 export function getSubjectByName(name) {
   const courseId = currentCourseId()
-  return subjects.find((s) => s.name === name && s.courseId === courseId) || null
+  return subjects.find((s) => (s.name === name || s.id === name) && s.courseId === courseId) || null
 }
 
 export function getSubjectsByCourse(courseId) {
@@ -925,18 +999,29 @@ export function getSubjectsByCourse(courseId) {
 export function getChaptersBySubject(subjectName) {
   const courseId = currentCourseId()
   return chapters
-    .filter((c) => c.subject === subjectName && c.courseId === courseId)
+    .filter(
+      (c) =>
+        (c.subject === subjectName || c.subjectId === subjectName || c.subject_id === subjectName) &&
+        c.courseId === courseId
+    )
     .sort((a, b) => a.number - b.number)
 }
 
 export function getChaptersBySubjectAndCourse(subjectId, courseId) {
-  return chapters.filter((c) => (c.subjectId === subjectId || c.subject === subjectId) && c.courseId === courseId)
+  return chapters.filter(
+    (c) =>
+      (c.subjectId === subjectId || c.subject_id === subjectId || c.subject === subjectId) &&
+      c.courseId === courseId
+  )
 }
 
 export function getMcqsByChapterAndCourse(chapterId, subjectId, courseId) {
-  return mcqs.filter(
-    (m) => (m.chapterId === chapterId || m.chapter === chapterId) && m.courseId === courseId
-  )
+  return mcqs.filter((m) => {
+    if (courseId && m.courseId && m.courseId !== courseId) return false
+    if (chapterId && String(m.chapter_id || m.chapterId) !== String(chapterId)) return false
+    if (subjectId && String(m.subject_id || m.subjectId) !== String(subjectId)) return false
+    return true
+  })
 }
 
 // ── Chapter ordering (reorder) ────────────────────────────────────

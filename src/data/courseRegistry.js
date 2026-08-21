@@ -282,12 +282,38 @@ export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards
   const orderedKeys = []
   courseSubjects.forEach((sub, index) => {
     const key = subjectKeyFor(sub.name, sub.id)
-    const subChapters = courseChapters.filter((c) => c.subject === sub.name)
+    const subChapters = courseChapters.filter(
+      (c) => c.subjectId === sub.id || c.subject_id === sub.id || c.subject === sub.name
+    )
+    const subMcqs = courseMcqs.filter(
+      (m) => m.subjectId === sub.id || m.subject_id === sub.id || m.subject === sub.name
+    )
+    const subFlashcards = courseFlashcards.filter(
+      (f) => f.subjectId === sub.id || f.subject_id === sub.id || f.subject === sub.name
+    )
+
+    const enrichedChapters = subChapters.map((ch) => {
+      const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
+      const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
+      const totalMcqs = chMcqs.length
+      const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
+      return {
+        ...ch,
+        chMcqs,
+        mcqs: totalMcqs,
+        totalMcqs,
+        flashcards: totalFlashcards,
+        totalFlashcards,
+      }
+    })
+
+    const actualSubjectMcqs = enrichedChapters.reduce((sum, c) => sum + (c.totalMcqs || 0), 0)
+
     const enrichedSubject = {
       ...sub,
-      chapters: subChapters,
-      mcqs: courseMcqs.filter((m) => m.subject === sub.name).length,
-      flashcards: courseFlashcards.filter((f) => f.subject === sub.name).length,
+      chapters: enrichedChapters,
+      mcqs: actualSubjectMcqs,
+      flashcards: subFlashcards.length || sub.flashcards || 0,
       notes: 0,
     }
     catalog[key] = buildSubjectEntry(key, enrichedSubject, index, progressList)

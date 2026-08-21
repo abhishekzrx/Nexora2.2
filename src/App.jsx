@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import DashboardPage from './DashboardPage'
 import SubjectsPage from './SubjectsPage'
 import SubjectDetailPage from './pages/SubjectDetailPage'
@@ -14,7 +14,7 @@ import { hydrateAdminStoreFromSupabase } from './data/adminStore'
 
 /**
  * Resolve the current hash into a route descriptor.
- * Returns { name, subjectKey, chapter, mode } or null for unknown routes.
+ * Returns { name, subjectKey, chapterId, sub } or null for unknown routes.
  */
 function resolveRoute() {
   const parts = parseHash()
@@ -29,8 +29,18 @@ function resolveRoute() {
 
   if (parts[0] === 'subject' && parts[1]) {
     const subjectKey = parts[1]
-    const sub = parts[2]
 
+    // Check for chapter-scoped route: #/subject/:key/chapter/:chapterId/:sub
+    if (parts[2] === 'chapter' && parts[3]) {
+      const chapterId = parts[3]
+      const sub = parts[4]
+      if (sub === 'mcq') return { name: 'mcq', subjectKey, chapterId }
+      if (sub === 'review') return { name: 'review', subjectKey, chapterId }
+      if (sub === 'results') return { name: 'results', subjectKey, chapterId }
+      return { name: 'mcq', subjectKey, chapterId }
+    }
+
+    const sub = parts[2]
     if (sub === 'mcq') return { name: 'mcq', subjectKey }
     if (sub === 'review') return { name: 'review', subjectKey }
     if (sub === 'results') return { name: 'results', subjectKey }
@@ -85,7 +95,7 @@ function App() {
     return null
   }
 
-  const { name, subjectKey } = route
+  const { name, subjectKey, chapterId } = route
 
   if (name === 'admin') {
     return <AdminPage onBackHome={() => { switchToStudent(); navigate('') }} />
@@ -111,9 +121,14 @@ function App() {
         onOpenSubject={(key) => navigate(`subject/${key}`)}
         onResume={(session) => {
           testSession.subjectKey = session.subjectKey
-          testSession.chapter = null
+          testSession.chapter = session.chapterId ? { id: session.chapterId, name: session.chapterName } : null
           testSession.mode = 'practice'
-          navigate(`subject/${session.subjectKey}/mcq`)
+          testSession.save()
+          if (session.chapterId) {
+            navigate(`subject/${session.subjectKey}/chapter/${session.chapterId}/mcq`)
+          } else {
+            navigate(`subject/${session.subjectKey}/mcq`)
+          }
         }}
         onStartPractice={() => navigate('subjects')}
       />
@@ -133,7 +148,12 @@ function App() {
           testSession.subjectKey = subjectKey
           testSession.chapter = chapter
           testSession.mode = 'practice'
-          navigate(`subject/${subjectKey}/mcq`)
+          testSession.save()
+          if (chapter?.id) {
+            navigate(`subject/${subjectKey}/chapter/${chapter.id}/mcq`)
+          } else {
+            navigate(`subject/${subjectKey}/mcq`)
+          }
         }}
       />
     )
@@ -143,9 +163,16 @@ function App() {
     return (
       <MCQPracticePage
         subjectKey={subjectKey}
+        chapterId={chapterId}
         chapter={testSession.chapter}
         onBack={() => navigate(`subject/${subjectKey}`)}
-        onSubmit={() => navigate(`subject/${subjectKey}/results`)}
+        onSubmit={() => {
+          if (chapterId) {
+            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+          } else {
+            navigate(`subject/${subjectKey}/results`)
+          }
+        }}
       />
     )
   }
@@ -154,10 +181,23 @@ function App() {
     return (
       <MCQPracticePage
         subjectKey={subjectKey}
+        chapterId={chapterId}
         chapter={testSession.chapter}
         reviewMode
-        onBack={() => navigate(`subject/${subjectKey}/results`)}
-        onSubmit={() => navigate(`subject/${subjectKey}/results`)}
+        onBack={() => {
+          if (chapterId) {
+            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+          } else {
+            navigate(`subject/${subjectKey}/results`)
+          }
+        }}
+        onSubmit={() => {
+          if (chapterId) {
+            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+          } else {
+            navigate(`subject/${subjectKey}/results`)
+          }
+        }}
       />
     )
   }
@@ -166,11 +206,23 @@ function App() {
     return (
       <TestResultsPage
         subjectKey={subjectKey}
+        chapterId={chapterId}
         onBack={() => navigate(`subject/${subjectKey}`)}
-        onReviewAnswers={() => navigate(`subject/${subjectKey}/review`)}
+        onReviewAnswers={() => {
+          if (chapterId) {
+            navigate(`subject/${subjectKey}/chapter/${chapterId}/review`)
+          } else {
+            navigate(`subject/${subjectKey}/review`)
+          }
+        }}
         onPracticeAgain={() => {
           testSession.mode = 'practice'
-          navigate(`subject/${subjectKey}/mcq`)
+          testSession.save()
+          if (chapterId) {
+            navigate(`subject/${subjectKey}/chapter/${chapterId}/mcq`)
+          } else {
+            navigate(`subject/${subjectKey}/mcq`)
+          }
         }}
         onBackToSubjects={() => navigate('subjects')}
       />

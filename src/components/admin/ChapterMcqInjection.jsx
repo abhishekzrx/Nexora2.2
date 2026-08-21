@@ -95,13 +95,24 @@ export default function ChapterMcqInjection() {
     return adminState.allSubjects.filter((s) => s.courseId === selectedCourseId)
   }, [adminState.allSubjects, selectedCourseId])
 
-  const [selectedSubjectName, setSelectedSubjectName] = useState(() => {
-    return currentCourseSubjects[0]?.name || ''
+  const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
+    return currentCourseSubjects[0]?.id || ''
   })
 
+  // Ensure selectedSubjectId is valid for current course
+  useEffect(() => {
+    if (currentCourseSubjects.length > 0) {
+      if (!selectedSubjectId || !currentCourseSubjects.some((s) => s.id === selectedSubjectId)) {
+        setSelectedSubjectId(currentCourseSubjects[0].id)
+      }
+    } else {
+      setSelectedSubjectId('')
+    }
+  }, [currentCourseSubjects, selectedSubjectId])
+
   const activeSubject = useMemo(() => {
-    return currentCourseSubjects.find((s) => s.name === selectedSubjectName) || currentCourseSubjects[0] || null
-  }, [currentCourseSubjects, selectedSubjectName])
+    return currentCourseSubjects.find((s) => s.id === selectedSubjectId) || currentCourseSubjects[0] || null
+  }, [currentCourseSubjects, selectedSubjectId])
 
   const selectedCourse = useMemo(() => {
     return workspaces.find((w) => w.id === selectedCourseId)
@@ -111,18 +122,29 @@ export default function ChapterMcqInjection() {
     if (!activeSubject) return []
     return adminState.allChapters.filter(
       (c) =>
-        (c.subject === activeSubject.name || c.subjectId === activeSubject.id) &&
+        (c.subjectId === activeSubject.id || c.subject_id === activeSubject.id || c.subject === activeSubject.name) &&
         (!selectedCourseId || c.courseId === selectedCourseId)
     )
   }, [adminState.allChapters, activeSubject, selectedCourseId])
 
-  const [selectedChapterName, setSelectedChapterName] = useState(() => {
-    return currentChapters[0]?.name || ''
+  const [selectedChapterId, setSelectedChapterId] = useState(() => {
+    return currentChapters[0]?.id || ''
   })
 
+  // Ensure selectedChapterId is valid for current subject
+  useEffect(() => {
+    if (currentChapters.length > 0) {
+      if (!selectedChapterId || !currentChapters.some((c) => c.id === selectedChapterId)) {
+        setSelectedChapterId(currentChapters[0].id)
+      }
+    } else {
+      setSelectedChapterId('')
+    }
+  }, [currentChapters, selectedChapterId])
+
   const activeChapter = useMemo(() => {
-    return currentChapters.find((c) => c.name === selectedChapterName) || currentChapters[0] || null
-  }, [currentChapters, selectedChapterName])
+    return currentChapters.find((c) => c.id === selectedChapterId) || currentChapters[0] || null
+  }, [currentChapters, selectedChapterId])
 
   // Chapter Description state (loaded automatically when a chapter of any subject is chosen)
   const [chapterDescription, setChapterDescription] = useState('')
@@ -130,36 +152,32 @@ export default function ChapterMcqInjection() {
   useEffect(() => {
     if (activeChapter) {
       const found = adminState.allChapters.find(
-        (c) =>
-          (c.name === activeChapter.name || c.id === activeChapter.id) &&
-          (!selectedCourseId || c.courseId === selectedCourseId)
+        (c) => c.id === activeChapter.id
       )
       setChapterDescription(found?.desc || found?.description || activeChapter?.desc || activeChapter?.description || '')
     } else {
       setChapterDescription('')
     }
-  }, [activeChapter, adminState.allChapters, selectedCourseId])
+  }, [activeChapter, adminState.allChapters])
 
   // ── 2. Top Right Statistics Metrics ──────────────────────────────
   const chapterMcqs = useMemo(() => {
     if (!activeSubject || !activeChapter) return []
     return adminState.allMcqs.filter(
       (m) =>
-        m.courseId === selectedCourseId &&
-        m.subject === activeSubject.name &&
-        m.chapter === activeChapter.name
+        (m.chapter_id === activeChapter.id || m.chapterId === activeChapter.id) &&
+        (m.subject_id === activeSubject.id || m.subjectId === activeSubject.id)
     )
-  }, [adminState.allMcqs, selectedCourseId, activeSubject, activeChapter])
+  }, [adminState.allMcqs, activeSubject, activeChapter])
 
   const chapterFlashcards = useMemo(() => {
     if (!activeSubject || !activeChapter) return []
     return adminState.allFlashcards.filter(
       (f) =>
-        f.courseId === selectedCourseId &&
-        f.subject === activeSubject.name &&
-        f.chapter === activeChapter.name
+        (f.chapter_id === activeChapter.id || f.chapterId === activeChapter.id) &&
+        (f.subject_id === activeSubject.id || f.subjectId === activeSubject.id)
     )
-  }, [adminState.allFlashcards, selectedCourseId, activeSubject, activeChapter])
+  }, [adminState.allFlashcards, activeSubject, activeChapter])
 
   const chapterNotesCount = useMemo(() => {
     return Math.max(4, Math.round((chapterMcqs.length + chapterFlashcards.length) / 3))
@@ -493,10 +511,12 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
                   setSelectedCourseId(newCourseId)
                   setActiveWorkspace(newCourseId)
                   const subs = adminState.allSubjects.filter((s) => s.courseId === newCourseId)
-                  const firstSub = subs[0]?.name || ''
-                  setSelectedSubjectName(firstSub)
-                  const chs = adminState.allChapters.filter((c) => c.subject === firstSub && c.courseId === newCourseId)
-                  setSelectedChapterName(chs[0]?.name || '')
+                  const firstSubId = subs[0]?.id || ''
+                  setSelectedSubjectId(firstSubId)
+                  const chs = adminState.allChapters.filter(
+                    (c) => (c.subjectId === firstSubId || c.subject_id === firstSubId) && c.courseId === newCourseId
+                  )
+                  setSelectedChapterId(chs[0]?.id || '')
                 }}
               >
                 {workspaces.map((w) => (
@@ -511,20 +531,22 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <label className="field-lbl">2. Subject</label>
               <select
                 className="admin-select-sm"
-                value={selectedSubjectName}
+                value={selectedSubjectId}
                 title={activeSubject?.name || 'Select Subject'}
                 onChange={(e) => {
-                  const newSub = e.target.value
-                  setSelectedSubjectName(newSub)
+                  const newSubId = e.target.value
+                  setSelectedSubjectId(newSubId)
                   const chs = adminState.allChapters.filter(
-                    (c) => c.subject === newSub && c.courseId === selectedCourseId
+                    (c) =>
+                      (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
+                      c.courseId === selectedCourseId
                   )
-                  setSelectedChapterName(chs[0]?.name || '')
+                  setSelectedChapterId(chs[0]?.id || '')
                 }}
                 disabled={currentCourseSubjects.length === 0}
               >
                 {currentCourseSubjects.map((s) => (
-                  <option key={s.id || s.name} value={s.name} title={s.name}>
+                  <option key={s.id} value={s.id} title={s.name}>
                     {s.name}
                   </option>
                 ))}
@@ -535,13 +557,13 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
               <label className="field-lbl">3. Chapter</label>
               <select
                 className="admin-select-sm"
-                value={selectedChapterName}
+                value={selectedChapterId}
                 title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
-                onChange={(e) => setSelectedChapterName(e.target.value)}
+                onChange={(e) => setSelectedChapterId(e.target.value)}
                 disabled={currentChapters.length === 0}
               >
                 {currentChapters.map((c) => (
-                  <option key={c.id || c.name} value={c.name} title={`Ch ${c.number}: ${c.name}`}>
+                  <option key={c.id} value={c.id} title={`Ch ${c.number}: ${c.name}`}>
                     Ch {c.number}: {c.name}
                   </option>
                 ))}

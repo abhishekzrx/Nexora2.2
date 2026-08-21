@@ -73,27 +73,35 @@ export default function McqManager() {
     return allSubjects.filter((s) => s.courseId === selectedCourseId)
   }, [selectedCourseId, allSubjects])
 
-  // Auto select first subject
+  // Auto select / reconcile subject ID
   useEffect(() => {
-    if (availableSubjects.length > 0 && !selectedSubjectId) {
-      setSelectedSubjectId(availableSubjects[0].id)
+    if (availableSubjects.length > 0) {
+      if (!selectedSubjectId || !availableSubjects.some((s) => s.id === selectedSubjectId)) {
+        setSelectedSubjectId(availableSubjects[0].id)
+      }
+    } else {
+      setSelectedSubjectId('')
     }
   }, [availableSubjects, selectedSubjectId])
 
   // Filter chapters by selected subject
   const availableChapters = useMemo(() => {
     if (!selectedSubjectId) return []
-    const targetSub = availableSubjects.find((s) => s.id === selectedSubjectId || s.name === selectedSubjectId)
-    const subName = targetSub?.name || selectedSubjectId
     return allChapters.filter(
-      (c) => (c.subjectId === selectedSubjectId || c.subject === subName || c.subject === selectedSubjectId) && c.courseId === selectedCourseId
+      (c) =>
+        (c.subjectId === selectedSubjectId || c.subject_id === selectedSubjectId) &&
+        (!selectedCourseId || c.courseId === selectedCourseId)
     )
-  }, [selectedSubjectId, selectedCourseId, availableSubjects, allChapters])
+  }, [selectedSubjectId, selectedCourseId, allChapters])
 
-  // Auto select first chapter
+  // Auto select / reconcile chapter ID
   useEffect(() => {
-    if (availableChapters.length > 0 && !selectedChapterId) {
-      setSelectedChapterId(availableChapters[0].id)
+    if (availableChapters.length > 0) {
+      if (!selectedChapterId || !availableChapters.some((c) => c.id === selectedChapterId)) {
+        setSelectedChapterId(availableChapters[0].id)
+      }
+    } else {
+      setSelectedChapterId('')
     }
   }, [availableChapters, selectedChapterId])
 
@@ -549,7 +557,7 @@ export default function McqManager() {
               }}
             >
               {availableSubjects.map((s) => (
-                <option key={s.id || s.name} value={s.id || s.name}>
+                <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
@@ -566,7 +574,7 @@ export default function McqManager() {
               onChange={(e) => setSelectedChapterId(e.target.value)}
             >
               {availableChapters.map((c) => (
-                <option key={c.id || c.name} value={c.id || c.name}>
+                <option key={c.id} value={c.id}>
                   Ch {c.number || ''}: {c.name || c.title}
                 </option>
               ))}

@@ -96,11 +96,8 @@ export const mcqService = {
       if (!isUuid(chapterId)) {
         return { success: true, data: [] }
       }
-      if (subjectId && isUuid(subjectId)) {
-        query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
-      } else {
-        query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
-      }
+      // Chapter is the authoritative retrieval scope
+      query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
     } else if (subjectId) {
       if (!isUuid(subjectId)) {
         return { success: true, data: [] }
@@ -121,14 +118,39 @@ export const mcqService = {
     try {
       const res = await apiService.get(`/mcqs${query}`)
       if (res.success && Array.isArray(res.data)) {
-        const mapped = res.data.map((m) => ({
+        // Defensive validation on read
+        const validated = res.data.filter((m) => {
+          if (!m || !m.id) return false
+          if (chapterId && isUuid(chapterId)) {
+            if (String(m.chapter_id) !== String(chapterId)) {
+              console.warn(`[mcqService] Defensive filter dropped MCQ ${m.id}: chapter_id "${m.chapter_id}" does not match requested "${chapterId}".`)
+              return false
+            }
+          }
+          if (subjectId && isUuid(subjectId)) {
+            if (String(m.subject_id) !== String(subjectId)) {
+              console.warn(`[mcqService] Defensive filter dropped MCQ ${m.id}: subject_id "${m.subject_id}" does not match requested "${subjectId}".`)
+              return false
+            }
+          }
+          return true
+        })
+
+        const mapped = validated.map((m) => ({
           ...m,
           courseId,
+          subject_id: m.subject_id,
+          chapter_id: m.chapter_id,
           subjectId: m.subject_id,
           chapterId: m.chapter_id,
           correct: m.correct_answer,
           options: [m.option_a, m.option_b, m.option_c, m.option_d],
         }))
+
+        if (import.meta.env.DEV) {
+          console.log(`[MCQ FETCH]\nSubject ID: ${subjectId || 'N/A'}\nChapter ID: ${chapterId || 'N/A'}\nReturned count: ${mapped.length}`)
+        }
+
         return { success: true, data: mapped }
       }
       return { success: false, error: res.error || 'Failed to fetch MCQs from database' }
@@ -145,11 +167,7 @@ export const mcqService = {
       if (!isUuid(chapterId)) {
         return { success: true, data: [] }
       }
-      if (subjectId && isUuid(subjectId)) {
-        query = `?subject_id=eq.${encodeURIComponent(subjectId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
-      } else {
-        query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
-      }
+      query = `?chapter_id=eq.${encodeURIComponent(chapterId)}`
     } else if (subjectId) {
       if (!isUuid(subjectId)) {
         return { success: true, data: [] }
@@ -170,9 +188,18 @@ export const mcqService = {
     try {
       const res = await apiService.get(`/flashcards${query}`)
       if (res.success && Array.isArray(res.data)) {
-        const mapped = res.data.map((f) => ({
+        const validated = res.data.filter((f) => {
+          if (!f || !f.id) return false
+          if (chapterId && isUuid(chapterId) && String(f.chapter_id) !== String(chapterId)) return false
+          if (subjectId && isUuid(subjectId) && String(f.subject_id) !== String(subjectId)) return false
+          return true
+        })
+
+        const mapped = validated.map((f) => ({
           ...f,
           courseId,
+          subject_id: f.subject_id,
+          chapter_id: f.chapter_id,
           subjectId: f.subject_id,
           chapterId: f.chapter_id,
         }))
@@ -186,32 +213,61 @@ export const mcqService = {
 
   async injectMcqs(courseId, subjectId, chapterId, payload, injectionType = 'mcqs', contextMeta = {}) {
     if (!courseId || !subjectId || !chapterId) {
-      return { success: false, error: 'Hierarchy Violation: courseId, subjectId, and chapterId are required for injection.' }
+      return { success: false, error: 'MCQ injection failed: courseId, subjectId, and chapterId are required.' }
     }
 
     const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
     if (!isUuid(subjectId) || !isUuid(chapterId)) {
-      return { success: false, error: 'Hierarchy Violation: subjectId and chapterId must be valid database UUIDs.' }
+      return { success: false, error: 'MCQ injection failed: subjectId and chapterId must be valid database UUIDs.' }
     }
 
-    // Verify chapter exists in Supabase and belongs to the requested subjectId
+    // 1. Verify Chapter exists and belongs to the requested subjectId
     try {
       const chapRes = await apiService.get(`/chapters?id=eq.${encodeURIComponent(chapterId)}`)
-      if (chapRes.success && Array.isArray(chapRes.data) && chapRes.data.length > 0) {
-        const dbChap = chapRes.data[0]
-        if (dbChap.subject_id && String(dbChap.subject_id) !== String(subjectId)) {
-          return {
-            success: false,
-            error: `Hierarchy Violation: Chapter "${dbChap.name || chapterId}" belongs to subject_id "${dbChap.subject_id}", not target subject_id "${subjectId}".`,
-          }
+      if (!chapRes.success || !Array.isArray(chapRes.data) || chapRes.data.length === 0) {
+        return {
+          success: false,
+          error: 'MCQ injection failed: selected chapter does not exist in the database.',
+        }
+      }
+      const dbChap = chapRes.data[0]
+      if (String(dbChap.subject_id) !== String(subjectId)) {
+        return {
+          success: false,
+          error: 'MCQ injection failed: selected chapter does not belong to selected subject.',
         }
       }
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn('[mcqService] Hierarchy check warning:', err)
+      return {
+        success: false,
+        error: `MCQ injection failed during chapter verification: ${err.message}`,
       }
     }
 
+    // 2. Verify Subject exists and belongs to the requested courseId
+    try {
+      const subRes = await apiService.get(`/subjects?id=eq.${encodeURIComponent(subjectId)}`)
+      if (!subRes.success || !Array.isArray(subRes.data) || subRes.data.length === 0) {
+        return {
+          success: false,
+          error: 'MCQ injection failed: selected subject does not exist in the database.',
+        }
+      }
+      const dbSub = subRes.data[0]
+      if (dbSub.course_id && String(dbSub.course_id) !== String(courseId)) {
+        return {
+          success: false,
+          error: 'MCQ injection failed: selected subject does not belong to selected course.',
+        }
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: `MCQ injection failed during subject verification: ${err.message}`,
+      }
+    }
+
+    // 3. Validate Payload structure
     const validation = this.validatePayload(payload, injectionType)
     if (!validation.valid) {
       return { success: false, error: validation.error }
@@ -226,6 +282,10 @@ export const mcqService = {
         : mapFlashcardToPayload(item, subjectId, chapterId)
     )
 
+    if (import.meta.env.DEV) {
+      console.log(`[MCQ INJECTION]\nCourse ID: ${courseId}\nSubject ID: ${subjectId}\nChapter ID: ${chapterId}\nMCQ count: ${dbItems.length}`)
+    }
+
     const res = await apiService.post(`/${table}`, dbItems)
 
     if (!res.success) {
@@ -238,8 +298,10 @@ export const mcqService = {
       const formattedRecords = insertedRecords.map((m) => ({
         id: m.id,
         courseId: courseId,
-        subjectId: m.subject_id,
-        chapterId: m.chapter_id,
+        subject_id: m.subject_id || subjectId,
+        chapter_id: m.chapter_id || chapterId,
+        subjectId: m.subject_id || subjectId,
+        chapterId: m.chapter_id || chapterId,
         subject: contextMeta.subjectName || subjectId,
         chapter: contextMeta.chapterName || chapterId,
         question: m.question,
@@ -256,8 +318,10 @@ export const mcqService = {
       const formattedRecords = insertedRecords.map((f) => ({
         id: f.id,
         courseId: courseId,
-        subjectId: f.subject_id,
-        chapterId: f.chapter_id,
+        subject_id: f.subject_id || subjectId,
+        chapter_id: f.chapter_id || chapterId,
+        subjectId: f.subject_id || subjectId,
+        chapterId: f.chapter_id || chapterId,
         subject: contextMeta.subjectName || subjectId,
         chapter: contextMeta.chapterName || chapterId,
         front: f.front,
