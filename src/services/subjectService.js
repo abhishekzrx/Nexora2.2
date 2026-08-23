@@ -3,12 +3,13 @@
  * Centralized API Service for Course-Scoped Subjects with Supabase snake_case mapping.
  */
 
-import { apiService } from './apiService'
+import { apiService } from './apiService.js'
+import { courseService } from './courseService.js'
 import {
   addSubject,
   updateSubject as updateSubjectInStore,
   deleteSubject as deleteSubjectFromStore,
-} from '../data/adminStore'
+} from '../data/adminStore.js'
 
 export function getSubjectIconByName(name, fallback = 'chapters') {
   if (!name) return fallback
@@ -96,9 +97,29 @@ export const subjectService = {
   async createSubject(courseId, payload) {
     if (!courseId) return { success: false, error: 'Course ID is required to create a Subject' }
     if (!payload?.name) return { success: false, error: 'Subject name is required' }
+
+    // Ensure parent course exists in Supabase to satisfy FK constraint "subjects_course_id_fkey"
+    try {
+      await courseService.ensureCourseExists(courseId)
+    } catch (err) {
+      console.warn('[subjectService] ensureCourseExists warning:', err)
+    }
+
     const dbPayload = mapSubjectToPayload(payload, courseId)
     const res = await apiService.post('/subjects', dbPayload)
     if (!res.success) {
+      // If FK constraint violation occurred, force course insert and retry once
+      if (res.error && (res.error.includes('foreign key constraint') || res.error.includes('subjects_course_id_fkey'))) {
+        await courseService.ensureCourseExists(courseId)
+        const retryRes = await apiService.post('/subjects', dbPayload)
+        if (retryRes.success) {
+          const rawRecord = Array.isArray(retryRes.data) ? retryRes.data[0] : retryRes.data
+          const mapped = mapRowToSubject(rawRecord)
+          addSubject(mapped)
+          return { success: true, data: mapped }
+        }
+        return { success: false, error: retryRes.error || res.error }
+      }
       return { success: false, error: res.error || 'Failed to create subject in database' }
     }
     const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data

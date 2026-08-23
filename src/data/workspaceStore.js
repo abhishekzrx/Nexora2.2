@@ -12,16 +12,17 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import { courseService } from '../services/courseService'
+import { courseService } from '../services/courseService.js'
 
 let listeners = []
 let version = 0
 
 // ── Bootstrap Engine ──────────────────────────────────────────────
-function bootstrapCourse({ name, icon, themeColor, description, status }) {
+function bootstrapCourse({ name, icon, themeColor, description, status, examProfile, level }) {
   const now = today()
   const courseStatus = status || 'active'
   const isPublished = courseStatus === 'draft' ? false : true
+  const detectedProfile = examProfile || (name && name.toLowerCase().includes('bpsc') ? 'BPSC_PRELIMS' : 'GENERIC')
 
   return {
     id: nextId('course'),
@@ -31,6 +32,8 @@ function bootstrapCourse({ name, icon, themeColor, description, status }) {
     description: description || '',
     status: courseStatus,
     published: isPublished,
+    examProfile: detectedProfile,
+    level: level || (detectedProfile === 'BPSC_PRELIMS' ? 'Competitive Examination' : 'General'),
     version: 'v1.0',
     createdAt: now,
     lastUpdated: now,
@@ -105,6 +108,8 @@ function getSeedWorkspaces() {
       description: 'Bihar Public Service Commission Teacher Recruitment Exam 4.0',
       status: 'active',
       published: true,
+      examProfile: 'BPSC_PRELIMS',
+      level: 'Competitive Examination',
       version: 'v2.3',
       createdAt: '2026-07-01',
       lastUpdated: '2026-08-06',
@@ -128,6 +133,38 @@ function getSeedWorkspaces() {
       audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 12 },
     },
     {
+      id: 'bpsc-prelims',
+      name: 'BPSC Prelims',
+      icon: 'adminDashboard',
+      themeColor: '#F1621B',
+      description: 'Bihar Public Service Commission – Preliminary Examination',
+      status: 'active',
+      published: true,
+      examProfile: 'BPSC_PRELIMS',
+      level: 'Competitive Examination',
+      version: 'v1.0',
+      createdAt: '2026-08-23',
+      lastUpdated: '2026-08-23',
+      order: 2,
+      subjects: [],
+      chapters: [],
+      mcqs: [],
+      flashcards: [],
+      notes: [],
+      practice: [],
+      mockTests: [],
+      analytics: { totalAttempts: 0, avgAccuracy: 0, weeklyProgress: 0, trend: [] },
+      studentProgress: { enrolled: 0, active: 0, completionRate: 0 },
+      bookmarks: [],
+      downloads: [],
+      aiStudyPlan: { generated: false, plan: null },
+      contentHealth: { score: 100, issues: [], lastChecked: '2026-08-23' },
+      settings: { allowDownloads: true, allowBookmarks: true, showLeaderboard: false, requireEnrollment: false },
+      theme: { primaryColor: '#F1621B', darkMode: true },
+      metadata: { subjects: 0, chapters: 0, mcqs: 0, flashcards: 0, notes: 0, completion: 0, health: 100 },
+      audit: { createdBy: 'admin', lastModifiedBy: 'admin', revision: 1 },
+    },
+    {
       id: 'cbse-12-cs',
       name: 'CBSE Class 12 – Computer Science',
       icon: 'computer',
@@ -138,7 +175,7 @@ function getSeedWorkspaces() {
       version: 'v1.8',
       createdAt: '2026-07-15',
       lastUpdated: '2026-08-03',
-      order: 2,
+      order: 3,
       subjects: [],
       chapters: [],
       mcqs: [],
@@ -233,9 +270,20 @@ export async function hydrateWorkspacesFromSupabase() {
   hydrationPromise = (async () => {
     try {
       const res = await courseService.getCourses()
-      if (res.success && Array.isArray(res.data)) {
-        workspaces = res.data
+      let dbCourses = res.success && Array.isArray(res.data) ? res.data : []
+
+      const seedWorkspaces = getSeedWorkspaces()
+      const dbIds = new Set(dbCourses.map((c) => c.id))
+
+      for (const seed of seedWorkspaces) {
+        if (!dbIds.has(seed.id)) {
+          dbCourses = [...dbCourses, seed]
+          // Background sync missing seed course to Supabase to prevent FK constraint errors
+          courseService.ensureCourseExists(seed.id).catch(() => {})
+        }
       }
+
+      workspaces = dbCourses
 
       const savedId = (() => {
         try {
@@ -354,9 +402,9 @@ export function updateWorkspaceMetadata(id, key, count) {
   emit()
 }
 
-export function createWorkspace({ name, icon, themeColor, description, status, id }) {
+export function createWorkspace({ name, icon, themeColor, description, status, id, examProfile, level }) {
   const providedId = id
-  const course = bootstrapCourse({ name, icon, themeColor, description, status })
+  const course = bootstrapCourse({ name, icon, themeColor, description, status, examProfile, level })
   if (providedId) {
     course.id = providedId
   }
@@ -397,13 +445,15 @@ export function renameWorkspace(id, name) {
   updateWorkspace(id, { name })
 }
 
-export function editWorkspace(id, { name, icon, themeColor, description, status }) {
+export function editWorkspace(id, { name, icon, themeColor, description, status, examProfile, level }) {
   updateWorkspace(id, {
     ...(name !== undefined ? { name } : {}),
     ...(icon !== undefined ? { icon } : {}),
     ...(themeColor !== undefined ? { themeColor, theme: { primaryColor: themeColor } } : {}),
     ...(description !== undefined ? { description } : {}),
     ...(status !== undefined ? { status, published: status !== 'archived' } : {}),
+    ...(examProfile !== undefined ? { examProfile } : {}),
+    ...(level !== undefined ? { level } : {}),
   })
 }
 

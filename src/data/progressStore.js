@@ -5,8 +5,8 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import { mcqService } from '../services/mcqService'
-import { getUserId } from '../services/userService'
+import { mcqService } from '../services/mcqService.js'
+import { getUserId } from '../services/userService.js'
 
 let listeners = []
 let version = 0

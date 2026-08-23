@@ -10,11 +10,11 @@ import {
   allChapters,
   mcqRows,
   flashcardCards,
-} from './adminData'
-import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, updateWorkspaceMetadata } from './workspaceStore'
-import { subjectService } from '../services/subjectService'
-import { chapterService } from '../services/chapterService'
-import { mcqService } from '../services/mcqService'
+} from './adminData.js'
+import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, updateWorkspaceMetadata } from './workspaceStore.js'
+import { subjectService } from '../services/subjectService.js'
+import { chapterService } from '../services/chapterService.js'
+import { mcqService } from '../services/mcqService.js'
 
 let listeners = []
 let version = 0

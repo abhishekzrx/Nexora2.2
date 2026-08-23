@@ -3,7 +3,7 @@
  * Centralized API Service for MCQ & Flashcard Injection with Supabase DB column mapping.
  */
 
-import { apiService } from './apiService'
+import { apiService } from './apiService.js'
 import {
   injectMcqsIntoStore,
   injectFlashcardsIntoStore,
@@ -11,11 +11,11 @@ import {
   removeMcqsFromStore,
   removeMcqsForChapterFromStore,
   updateMcqInStore,
-} from '../data/adminStore'
+} from '../data/adminStore.js'
 import {
   resetChapterProgressInStore,
   resetSubjectProgressInStore,
-} from '../data/progressStore'
+} from '../data/progressStore.js'
 
 function mapMcqToPayload(item, subjectId, chapterId) {
   const isValidUuid = item.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
@@ -136,16 +136,22 @@ export const mcqService = {
           return true
         })
 
-        const mapped = validated.map((m) => ({
-          ...m,
-          courseId,
-          subject_id: m.subject_id,
-          chapter_id: m.chapter_id,
-          subjectId: m.subject_id,
-          chapterId: m.chapter_id,
-          correct: m.correct_answer,
-          options: [m.option_a, m.option_b, m.option_c, m.option_d],
-        }))
+        const mapped = validated.map((m) => {
+          const isBpsc = m.exam_profile === 'BPSC_PRELIMS' || (courseId && String(courseId).toLowerCase().includes('bpsc'))
+          const optE = m.option_e || (isBpsc ? 'Not Attempted' : null)
+          return {
+            ...m,
+            courseId,
+            subject_id: m.subject_id,
+            chapter_id: m.chapter_id,
+            subjectId: m.subject_id,
+            chapterId: m.chapter_id,
+            correct: m.correct_answer,
+            options: optE ? [m.option_a, m.option_b, m.option_c, m.option_d, optE] : [m.option_a, m.option_b, m.option_c, m.option_d],
+            exam_profile: m.exam_profile || (isBpsc ? 'BPSC_PRELIMS' : 'GENERIC'),
+            prompt_version: m.prompt_version || (isBpsc ? 'bpsc-prelims-v1' : 'generic-v1'),
+          }
+        })
 
         if (import.meta.env.DEV) {
           console.log(`[MCQ FETCH]\nSubject ID: ${subjectId || 'N/A'}\nChapter ID: ${chapterId || 'N/A'}\nReturned count: ${mapped.length}`)
@@ -295,24 +301,31 @@ export const mcqService = {
     const insertedRecords = Array.isArray(res.data) ? res.data : dbItems
 
     if (isMcq) {
-      const formattedRecords = insertedRecords.map((m) => ({
-        id: m.id,
-        courseId: courseId,
-        subject_id: m.subject_id || subjectId,
-        chapter_id: m.chapter_id || chapterId,
-        subjectId: m.subject_id || subjectId,
-        chapterId: m.chapter_id || chapterId,
-        subject: contextMeta.subjectName || subjectId,
-        chapter: contextMeta.chapterName || chapterId,
-        question: m.question,
-        options: [m.option_a, m.option_b, m.option_c, m.option_d],
-        correct: m.correct_answer,
-        difficulty: m.difficulty === 3 ? 'Hard' : m.difficulty === 1 ? 'Easy' : 'Medium',
-        difficultyText: m.difficulty === 3 ? 'Hard' : m.difficulty === 1 ? 'Easy' : 'Medium',
-        explanation: m.explanation || '',
-        attempts: '0',
-        accuracy: '—',
-      }))
+      const isBpsc = contextMeta.exam_profile === 'BPSC_PRELIMS' || (courseId && String(courseId).toLowerCase().includes('bpsc'))
+      const formattedRecords = insertedRecords.map((m, idx) => {
+        const original = payload[idx] || {}
+        const optE = original.options?.E || original.options?.[4] || (isBpsc ? 'Not Attempted' : null)
+        return {
+          id: m.id,
+          courseId: courseId,
+          subject_id: m.subject_id || subjectId,
+          chapter_id: m.chapter_id || chapterId,
+          subjectId: m.subject_id || subjectId,
+          chapterId: m.chapter_id || chapterId,
+          subject: contextMeta.subjectName || subjectId,
+          chapter: contextMeta.chapterName || chapterId,
+          question: m.question,
+          options: optE ? [m.option_a, m.option_b, m.option_c, m.option_d, optE] : [m.option_a, m.option_b, m.option_c, m.option_d],
+          correct: m.correct_answer,
+          difficulty: m.difficulty === 3 ? 'Hard' : m.difficulty === 1 ? 'Easy' : 'Medium',
+          difficultyText: m.difficulty === 3 ? 'Hard' : m.difficulty === 1 ? 'Easy' : 'Medium',
+          explanation: m.explanation || '',
+          exam_profile: contextMeta.exam_profile || (isBpsc ? 'BPSC_PRELIMS' : 'GENERIC'),
+          prompt_version: contextMeta.prompt_version || (isBpsc ? 'bpsc-prelims-v1' : 'generic-v1'),
+          attempts: '0',
+          accuracy: '—',
+        }
+      })
       injectMcqsIntoStore(formattedRecords)
     } else {
       const formattedRecords = insertedRecords.map((f) => ({

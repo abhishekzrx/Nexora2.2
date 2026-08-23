@@ -4,7 +4,7 @@
  * Standardized Response Contract: { success: boolean, data?: any, error?: string }
  */
 
-import { env } from '../config/env'
+import { env } from '../config/env.js'
 
 async function request(endpoint, options = {}) {
   const baseUrl = env.apiUrl.replace(/\/+$/, '')

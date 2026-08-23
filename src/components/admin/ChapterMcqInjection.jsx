@@ -23,6 +23,10 @@ import {
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
 import { mcqService } from '../../services/mcqService'
+import { getExamProfile, getActiveExamKey, setActiveExam, resolveExamProfile } from '../../data/examProfiles'
+import { getRelevantPYQs, analyzePYQs } from '../../data/pyqRepository'
+import { getCourseConfig } from '../../data/courseConfigs'
+import { generateExamPrompt, buildMCQPrompt, validateBPSCBatch, buildTargetedRegenerationPrompt, autoFixBPSCItems } from '../../utils/aiContentStudio'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
@@ -192,7 +196,42 @@ export default function ChapterMcqInjection() {
   // ── 3. Content Mode State: 'mcqs' vs 'flashcards' ────────────────
   const [contentMode, setContentMode] = useState('mcqs')
 
-  // ── 4. Generator Parameters ─────────────────────────────────────
+  // ── 4. Course-aware Exam Profile State ─────────────────────────
+  const [activeExamKey, setActiveExamKey] = useState(() => getActiveExamKey())
+  const activeExamProfile = useMemo(() => resolveExamProfile(selectedCourse || selectedCourseId), [selectedCourse, selectedCourseId])
+
+  const courseConfig = useMemo(() => getCourseConfig(selectedCourseId), [selectedCourseId])
+
+  const applyCourseConfig = useCallback((courseId) => {
+    const profile = resolveExamProfile(courseId)
+    const nextExamKey = profile.key || 'GENERIC'
+    setActiveExamKey(nextExamKey)
+    setActiveExam(nextExamKey)
+
+    if (profile && profile.defaultDifficulty) {
+      setMcqDifficulty(profile.defaultDifficulty)
+      setFlashDifficulty(profile.defaultDifficulty)
+    }
+    if (profile && profile.defaultQuestionType) {
+      setQuestionType(profile.defaultQuestionType)
+    }
+  }, [setActiveExam])
+
+  const handleCourseChange = useCallback((newCourseId) => {
+    setSelectedCourseId(newCourseId)
+    setActiveWorkspace(newCourseId)
+    applyCourseConfig(newCourseId)
+
+    const subs = adminState.allSubjects.filter((s) => s.courseId === newCourseId)
+    const firstSubId = subs[0]?.id || ''
+    setSelectedSubjectId(firstSubId)
+    const chs = adminState.allChapters.filter(
+      (c) => (c.subjectId === firstSubId || c.subject_id === firstSubId) && c.courseId === newCourseId
+    )
+    setSelectedChapterId(chs[0]?.id || '')
+  }, [adminState.allSubjects, adminState.allChapters, setActiveWorkspace, applyCourseConfig])
+
+  // ── 5. Generator Parameters ─────────────────────────────────────
   const [mcqCount, setMcqCount] = useState(20)
   const [flashCount, setFlashCount] = useState(15)
   const [mcqDifficulty, setMcqDifficulty] = useState('Medium')
@@ -203,7 +242,10 @@ export default function ChapterMcqInjection() {
   const [flashDeckName, setFlashDeckName] = useState('')
   const [conceptFocus, setConceptFocus] = useState('')
 
+  const [showDescDetails, setShowDescDetails] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showPromptPreview, setShowPromptPreview] = useState(false)
+
   const [questionType, setQuestionType] = useState('Mixed')
   const [cognitiveLevel, setCognitiveLevel] = useState('Mixed')
   const [topicFocus, setTopicFocus] = useState('')
@@ -213,6 +255,30 @@ export default function ChapterMcqInjection() {
   const [languageStyle, setLanguageStyle] = useState('Academic')
   const [specialInstructions, setSpecialInstructions] = useState('')
 
+  const [factualDepth, setFactualDepth] = useState('')
+  const [cognitiveStyle, setCognitiveStyle] = useState('')
+  const [biharIntegration, setBiharIntegration] = useState('')
+  const [pyqInfluence, setPyqInfluence] = useState('')
+  const [pyqInclusion, setPyqInclusion] = useState('')
+
+  // Sync exam-specific defaults when profile changes
+  useEffect(() => {
+    if (activeExamProfile && activeExamProfile.key !== 'GENERIC') {
+      setFactualDepth(activeExamProfile.defaultFactualDepth || '')
+      setCognitiveStyle(activeExamProfile.defaultCognitiveStyle || '')
+      setBiharIntegration(activeExamProfile.defaultBiharIntegration || '')
+      setPyqInfluence(activeExamProfile.defaultPyqInfluence || '')
+      setPyqInclusion(activeExamProfile.defaultPyqInclusion || '')
+      if (activeExamProfile.defaultDifficulty) {
+        setMcqDifficulty(activeExamProfile.defaultDifficulty)
+        setFlashDifficulty(activeExamProfile.defaultDifficulty)
+      }
+      if (activeExamProfile.defaultQuestionType) {
+        setQuestionType(activeExamProfile.defaultQuestionType)
+      }
+    }
+  }, [activeExamProfile])
+
   const finalQuantity = useMemo(() => {
     return contentMode === 'mcqs' ? mcqCount : flashCount
   }, [contentMode, mcqCount, flashCount])
@@ -221,44 +287,86 @@ export default function ChapterMcqInjection() {
   const subjectTitle = activeSubject?.name || 'Selected Subject'
   const chapterTitle = activeChapter?.name || 'Selected Chapter'
 
-  const generatedPromptText = useMemo(() => {
-    if (contentMode === 'mcqs') {
-      return `SYSTEM PROMPT: Senior Curriculum Specialist
-Target Context:
-- Course: ${courseTitle}
-- Subject: ${subjectTitle}
-- Chapter: ${chapterTitle}
-- Chapter Description: ${chapterDescription || 'N/A'}
-- Content Type: MCQs
-- Quantity: ${finalQuantity}
-- Difficulty: ${mcqDifficulty}
-- Language: ${mcqLanguage}
-- Exam Benchmark: ${targetExam || 'N/A'}
-- Question Type: ${questionType}
-- Cognitive Level: ${cognitiveLevel}
-- Topic Focus: ${topicFocus || 'N/A'}
-- Exam Pattern: ${examPattern || 'N/A'}
-- Explanation Required: ${explanationRequired}
-- Negative Marking: ${negativeMarking || 'N/A'}
-- Language Style: ${languageStyle}
-- Special Instructions: ${specialInstructions || 'N/A'}
-FORMAT: Return ONLY a valid JSON array with keys "question", "options" (array of 4), "correct" (A/B/C/D), "difficulty", and "explanation".`
-    }
+  const matchedPYQs = useMemo(() => {
+    if (contentMode !== 'mcqs' || !activeExamProfile || !activeSubject || !activeChapter) return []
+    return getRelevantPYQs({
+      courseId: selectedCourseId,
+      exam: activeExamProfile.key,
+      subject: activeSubject.name,
+      chapter: activeChapter.name,
+      topic: topicFocus,
+    })
+  }, [contentMode, activeExamProfile, activeSubject, activeChapter, selectedCourseId, topicFocus])
 
-    return `SYSTEM PROMPT: Senior Flashcard Specialist
-Target Context:
-- Course: ${courseTitle}
-- Subject: ${subjectTitle}
-- Chapter: ${chapterTitle}
-- Chapter Description: ${chapterDescription || 'N/A'}
-- Content Type: Flashcards
-- Quantity: ${finalQuantity}
-- Difficulty: ${flashDifficulty}
-- Language: ${flashLanguage}
-- Deck Name: ${flashDeckName || 'N/A'}
-- Language Style: ${languageStyle}
-- Special Instructions: ${specialInstructions || 'N/A'}
-FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
+  const pyqAnalysis = useMemo(() => analyzePYQs(matchedPYQs), [matchedPYQs])
+
+  const generatedPromptText = useMemo(() => {
+    try {
+      if (contentMode === 'mcqs') {
+        return generateExamPrompt('mcqs', {
+          courseTitle,
+          subjectTitle,
+          chapterTitle,
+          chapterDescription,
+          contentMode,
+          finalQuantity,
+          mcqDifficulty,
+          flashDifficulty,
+          mcqLanguage,
+          flashLanguage,
+          targetExam,
+          questionType,
+          cognitiveLevel,
+          topicFocus,
+          examPattern,
+          explanationRequired,
+          negativeMarking,
+          languageStyle,
+          specialInstructions,
+          flashDeckName,
+          activeExamProfileKey: activeExamProfile?.key,
+          factualDepth,
+          cognitiveStyle,
+          biharIntegration,
+          pyqInfluence,
+          pyqInclusion,
+        }, matchedPYQs, pyqAnalysis)
+      }
+
+      return generateExamPrompt('flashcards', {
+        courseTitle,
+        subjectTitle,
+        chapterTitle,
+        chapterDescription,
+        contentMode,
+        finalQuantity,
+        mcqDifficulty,
+        flashDifficulty,
+        mcqLanguage,
+        flashLanguage,
+        targetExam,
+        questionType,
+        cognitiveLevel,
+        topicFocus,
+        examPattern,
+        explanationRequired,
+        negativeMarking,
+        languageStyle,
+        specialInstructions,
+        flashDeckName,
+        activeExamProfileKey: activeExamProfile?.key,
+        factualDepth,
+        cognitiveStyle,
+        biharIntegration,
+        pyqInfluence,
+        pyqInclusion,
+      }, [], null)
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('[ChapterMcqInjection] Prompt generation failed:', err)
+      }
+      return `Prompt generation failed: ${err?.message || 'Unknown error'}`
+    }
   }, [
     contentMode,
     courseTitle,
@@ -267,7 +375,9 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     chapterDescription,
     finalQuantity,
     mcqDifficulty,
+    flashDifficulty,
     mcqLanguage,
+    flashLanguage,
     targetExam,
     questionType,
     cognitiveLevel,
@@ -278,8 +388,12 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     languageStyle,
     specialInstructions,
     flashDeckName,
-    flashDifficulty,
-    flashLanguage,
+    activeExamProfile,
+    factualDepth,
+    cognitiveStyle,
+    biharIntegration,
+    pyqInfluence,
+    pyqInclusion,
   ])
 
   // ── 5. Injection State Lifecycle & Request Isolation ──────────────────────
@@ -296,7 +410,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
     setInjectionError(null)
     setInjectionResult(null)
     setCurrentPayload(null)
-  }, [selectedCourseId, selectedSubjectName, selectedChapterName, contentMode])
+  }, [selectedCourseId, selectedSubjectId, selectedChapterId, contentMode])
 
   // ── 6. JSON State & Handlers ─────────────────────────────────
   const [copied, setCopied] = useState(false)
@@ -304,6 +418,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
   const [jsonStatus, setJsonStatus] = useState('empty')
   const [jsonError, setJsonError] = useState(null)
   const [jsonItemCount, setJsonItemCount] = useState(0)
+  const [bpscValidationResult, setBpscValidationResult] = useState(null)
 
   const validateAndParse = useCallback(
     (raw) => {
@@ -324,6 +439,29 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
 
         const activeItems = contentMode === 'mcqs' ? mcqItems : flashItems
         if (activeItems.length > 0) {
+          if (contentMode === 'mcqs' && activeExamProfile?.key === 'BPSC_PRELIMS') {
+            const bpscVal = validateBPSCBatch(activeItems)
+            setBpscValidationResult(bpscVal)
+            if (bpscVal.invalidCount > 0) {
+              setJsonStatus('warning')
+              setJsonError(`${bpscVal.validCount} of ${bpscVal.total} passed BPSC 15-check validation (${bpscVal.invalidCount} failed).`)
+              setJsonItemCount(bpscVal.validCount)
+              setCurrentPayload(bpscVal.passedItems)
+              setInjectionStatus(bpscVal.validCount > 0 ? 'ready' : 'idle')
+              setInjectionResult(null)
+              return true
+            } else {
+              setJsonStatus('valid')
+              setJsonError(null)
+              setJsonItemCount(bpscVal.validCount)
+              setCurrentPayload(bpscVal.passedItems)
+              setInjectionStatus('ready')
+              setInjectionResult(null)
+              return true
+            }
+          }
+
+          setBpscValidationResult(null)
           setJsonStatus('valid')
           setJsonError(null)
           setJsonItemCount(activeItems.length)
@@ -333,12 +471,14 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
           return true
         }
 
+        setBpscValidationResult(null)
         setJsonStatus('invalid')
         setJsonError(`JSON does not contain ${contentMode} payload.`)
         setJsonItemCount(0)
         setCurrentPayload(null)
         return false
       } catch (err) {
+        setBpscValidationResult(null)
         setJsonStatus('invalid')
         setJsonError(err.message)
         setJsonItemCount(0)
@@ -346,7 +486,7 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
         return false
       }
     },
-    [contentMode],
+    [contentMode, activeExamProfile],
   )
 
   const handleJsonChange = useCallback(
@@ -451,7 +591,12 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
         activeChapter.id,
         currentPayload,
         contentMode,
-        { subjectName: activeSubject.name, chapterName: activeChapter.name }
+        {
+          subjectName: activeSubject.name,
+          chapterName: activeChapter.name,
+          exam_profile: activeExamProfile?.key || 'GENERIC',
+          prompt_version: activeExamProfile?.promptVersion || 'generic-v1',
+        }
       )
 
       if (reqId !== currentRequestIdRef.current) return
@@ -490,413 +635,386 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
   const [flashModalForm, setFlashModalForm] = useState({ front: '', back: '' })
 
   return (
-    <div className="chapter-mcq-injection-shell">
-      {/* ── TOP CONTAINER: Context Selectors + Live Chapter Statistics ── */}
-      <div className="top-context-stats-container">
-        <div className="top-selectors-box">
-          <div className="top-box-header">
-            <AppIcon name="folder" size={18} className="top-header-icon" />
-            <span>Target Context Selection</span>
+    <div className="chapter-mcq-injection-shell smart-viewport">
+      {/* ── TOP UNIFIED CONTEXT & METRICS STRIP ── */}
+      <div className="smart-context-strip">
+        <div className="context-select-group">
+          {/* 1. Course */}
+          <div className="smart-select-pill" title="Selected Course">
+            <span className="pill-prefix">Course:</span>
+            <select
+              className="smart-inline-select"
+              value={selectedCourseId}
+              title={selectedCourse?.name || 'Select Course'}
+              onChange={(e) => handleCourseChange(e.target.value)}
+            >
+              {workspaces.map((w) => (
+                <option key={w.id} value={w.id} title={w.name}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="cascade-inputs-grid">
-            <div className="cascade-field">
-              <label className="field-lbl">1. Course</label>
-              <select
-                className="admin-select-sm"
-                value={selectedCourseId}
-                title={selectedCourse?.name || 'Select Course'}
-                onChange={(e) => {
-                  const newCourseId = e.target.value
-                  setSelectedCourseId(newCourseId)
-                  setActiveWorkspace(newCourseId)
-                  const subs = adminState.allSubjects.filter((s) => s.courseId === newCourseId)
-                  const firstSubId = subs[0]?.id || ''
-                  setSelectedSubjectId(firstSubId)
-                  const chs = adminState.allChapters.filter(
-                    (c) => (c.subjectId === firstSubId || c.subject_id === firstSubId) && c.courseId === newCourseId
-                  )
-                  setSelectedChapterId(chs[0]?.id || '')
-                }}
-              >
-                {workspaces.map((w) => (
-                  <option key={w.id} value={w.id} title={w.name}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="cascade-field">
-              <label className="field-lbl">2. Subject</label>
-              <select
-                className="admin-select-sm"
-                value={selectedSubjectId}
-                title={activeSubject?.name || 'Select Subject'}
-                onChange={(e) => {
-                  const newSubId = e.target.value
-                  setSelectedSubjectId(newSubId)
-                  const chs = adminState.allChapters.filter(
-                    (c) =>
-                      (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
-                      c.courseId === selectedCourseId
-                  )
-                  setSelectedChapterId(chs[0]?.id || '')
-                }}
-                disabled={currentCourseSubjects.length === 0}
-              >
-                {currentCourseSubjects.map((s) => (
-                  <option key={s.id} value={s.id} title={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="cascade-field">
-              <label className="field-lbl">3. Chapter</label>
-              <select
-                className="admin-select-sm"
-                value={selectedChapterId}
-                title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
-                onChange={(e) => setSelectedChapterId(e.target.value)}
-                disabled={currentChapters.length === 0}
-              >
-                {currentChapters.map((c) => (
-                  <option key={c.id} value={c.id} title={`Ch ${c.number}: ${c.name}`}>
-                    Ch {c.number}: {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* 2. Subject */}
+          <div className="smart-select-pill" title="Selected Subject">
+            <span className="pill-prefix">Subject:</span>
+            <select
+              className="smart-inline-select"
+              value={selectedSubjectId}
+              title={activeSubject?.name || 'Select Subject'}
+              onChange={(e) => {
+                const newSubId = e.target.value
+                setSelectedSubjectId(newSubId)
+                const chs = adminState.allChapters.filter(
+                  (c) =>
+                    (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
+                    c.courseId === selectedCourseId
+                )
+                setSelectedChapterId(chs[0]?.id || '')
+              }}
+              disabled={currentCourseSubjects.length === 0}
+            >
+              {currentCourseSubjects.map((s) => (
+                <option key={s.id} value={s.id} title={s.name}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {/* 3. Chapter */}
+          <div className="smart-select-pill chapter-pill" title="Selected Chapter">
+            <span className="pill-prefix">Chapter:</span>
+            <select
+              className="smart-inline-select"
+              value={selectedChapterId}
+              title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
+              onChange={(e) => setSelectedChapterId(e.target.value)}
+              disabled={currentChapters.length === 0}
+            >
+              {currentChapters.map((c) => (
+                <option key={c.id} value={c.id} title={`Ch ${c.number}: ${c.name}`}>
+                  Ch {c.number}: {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exam Profile Badge */}
+          {activeExamProfile && activeExamProfile.key === 'BPSC_PRELIMS' && (
+            <span className="bpsc-mode-badge-pill" title="Post-68th BPSC Prelims rules active">
+              ⭐ BPSC PRELIMS
+            </span>
+          )}
         </div>
 
-        {/* Right Side of Top Container: Chapter Statistics */}
-        <div className="top-stats-box">
-          <div className="top-box-header">
-            <AppIcon name="analyticsTab" size={18} className="top-header-icon" />
-            <span>"{activeChapter?.name || 'Selected Chapter'}" Statistics</span>
+        {/* Live Metrics Quick Badges */}
+        <div className="metrics-strip-pills">
+          <div className="metric-pill" title="MCQs in this chapter">
+            <AppIcon name="mcqs" size={13} style={{ color: '#2E5CE6' }} />
+            <span className="metric-val">{chapterMcqs.length}</span>
+            <span className="metric-tag">MCQs</span>
           </div>
-
-          <div className="stats-cards-grid">
-            <div className="stat-mini-card">
-              <div className="stat-top">
-                <AppIcon name="mcqs" size={16} style={{ color: '#2E5CE6' }} />
-                <span className="stat-lbl">MCQs</span>
-              </div>
-              <div className="stat-val">{chapterMcqs.length}</div>
-            </div>
-
-            <div className="stat-mini-card">
-              <div className="stat-top">
-                <AppIcon name="flashcardsTab" size={16} style={{ color: '#7C3AED' }} />
-                <span className="stat-lbl">Flashcards</span>
-              </div>
-              <div className="stat-val">{chapterFlashcards.length}</div>
-            </div>
-
-            <div className="stat-mini-card">
-              <div className="stat-top">
-                <AppIcon name="document" size={16} style={{ color: '#F1621B' }} />
-                <span className="stat-lbl">Notes</span>
-              </div>
-              <div className="stat-val">{chapterNotesCount}</div>
-            </div>
-
-            <div className="stat-mini-card">
-              <div className="stat-top">
-                <AppIcon name="target" size={16} style={{ color: '#12B76A' }} />
-                <span className="stat-lbl">Readiness</span>
-              </div>
-              <div className="stat-val">{chapterHealthScore}%</div>
-            </div>
+          <div className="metric-pill" title="Flashcards in this chapter">
+            <AppIcon name="flashcardsTab" size={13} style={{ color: '#7C3AED' }} />
+            <span className="metric-val">{chapterFlashcards.length}</span>
+            <span className="metric-tag">Cards</span>
+          </div>
+          <div className="metric-pill" title="Notes in this chapter">
+            <AppIcon name="document" size={13} style={{ color: '#F1621B' }} />
+            <span className="metric-val">{chapterNotesCount}</span>
+            <span className="metric-tag">Notes</span>
+          </div>
+          <div className="metric-pill readiness-pill" title="Chapter Readiness score">
+            <AppIcon name="target" size={13} style={{ color: '#12B76A' }} />
+            <span className="metric-val">{chapterHealthScore}%</span>
+            <span className="metric-tag">Ready</span>
           </div>
         </div>
       </div>
 
       {/* ── MAIN WORKSPACE (2-COLUMN DIV SPLIT) ── */}
-      <div className="main-workspace-grid">
+      <div className="main-workspace-grid compact-grid">
         {/* ── LEFT DIV: CONTENT GENERATOR PANEL ── */}
-        <div className="prompt-builder-left-div">
-          <div className="left-card-header">
-            <div className="header-title-block">
-              <AppIcon name="edit" size={18} className="header-icon" />
-              <div>
-                <h3 className="left-card-title">Content Generator</h3>
-                <p className="left-card-sub">Configure options, then copy prompt to generate externally.</p>
-              </div>
+        <div className="prompt-builder-left-div smart-card">
+          <div className="studio-card-header">
+            <div className="studio-title-group">
+              <AppIcon name="edit" size={16} className="studio-icon" />
+              <span className="studio-title">AI Prompt Studio</span>
+            </div>
+
+            {/* Segmented Mode Switcher */}
+            <div className="segmented-switcher-sm">
+              <button
+                type="button"
+                className={`seg-btn ${contentMode === 'mcqs' ? 'active' : ''}`}
+                onClick={() => setContentMode('mcqs')}
+              >
+                <AppIcon name="mcqs" size={13} /> MCQs
+              </button>
+              <button
+                type="button"
+                className={`seg-btn ${contentMode === 'flashcards' ? 'active' : ''}`}
+                onClick={() => setContentMode('flashcards')}
+              >
+                <AppIcon name="flashcardsTab" size={13} /> Cards
+              </button>
             </div>
 
             <Button
               variant="primary"
-              size="md"
+              size="sm"
               onClick={handleCopyPrompt}
-              className="copy-prompt-btn"
+              className="copy-prompt-btn-sm"
+              title="Copy prompt for external generation"
             >
-              <AppIcon name={copied ? "check" : "copy"} size={16} />
-              {copied ? '✓ Prompt Copied' : 'Copy Prompt'}
+              <AppIcon name={copied ? "check" : "copy"} size={14} />
+              {copied ? 'Copied!' : 'Copy Prompt'}
             </Button>
           </div>
 
-          {/* Target Context Summary Badge Bar */}
-          <div className="prompt-context-summary-pill">
-            <div className="summary-chip">
-              <span className="chip-label">Course:</span> <strong>{courseTitle}</strong>
-            </div>
-            <div className="summary-chip">
-              <span className="chip-label">Subject:</span> <strong>{subjectTitle}</strong>
-            </div>
-            <div className="summary-chip">
-              <span className="chip-label">Chapter:</span> <strong>{chapterTitle}</strong>
-            </div>
-            <div className={`summary-chip ${chapterDescription ? 'desc-attached' : 'desc-empty'}`}>
-              <AppIcon name={chapterDescription ? 'check' : 'help'} size={12} />
-              <span>{chapterDescription ? 'Description Attached' : 'No Description'}</span>
-            </div>
-          </div>
-
-          {/* Mode Switcher: MCQs vs Flashcards */}
-          <div className="mode-pill-switcher">
-            <button
-              type="button"
-              className={`mode-pill ${contentMode === 'mcqs' ? 'active' : ''}`}
-              onClick={() => setContentMode('mcqs')}
-            >
-              <AppIcon name="mcqs" size={15} /> MCQs Mode
-            </button>
-            <button
-              type="button"
-              className={`mode-pill ${contentMode === 'flashcards' ? 'active' : ''}`}
-              onClick={() => setContentMode('flashcards')}
-            >
-              <AppIcon name="flashcardsTab" size={15} /> Flashcards Mode
-            </button>
-          </div>
-
-          {/* Primary Fields Grid */}
-          <div className="gen-form-grid">
-            <div className="form-field">
-              <label className="form-lbl">
-                Quantity <span className="req-tag">(Required)</span>
-              </label>
-              <select
-                className="admin-select-sm"
-                value={contentMode === 'mcqs' ? mcqCount : flashCount}
-                onChange={(e) => {
-                  const val = Number(e.target.value)
-                  if (contentMode === 'mcqs') setMcqCount(val)
-                  else setFlashCount(val)
-                }}
-              >
-                {[10, 15, 20, 30, 50, 100].map((c) => (
-                  <option key={c} value={c}>
-                    {c} {contentMode === 'mcqs' ? 'MCQs' : 'Cards'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label className="form-lbl">
-                Difficulty <span className="req-tag">(Required)</span>
-              </label>
-              <select
-                className="admin-select-sm"
-                value={contentMode === 'mcqs' ? mcqDifficulty : flashDifficulty}
-                onChange={(e) => {
-                  if (contentMode === 'mcqs') setMcqDifficulty(e.target.value)
-                  else setFlashDifficulty(e.target.value)
-                }}
-              >
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-                <option value="Mixed">Mixed</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label className="form-lbl">
-                Language <span className="req-tag">(Required)</span>
-              </label>
-              <select
-                className="admin-select-sm"
-                value={contentMode === 'mcqs' ? mcqLanguage : flashLanguage}
-                onChange={(e) => {
-                  if (contentMode === 'mcqs') setMcqLanguage(e.target.value)
-                  else setFlashLanguage(e.target.value)
-                }}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label className="form-lbl">
-                {contentMode === 'mcqs' ? 'Exam Benchmark' : 'Deck Name'} <span className="opt-badge">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                className="admin-input-sm"
-                placeholder={contentMode === 'mcqs' ? 'e.g. GATE / SSC / Class 12' : 'e.g. Core Concepts'}
-                value={contentMode === 'mcqs' ? targetExam : flashDeckName}
-                onChange={(e) => {
-                  if (contentMode === 'mcqs') setTargetExam(e.target.value)
-                  else setFlashDeckName(e.target.value)
-                }}
-              />
-            </div>
-
-            <div className="form-field full-width">
-              <label className="form-lbl">
-                Chapter Description{' '}
-                <span className="opt-badge auto-loaded-badge">
-                  <AppIcon name="check" size={10} /> Auto-loaded from Chapter
-                </span>
-              </label>
-              <textarea
-                className="admin-textarea-sm prompt-desc-textarea"
-                rows="2"
-                placeholder="Chapter description loaded automatically when a chapter is selected..."
-                value={chapterDescription}
-                onChange={(e) => setChapterDescription(e.target.value)}
-              />
-            </div>
-
-            <div className="form-field full-width">
-              <label className="form-lbl">
-                Generation Instructions <span className="opt-badge">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                className="admin-input-sm"
-                placeholder={`Generate ${contentMode === 'mcqs' ? 'MCQs' : 'Flashcards'}...`}
-                value={conceptFocus}
-                onChange={(e) => setConceptFocus(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Advanced Prompt Options */}
-          <button
-            type="button"
-            className="advanced-toggle"
-            onClick={() => setShowAdvanced((prev) => !prev)}
-          >
-            <AppIcon name={showAdvanced ? "remove" : "add"} size={16} />
-            {showAdvanced ? 'Hide Advanced Prompt Options' : 'Advanced Prompt Options'}
-          </button>
-
-          {showAdvanced && (
-            <div className="advanced-options-grid">
-              <div className="form-field">
-                <label className="form-lbl">Question Type</label>
+          {/* Form Scroll Area */}
+          <div className="studio-form-scrollable">
+            {/* Primary Parameters Row */}
+            <div className="compact-params-grid">
+              <div className="compact-field">
+                <label className="compact-lbl">Quantity</label>
                 <select
-                  className="admin-select-sm"
-                  value={questionType}
-                  onChange={(e) => setQuestionType(e.target.value)}
+                  className="smart-form-select"
+                  value={contentMode === 'mcqs' ? mcqCount : flashCount}
+                  onChange={(e) => {
+                    const val = Number(e.target.value)
+                    if (contentMode === 'mcqs') setMcqCount(val)
+                    else setFlashCount(val)
+                  }}
                 >
-                  {QUESTION_TYPES.map((q) => (
-                    <option key={q} value={q}>{q}</option>
+                  {[10, 15, 20, 30, 50, 100].map((c) => (
+                    <option key={c} value={c}>
+                      {c} {contentMode === 'mcqs' ? 'MCQs' : 'Cards'}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-lbl">Cognitive Level</label>
+              <div className="compact-field">
+                <label className="compact-lbl">Difficulty</label>
                 <select
-                  className="admin-select-sm"
-                  value={cognitiveLevel}
-                  onChange={(e) => setCognitiveLevel(e.target.value)}
+                  className="smart-form-select"
+                  value={contentMode === 'mcqs' ? mcqDifficulty : flashDifficulty}
+                  onChange={(e) => {
+                    if (contentMode === 'mcqs') setMcqDifficulty(e.target.value)
+                    else setFlashDifficulty(e.target.value)
+                  }}
                 >
-                  {COGNITIVE_LEVELS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {(activeExamProfile && activeExamProfile.difficulties && activeExamProfile.difficulties.length
+                    ? activeExamProfile.difficulties
+                    : ['Easy', 'Medium', 'Hard', 'Mixed']
+                  ).map((d) => (
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-lbl">Exam Pattern</label>
+              <div className="compact-field">
+                <label className="compact-lbl">Language</label>
                 <select
-                  className="admin-select-sm"
-                  value={examPattern}
-                  onChange={(e) => setExamPattern(e.target.value)}
+                  className="smart-form-select"
+                  value={contentMode === 'mcqs' ? mcqLanguage : flashLanguage}
+                  onChange={(e) => {
+                    if (contentMode === 'mcqs') setMcqLanguage(e.target.value)
+                    else setFlashLanguage(e.target.value)
+                  }}
                 >
-                  <option value="">None</option>
-                  {EXAM_PATTERNS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-field">
-                <label className="form-lbl">Explanation Required</label>
-                <select
-                  className="admin-select-sm"
-                  value={explanationRequired}
-                  onChange={(e) => setExplanationRequired(e.target.value)}
-                >
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-
-              <div className="form-field">
-                <label className="form-lbl">Language Style</label>
-                <select
-                  className="admin-select-sm"
-                  value={languageStyle}
-                  onChange={(e) => setLanguageStyle(e.target.value)}
-                >
-                  {LANGUAGE_STYLES.map((l) => (
+                  {LANGUAGES.map((l) => (
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-lbl">Negative Marking</label>
+              <div className="compact-field">
+                <label className="compact-lbl">{contentMode === 'mcqs' ? 'Exam Focus' : 'Deck'}</label>
                 <input
                   type="text"
-                  className="admin-input-sm"
-                  placeholder="e.g. 0.25 marks"
-                  value={negativeMarking}
-                  onChange={(e) => setNegativeMarking(e.target.value)}
-                />
-              </div>
-
-              <div className="form-field full-width">
-                <label className="form-lbl">Topic Focus</label>
-                <input
-                  type="text"
-                  className="admin-input-sm"
-                  placeholder="e.g. TCP/IP, OSI Layers"
-                  value={topicFocus}
-                  onChange={(e) => setTopicFocus(e.target.value)}
-                />
-              </div>
-
-              <div className="form-field full-width">
-                <label className="form-lbl">Special Instructions</label>
-                <textarea
-                  className="admin-textarea-sm"
-                  rows="2"
-                  placeholder="Any additional instructions for the generator..."
-                  value={specialInstructions}
-                  onChange={(e) => setSpecialInstructions(e.target.value)}
+                  className="smart-form-input"
+                  placeholder={contentMode === 'mcqs' ? 'e.g. BPSC / GATE' : 'e.g. Core'}
+                  value={contentMode === 'mcqs' ? targetExam : flashDeckName}
+                  onChange={(e) => {
+                    if (contentMode === 'mcqs') setTargetExam(e.target.value)
+                    else setFlashDeckName(e.target.value)
+                  }}
                 />
               </div>
             </div>
-          )}
+
+            {/* Focus / Instructions Input */}
+            <div className="compact-field full-width" style={{ marginTop: '8px' }}>
+              <label className="compact-lbl">Special Instructions / Topic Focus</label>
+              <input
+                type="text"
+                className="smart-form-input"
+                placeholder="e.g. Focus on key personalities, movements, dates..."
+                value={conceptFocus}
+                onChange={(e) => setConceptFocus(e.target.value)}
+              />
+            </div>
+
+            {/* Expandable Chapter Description Section */}
+            <div className="accordion-card">
+              <button
+                type="button"
+                className="accordion-header"
+                onClick={() => setShowDescDetails((prev) => !prev)}
+              >
+                <div className="acc-title-wrap">
+                  <AppIcon name="document" size={13} />
+                  <span>Chapter Description & Context</span>
+                  {chapterDescription && <span className="auto-tag">✓ Loaded</span>}
+                </div>
+                <AppIcon name={showDescDetails ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={14} />
+              </button>
+
+              {showDescDetails && (
+                <div className="accordion-content">
+                  <textarea
+                    className="compact-textarea"
+                    rows="2"
+                    placeholder="Chapter context and topics description..."
+                    value={chapterDescription}
+                    onChange={(e) => setChapterDescription(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Expandable Advanced Tuning Section */}
+            <div className="accordion-card">
+              <button
+                type="button"
+                className="accordion-header"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+              >
+                <div className="acc-title-wrap">
+                  <AppIcon name="settings" size={13} />
+                  <span>Advanced Parameters & Calibration</span>
+                </div>
+                <AppIcon name={showAdvanced ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={14} />
+              </button>
+
+              {showAdvanced && (
+                <div className="accordion-content">
+                  <div className="advanced-mini-grid">
+                    <div className="compact-field">
+                      <label className="compact-lbl">Question Type</label>
+                      <select
+                        className="smart-form-select"
+                        value={questionType}
+                        onChange={(e) => setQuestionType(e.target.value)}
+                      >
+                        {(activeExamProfile?.questionTypes?.length ? activeExamProfile.questionTypes : QUESTION_TYPES).map((q) => (
+                          <option key={q} value={q}>{q}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="compact-field">
+                      <label className="compact-lbl">Cognitive Level</label>
+                      <select
+                        className="smart-form-select"
+                        value={cognitiveLevel}
+                        onChange={(e) => setCognitiveLevel(e.target.value)}
+                      >
+                        {COGNITIVE_LEVELS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="compact-field">
+                      <label className="compact-lbl">Exam Pattern</label>
+                      <select
+                        className="smart-form-select"
+                        value={examPattern}
+                        onChange={(e) => setExamPattern(e.target.value)}
+                      >
+                        <option value="">Default Standard</option>
+                        {EXAM_PATTERNS.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="compact-field">
+                      <label className="compact-lbl">Explanation</label>
+                      <select
+                        className="smart-form-select"
+                        value={explanationRequired}
+                        onChange={(e) => setExplanationRequired(e.target.value)}
+                      >
+                        <option value="Yes">Yes (Mandatory)</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+
+                    {activeExamProfile && activeExamProfile.key !== 'GENERIC' && (
+                      <>
+                        <div className="compact-field">
+                          <label className="compact-lbl">Bihar Target</label>
+                          <select
+                            className="smart-form-select"
+                            value={biharIntegration}
+                            onChange={(e) => setBiharIntegration(e.target.value)}
+                          >
+                            {(activeExamProfile.biharIntegrationOptions || ['Standard (22%)', 'High (35%)', 'Low (10%)']).map((b) => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="compact-field">
+                          <label className="compact-lbl">PYQ Weight</label>
+                          <select
+                            className="smart-form-select"
+                            value={pyqInfluence}
+                            onChange={(e) => setPyqInfluence(e.target.value)}
+                          >
+                            {(activeExamProfile.pyqInfluenceOptions || ['Medium', 'High', 'Low']).map((p) => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Expandable Live Prompt Preview */}
+            <div className="accordion-card prompt-preview-card">
+              <button
+                type="button"
+                className="accordion-header"
+                onClick={() => setShowPromptPreview((prev) => !prev)}
+              >
+                <div className="acc-title-wrap">
+                  <AppIcon name="code" size={13} />
+                  <span>Prompt Blueprint Preview</span>
+                </div>
+                <AppIcon name={showPromptPreview ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={14} />
+              </button>
+
+              {showPromptPreview && (
+                <div className="accordion-content">
+                  <pre className="prompt-raw-preview">{generatedPromptText}</pre>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── RIGHT DIV: INJECTION STATUS CARD WORKSPACE ── */}
-        <div className="content-right-div">
+        <div className="content-right-div smart-card">
           <InjectionStatusCard
             chapterName={activeChapter?.name || 'Selected Chapter'}
             chapterDescription={chapterDescription}
@@ -912,6 +1030,37 @@ FORMAT: Return ONLY a valid JSON object with keys "front" and "back".`
             result={injectionResult}
             onInject={handlePerformInjection}
             onClearJson={handleClearJson}
+            showPyqSection={contentMode === 'mcqs' && activeExamProfile && activeExamProfile.key !== 'GENERIC'}
+            matchedPYQs={matchedPYQs}
+            bpscValidationResult={contentMode === 'mcqs' && activeExamProfile?.key === 'BPSC_PRELIMS' ? bpscValidationResult : null}
+            onAutoFix={() => {
+              if (!currentPayload || !Array.isArray(currentPayload) || currentPayload.length === 0) return
+              const fixed = autoFixBPSCItems(currentPayload)
+              const formatted = JSON.stringify(fixed, null, 2)
+              setJsonText(formatted)
+              handleJsonChange(formatted)
+              showToast({
+                type: 'success',
+                title: 'BPSC MCQs Auto-Fixed',
+                message: 'Standardized Option E and repaired formatting across all MCQs!',
+              })
+            }}
+            onRegenerateFailed={() => {
+              if (!bpscValidationResult || bpscValidationResult.failedItems.length === 0) return
+              const targetedPrompt = buildTargetedRegenerationPrompt({
+                failedItems: bpscValidationResult.failedItems,
+                course: courseTitle,
+                subject: subjectTitle,
+                chapter: chapterTitle,
+                language: mcqLanguage,
+              })
+              navigator.clipboard.writeText(targetedPrompt)
+              showToast({
+                type: 'success',
+                title: 'Targeted Prompt Copied',
+                message: `Prompt to regenerate ${bpscValidationResult.failedItems.length} failed MCQs copied to clipboard!`,
+              })
+            }}
           />
         </div>
       </div>

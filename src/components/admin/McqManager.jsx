@@ -10,10 +10,15 @@ import { useAdminStore } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
 import { mcqService } from '../../services/mcqService'
 import { showToast } from '../../data/feedbackStore'
+import { getActiveExamKey, getExamProfile } from '../../data/examProfiles'
 
 export default function McqManager() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { allSubjects, allChapters, allMcqs } = useAdminStore()
+
+  const activeExamKey = getActiveExamKey()
+  const activeExamProfile = getExamProfile(activeExamKey)
+  const showPyqBadge = activeExamProfile && activeExamProfile.key !== 'GENERIC'
 
   const [selectedCourseId, setSelectedCourseId] = useState(activeWorkspaceId || '')
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
@@ -772,6 +777,9 @@ export default function McqManager() {
                       <span className={`difficulty-tag tag-${difficultyTag.toLowerCase()}`}>
                         {difficultyTag}
                       </span>
+                      {showPyqBadge && mcq.is_pyq && (
+                        <span className="pyq-badge">⭐ PYQ</span>
+                      )}
                     </div>
 
                     <div className="mcq-card-actions">

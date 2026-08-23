@@ -4,8 +4,16 @@
  * - Prompt generation (MCQ + Flashcard)
  * - JSON validation (MCQ + Flashcard)
  * - Template presets
+ * - Exam-aware prompt generation
  * All local/mock — no backend.
  */
+
+import { getExamProfile, resolveExamProfile } from '../data/examProfiles.js'
+import { getRelevantPYQs, analyzePYQs } from '../data/pyqRepository.js'
+import { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES } from './bpscPromptRules.js'
+import { validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems } from './bpscValidator.js'
+
+export { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems }
 
 // ── Template Presets ──────────────────────────────────────────────
 export const templatePresets = [
@@ -14,6 +22,12 @@ export const templatePresets = [
     label: 'BPSC TRE 4.0',
     icon: 'rocket',
     values: { className: 'Class 12', examination: 'BPSC TRE', difficulty: 'Medium', language: 'English', withExplanations: 'Yes', withPreviousYear: 'Yes', withNegative: 'No' },
+  },
+  {
+    id: 'bpsc-prelims',
+    label: 'BPSC Prelims',
+    icon: 'target',
+    values: { className: 'Graduate', examination: 'BPSC CCE Prelims', difficulty: 'BPSC Authentic Mix', language: 'English', withExplanations: 'Yes', withPreviousYear: 'Yes', withNegative: 'Yes' },
   },
   {
     id: 'cbse',
@@ -46,6 +60,58 @@ export const templatePresets = [
     values: {},
   },
 ]
+
+// ── Universal Exam-Aware MCQ Prompt Builder ──────────────────────
+export function buildMCQPrompt({
+  course = '',
+  subject = '',
+  chapter = '',
+  chapterDescription = '',
+  difficulty = 'Auto',
+  quantity = 10,
+  language = 'English',
+  examProfile = null,
+  topic = '',
+  specialInstructions = '',
+  withExplanations = 'Yes',
+  withPreviousYear = 'No',
+  withNegative = 'No',
+  matchedPYQs = [],
+  pyqAnalysis = null,
+} = {}) {
+  const profile = resolveExamProfile(examProfile || course)
+
+  if (profile && profile.key === 'BPSC_PRELIMS') {
+    return buildBPSCPrompt({
+      course: course || profile.label,
+      subject,
+      chapter,
+      chapterDescription,
+      difficulty,
+      quantity,
+      language,
+      specialInstructions,
+      matchedPYQs,
+      pyqAnalysis,
+    })
+  }
+
+  // Fallback to standard generic prompt
+  return generateMcqPrompt({
+    numQuestions: quantity,
+    subject,
+    chapter,
+    chapterDescription,
+    topic,
+    difficulty,
+    language,
+    examination: course || profile.label || 'Standard Exam',
+    withExplanations,
+    withPreviousYear,
+    withNegative,
+    specialInstructions,
+  })
+}
 
 // ── Prompt Generation ─────────────────────────────────────────────
 function buildSpecLines(form) {
@@ -152,6 +218,230 @@ export function generatePrompt(contentType, form) {
   return contentType === 'flashcards' ? generateFlashcardPrompt(form) : generateMcqPrompt(form)
 }
 
+// ── Exam-aware Prompt Generation ──────────────────────────────────
+export function buildExamPrompt({ examProfile, form, matchedPYQs = [], pyqAnalysis }) {
+  const profile = examProfile || resolveExamProfile(form.examKey || form.activeExamProfileKey || form.courseTitle || form.targetExam)
+
+  if (profile && profile.key === 'BPSC_PRELIMS' && form.contentMode !== 'flashcards') {
+    return buildBPSCPrompt({
+      course: form.courseTitle || 'BPSC Prelims',
+      subject: form.subjectTitle,
+      chapter: form.chapterTitle,
+      chapterDescription: form.chapterDescription,
+      difficulty: form.mcqDifficulty || form.difficulty || 'Auto',
+      quantity: form.finalQuantity || form.numQuestions || 10,
+      language: form.mcqLanguage || form.language || 'English',
+      specialInstructions: form.specialInstructions,
+      matchedPYQs,
+      pyqAnalysis,
+    })
+  }
+
+  if (!profile || profile.key === 'GENERIC' || !profile.promptTemplate) {
+    return generateMcqPrompt({
+      numQuestions: form.finalQuantity || form.numQuestions,
+      subject: form.subjectTitle,
+      chapter: form.chapterTitle,
+      chapterDescription: form.chapterDescription,
+      topic: form.topicFocus,
+      difficulty: form.contentMode === 'mcqs' ? form.mcqDifficulty : form.flashDifficulty,
+      language: form.contentMode === 'mcqs' ? form.mcqLanguage : form.flashLanguage,
+      examination: form.targetExam || form.courseTitle,
+      withExplanations: form.explanationRequired,
+      withPreviousYear: form.pyqInclusion === 'Include Actual PYQs' || form.pyqInclusion === 'PYQ + Generated Mix' ? 'Yes' : 'No',
+      withNegative: form.negativeMarking ? 'Yes' : 'No',
+      specialInstructions: form.specialInstructions,
+    })
+  }
+
+  const lines = []
+  lines.push(profile.promptTemplate)
+  lines.push('')
+
+  lines.push('EXAM CONTEXT:')
+  lines.push(`- Course: ${form.courseTitle || 'N/A'}`)
+  lines.push(`- Exam: ${profile.label}`)
+  lines.push(`- Subject: ${form.subjectTitle || 'N/A'}`)
+  lines.push(`- Chapter: ${form.chapterTitle || 'N/A'}`)
+  if (profile.examPattern) {
+    lines.push(`- Total questions in real exam: ${profile.examPattern.totalQuestions}`)
+    lines.push(`- Time: ${profile.examPattern.timeMinutes} minutes`)
+    lines.push(`- Marks per question: ${profile.examPattern.marksPerQuestion}`)
+    lines.push(`- Negative marking: ${profile.examPattern.negativeMarking}`)
+    lines.push(`- Option structure: ${profile.examPattern.optionStructure}`)
+    if (profile.examPattern.optionELabel) {
+      lines.push(`- Option E label: "${profile.examPattern.optionELabel}"`)
+    }
+  }
+  lines.push('')
+
+  if (matchedPYQs && matchedPYQs.length > 0) {
+    lines.push('PREVIOUSLY ASKED QUESTIONS:')
+    lines.push(`- The following questions were previously asked from this chapter/topic.`)
+    lines.push(`- Count: ${matchedPYQs.length}`)
+    lines.push(`- Use these ONLY as reference material to understand tested concepts, difficulty, wording style, conceptual traps, and recurring areas.`)
+    lines.push('- Do NOT copy PYQ wording or reproduce the same question.')
+    lines.push('- Preserve the distinction between PYQs and newly generated questions.')
+    lines.push('')
+    matchedPYQs.forEach((pyq, idx) => {
+      const year = pyq.exam_year || pyq.year || 'N/A'
+      const qNo = pyq.question_number || pyq.questionNo || 'N/A'
+      const qText = pyq.question_text || pyq.question || ''
+      lines.push(`PYQ ${idx + 1} [Year: ${year} | Q: ${qNo}]: ${qText}`)
+    })
+    lines.push('')
+    lines.push('GENERATION INSTRUCTIONS:')
+    lines.push('- Use the PYQs above to identify tested concepts and exam patterns.')
+    lines.push('- Preserve exam relevance and ensure important previously asked concepts are represented.')
+    lines.push('- Generate additional NEW original questions covering the chapter comprehensively.')
+    lines.push('- Do not invent PYQs.')
+    lines.push('- Do not falsely label generated questions as PYQs.')
+    lines.push('- Maintain the selected exam\'s expected difficulty and style.')
+  } else {
+    lines.push('PREVIOUSLY ASKED QUESTIONS:')
+    lines.push('- No verified PYQs found for this specific topic.')
+    lines.push('- Generate using course, exam profile, subject, chapter, and selected parameters only.')
+    lines.push('')
+    lines.push('GENERATION INSTRUCTIONS:')
+    lines.push('- Cover the selected chapter comprehensively.')
+    lines.push('- Maintain the selected exam\'s expected difficulty and style.')
+  }
+  lines.push('')
+
+  if (profile.questionTypes && profile.questionTypes.length) {
+    lines.push('QUESTION TYPE RULES:')
+    lines.push(`- Requested question type: ${form.questionType || profile.defaultQuestionType}`)
+    lines.push(`- Allowed types: ${profile.questionTypes.join(', ')}`)
+    lines.push('')
+  }
+
+  if (profile.difficulties && profile.difficulties.length) {
+    lines.push('DIFFICULTY RULES:')
+    lines.push(`- Requested difficulty: ${form.contentMode === 'mcqs' ? form.mcqDifficulty : form.flashDifficulty || profile.defaultDifficulty}`)
+    lines.push(`- Allowed difficulties: ${profile.difficulties.join(', ')}`)
+    lines.push('')
+  }
+
+  if (profile.factualDepthOptions && profile.factualDepthOptions.length) {
+    lines.push('FACTUAL DEPTH RULES:')
+    lines.push(`- Factual depth: ${form.factualDepth || profile.defaultFactualDepth}`)
+    lines.push(`- Allowed depths: ${profile.factualDepthOptions.join(', ')}`)
+    lines.push('')
+  }
+
+  if (profile.cognitiveStyles && profile.cognitiveStyles.length) {
+    lines.push('COGNITIVE STYLE RULES:')
+    lines.push(`- Cognitive style: ${form.cognitiveStyle || profile.defaultCognitiveStyle}`)
+    lines.push(`- Allowed styles: ${profile.cognitiveStyles.join(', ')}`)
+    lines.push('')
+  }
+
+  if (profile.biharIntegrationOptions && profile.biharIntegrationOptions.length) {
+    lines.push('Bihar Integration:')
+    lines.push(`- Bihar integration: ${form.biharIntegration || profile.defaultBiharIntegration}`)
+    lines.push(`- Options: ${profile.biharIntegrationOptions.join(', ')}`)
+    lines.push('')
+  }
+
+  if (profile.validationRules) {
+    lines.push('VALIDATION RULES:')
+    const v = profile.validationRules
+    if (v.requireOptionE) lines.push('- Option E is mandatory and labeled: ' + (v.optionELabel || 'Not Attempted'))
+    if (v.maxStatements) lines.push(`- Maximum statements per question: ${v.maxStatements}`)
+    if (v.homogeneousOptions) lines.push('- All options must be homogeneous in length and complexity')
+    if (v.noClueLeakage) lines.push('- Ensure no clue leakage between questions')
+    lines.push('')
+  }
+
+  if (pyqAnalysis && pyqAnalysis.total > 0) {
+    lines.push('PYQ PATTERN ANALYSIS:')
+    lines.push(`- Total relevant PYQs found: ${pyqAnalysis.total}`)
+    if (pyqAnalysis.mostTested && pyqAnalysis.mostTested.length) {
+      lines.push(`- Most tested micro-topics: ${pyqAnalysis.mostTested.map((m) => `${m.topic}(${m.count})`).join(', ')}`)
+    }
+    if (pyqAnalysis.commonPatterns && pyqAnalysis.commonPatterns.length) {
+      lines.push(`- Common patterns: ${pyqAnalysis.commonPatterns.map((p) => `${p.pattern}(${p.count})`).join(', ')}`)
+    }
+    if (pyqAnalysis.lastAsked && pyqAnalysis.lastAsked.length) {
+      lines.push(`- Last asked years: ${pyqAnalysis.lastAsked.join(', ')}`)
+    }
+    lines.push(`- Priority: ${pyqAnalysis.priority}`)
+    lines.push('')
+  }
+
+  lines.push('SUBJECT / CHAPTER INJECTION:')
+  lines.push(`- Course: ${form.courseTitle || 'N/A'}`)
+  lines.push(`- Subject: ${form.subjectTitle || 'N/A'}`)
+  lines.push(`- Chapter: ${form.chapterTitle || 'N/A'}`)
+  if (form.chapterDescription) {
+    lines.push(`- Chapter Description: ${form.chapterDescription}`)
+  }
+  lines.push('')
+
+  lines.push('GENERATION PARAMETERS:')
+  lines.push(`- Quantity: ${form.finalQuantity || 10}`)
+  lines.push(`- Language: ${form.contentMode === 'mcqs' ? form.mcqLanguage : form.flashLanguage}`)
+  if (form.targetExam) lines.push(`- Exam Benchmark: ${form.targetExam}`)
+  if (form.topicFocus) lines.push(`- Topic Focus: ${form.topicFocus}`)
+  if (form.examPattern) lines.push(`- Exam Pattern: ${form.examPattern}`)
+  if (form.negativeMarking) lines.push(`- Negative Marking: ${form.negativeMarking}`)
+  if (form.languageStyle) lines.push(`- Language Style: ${form.languageStyle}`)
+  if (form.specialInstructions) lines.push(`- Special Instructions: ${form.specialInstructions}`)
+  lines.push('')
+
+  if (form.contentMode === 'flashcards') {
+    lines.push('OUTPUT FORMAT:')
+    lines.push('Return ONLY a valid JSON array - no markdown, no code fences, no extra text.')
+    lines.push('Each object must use this exact schema:')
+    lines.push('{')
+    lines.push('  "front": "The question or prompt text.",')
+    lines.push('  "back": "The answer text."')
+    lines.push('}')
+    lines.push('')
+    lines.push("Ensure the JSON is complete, syntactically valid, and ready to import into Nexora's flashcard system without any edits.")
+  } else {
+    lines.push('OUTPUT FORMAT:')
+    lines.push('Return ONLY a valid JSON array - no markdown, no code fences, no extra text.')
+    const optionSchema = profile.validationRules?.requireOptionE
+      ? `"options": { "A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D", "E": "${profile.validationRules.optionELabel || 'Not Attempted'}" }`
+      : `"options": { "A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D" }`
+    lines.push('Each object must use this exact schema:')
+    lines.push('{')
+    lines.push('  "question": "Full question text here.",')
+    lines.push(`  ${optionSchema},`)
+    lines.push('  "correct": "A",')
+    lines.push('  "difficulty": "Moderate",')
+    lines.push('  "explanation": "Concise explanation.",')
+    lines.push(`  "subject": "${form.subjectTitle || 'Subject name'}",`)
+    lines.push(`  "chapter": "${form.chapterTitle || 'Chapter name'}"`)
+    lines.push('}')
+    lines.push('')
+    lines.push('Ensure the JSON is complete, syntactically valid, and ready to import into Nexora MCQ system without any edits.')
+  }
+
+  return lines.join('\n')
+}
+
+export function generateExamPrompt(contentType, form, matchedPYQs, pyqAnalysis) {
+  const profile = getExamProfile(form.examKey || form.activeExamProfileKey || form.targetExam)
+
+  const pyqs = matchedPYQs || (contentType === 'mcqs' ? getRelevantPYQs({
+    exam: profile.key,
+    subject: form.subjectTitle,
+    chapter: form.chapterTitle,
+    topic: form.topicFocus,
+  }) : [])
+
+  const analysis = pyqAnalysis || analyzePYQs(pyqs)
+
+  return buildExamPrompt({
+    examProfile: profile,
+    form: { ...form, contentType },
+    matchedPYQs: pyqs,
+    pyqAnalysis: analysis,
+  })
+}
+
 // ── JSON Validation ───────────────────────────────────────────────
 export function parseJsonInput(raw) {
   try {
@@ -176,11 +466,11 @@ export function validateMcqJson(records) {
       issues.push('Not an object')
     } else {
       if (!record.question || !String(record.question).trim()) issues.push('Missing question')
-      if (!record.optionA || !String(record.optionA).trim()) issues.push('Missing optionA')
-      if (!record.optionB || !String(record.optionB).trim()) issues.push('Missing optionB')
-      if (!record.optionC || !String(record.optionC).trim()) issues.push('Missing optionC')
-      if (!record.optionD || !String(record.optionD).trim()) issues.push('Missing optionD')
-      if (!record.correctAnswer || !['A', 'B', 'C', 'D'].includes(String(record.correctAnswer).toUpperCase())) issues.push('Invalid correctAnswer (must be A/B/C/D)')
+      if (!record.optionA && !record.options) issues.push('Missing optionA')
+      if (!record.optionB && !record.options) issues.push('Missing optionB')
+      if (!record.optionC && !record.options) issues.push('Missing optionC')
+      if (!record.optionD && !record.options) issues.push('Missing optionD')
+      if (!record.correctAnswer && !record.correct) issues.push('Missing correctAnswer')
       if (!record.explanation || !String(record.explanation).trim()) issues.push('Missing explanation')
       if (!record.subject || !String(record.subject).trim()) issues.push('Missing subject')
       if (!record.chapter || !String(record.chapter).trim()) issues.push('Missing chapter')

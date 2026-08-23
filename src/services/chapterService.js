@@ -3,12 +3,12 @@
  * Centralized API Service for Subject-Scoped Chapters with Supabase column mapping.
  */
 
-import { apiService } from './apiService'
+import { apiService } from './apiService.js'
 import {
   addChapter,
   updateChapter as updateChapterInStore,
   deleteChapter as deleteChapterFromStore,
-} from '../data/adminStore'
+} from '../data/adminStore.js'
 
 function toSlug(name, suffix) {
   const base = (name || 'chapter')
