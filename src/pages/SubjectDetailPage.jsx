@@ -23,6 +23,7 @@ import TimeSpent from '../components/subject/TimeSpent'
 import Achievements from '../components/subject/Achievements'
 import AccuracyChart from '../components/subject/AccuracyChart'
 import AppIcon from '../components/ui/AppIcon'
+import ChapterNotesView from '../components/student/ChapterNotesView'
 import { subjectTabs } from '../utils/navigation'
 
 const tabItems = [
@@ -150,10 +151,10 @@ function SubjectDetailPage({
 
     if (activeTab === 'notes') {
       return (
-        <>
-          <StatGrid metrics={derived.notesMetrics} />
-          <WeakTopics title="Pinned Notes" items={derived.notesList} />
-        </>
+        <ChapterNotesView
+          courseId={courseId || activeWorkspaceId}
+          subject={subject}
+        />
       )
     }
 

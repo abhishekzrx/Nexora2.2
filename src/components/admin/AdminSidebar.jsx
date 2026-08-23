@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { key: 'dashboard', label: 'DASHBOARD', icon: 'adminDashboard' },
   { key: 'courses', label: 'COURSE MANAGER', icon: 'folder' },
   { key: 'subjects', label: 'SUBJECTS', icon: 'chapters' },
+  { key: 'notes', label: 'NOTES EDITOR', icon: 'notesTab' },
   { key: 'mcq-injection', label: 'CHAPTER MCQS INJECTION', icon: 'document' },
   { key: 'mcq-manager', label: 'MCQ MANAGER', icon: 'mcqs' },
   { key: 'analytics', label: 'ANALYTICS', icon: 'analyticsTab', disabled: true },

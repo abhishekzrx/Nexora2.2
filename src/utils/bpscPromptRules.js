@@ -18,12 +18,9 @@ export const BPSC_PRELIMS_PROMPT_RULES = `You are a senior question-setter for t
 Follow the modern post-68th BPSC Prelims examination calibration with rigorous precision.
 
 CORE PRINCIPLES:
-1. FACTUAL ANCHORING: Every question must be anchored in verifiable, concrete historical, geographical, administrative, scientific, economic, or constitutional facts. Avoid vague or speculative premises.
-2. MICRO-FACTUAL DEPTH & ANALYTICAL ELIMINATION: Test authentic depth (e.g. exact organizations, associated treaties, regional jurisdictions, act numbers, committee names, session venues, and chronology) with moderate analytical elimination.
-3. STATEMENT-BASED QUESTIONS:
-   - Maximum of 3 statements (Statement 1, Statement 2, Statement 3).
-   - Statements must be factual verification items, NOT abstract philosophical essays.
-   - Incorrect statements must contain plausible micro-factual modifications (e.g. flipped names, swapped dates, altered constitutional articles, inverted statistical trends, or misplaced locations).
+1. ONLY STANDARD MULTIPLE CHOICE QUESTIONS (MCQs): Every item must be a direct, standard multiple-choice question. Do NOT generate assertion-reason pairs.
+2. FACTUAL ANCHORING: Every question must be anchored in verifiable, concrete historical, geographical, administrative, scientific, economic, or constitutional facts. Avoid vague or speculative premises.
+3. MICRO-FACTUAL DEPTH & ANALYTICAL ELIMINATION: Test authentic depth (e.g. exact organizations, associated treaties, regional jurisdictions, act numbers, committee names, session venues, and chronology) with analytical elimination.
 4. DISTRACTOR ENGINEERING (OPTIONS A-D):
    - All options A-D must belong to the exact same taxonomic category (e.g. all 4 are rivers of North Bihar, all 4 are 1920s peasant leaders, all 4 are constitutional articles).
    - Distractors must be plausible and realistic—never obviously absurd, never joke answers.
@@ -100,30 +97,14 @@ export function createBPSCBatchPlan({ quantity = 10, difficulty = 'Auto', questi
   let questionTypesPlan = {}
   const normalizedType = String(questionType || 'Auto').toLowerCase().trim()
 
-  if (normalizedType.includes('direct factual')) {
+  if (normalizedType.includes('direct factual') || normalizedType.includes('factual')) {
     questionTypesPlan = { directFactual: total }
-  } else if (normalizedType.includes('two-statement') || normalizedType === 'twostatement') {
-    questionTypesPlan = { twoStatement: total }
-  } else if (normalizedType.includes('three-statement') || normalizedType === 'threestatement') {
-    questionTypesPlan = { threeStatement: total }
-  } else if (normalizedType.includes('matching')) {
-    questionTypesPlan = { matching: total }
-  } else if (normalizedType.includes('chronology')) {
-    questionTypesPlan = { chronology: total }
-  } else if (normalizedType.includes('assertion')) {
-    questionTypesPlan = { assertionReason: total }
-  } else if (normalizedType.includes('cause')) {
-    questionTypesPlan = { causeEffect: total }
   } else if (normalizedType.includes('conceptual')) {
     questionTypesPlan = { conceptual: total }
   } else if (normalizedType.includes('application')) {
     questionTypesPlan = { application: total }
-  } else if (normalizedType.includes('map') || normalizedType.includes('location')) {
-    questionTypesPlan = { mapLocation: total }
-  } else if (normalizedType.includes('data') || normalizedType.includes('statistic')) {
-    questionTypesPlan = { dataStatistics: total }
-  } else if (normalizedType.includes('person') || normalizedType.includes('event')) {
-    questionTypesPlan = { personalityEvent: total }
+  } else if (normalizedType.includes('statement')) {
+    questionTypesPlan = { twoStatement: total }
   } else {
     // Standard bulk question distribution
     questionTypesPlan = allocateIntegerDistribution(total, profile.questionTypeDistribution)

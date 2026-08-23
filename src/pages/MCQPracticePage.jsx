@@ -22,6 +22,8 @@ import { getCurrentUserId, getUserId } from '../services/userService'
 import { calculateAccuracy, calculateChapterMetrics } from '../services/mcqAnalyticsService'
 import { useWorkspaceStore } from '../data/workspaceStore'
 import { updateUserProgressStore } from '../data/progressStore'
+import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
+import PyqBadge from '../components/mcq/PyqBadge'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -76,7 +78,8 @@ const QuestionPanel = memo(function QuestionPanel({
     <div className={`question-panel${examMode && isMobile ? ' exam-mode' : ''}`}>
       <div className="qpanel-top">
         <div className="qpanel-title">
-          Question {questionNumber} of {totalQuestions}
+          <span>Question {questionNumber} of {totalQuestions}</span>
+          <PyqBadge question={question} size="sm" />
         </div>
         <div className="qpanel-actions">
           <button type="button" className="action-btn" onClick={onToggleMark} disabled={reviewMode} aria-label="Mark for review">
@@ -102,7 +105,9 @@ const QuestionPanel = memo(function QuestionPanel({
           key={animKey}
           className={`question-anim q-anim-${animPhase} q-dir-${animDir}`}
         >
-          <div className="question-text">{question.text || 'Question text not available.'}</div>
+          <div className="question-text">
+            <FormattedQuestionText text={question.text} question={question} />
+          </div>
 
           <div className="options">
             {optionsList.map((option, optionIndex) => {
@@ -114,6 +119,8 @@ const QuestionPanel = memo(function QuestionPanel({
                     ? ' review-wrong'
                     : ''
                 : ''
+              const optionStr = typeof option === 'string' ? option : String(option || '')
+
               return (
                 <button
                   key={`opt-${optionIndex}`}
@@ -125,7 +132,9 @@ const QuestionPanel = memo(function QuestionPanel({
                   <div className="radio">
                     {isSelected ? <div className="radio-dot" /> : null}
                   </div>
-                  {String.fromCharCode(65 + optionIndex)}. {typeof option === 'string' ? option : String(option)}
+                  <span className="option-label-text">
+                    <strong className="opt-letter-prefix">{String.fromCharCode(65 + optionIndex)}.</strong> {optionStr}
+                  </span>
                 </button>
               )
             })}
@@ -421,15 +430,29 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
           const questionText = m.question || m.text
           if (!questionText || typeof questionText !== 'string') return
 
-          const rawOpts = m.options || [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD].filter(Boolean)
-          const opts = rawOpts.length >= 2 ? rawOpts : ['Option A', 'Option B', 'Option C', 'Option D']
+          let opts = []
+          if (Array.isArray(m.options) && m.options.length > 0) {
+            opts = m.options
+          } else if (m.options && typeof m.options === 'object') {
+            opts = ['A', 'B', 'C', 'D', 'E']
+              .map((k) => m.options[k] ?? m.options[k.toLowerCase()])
+              .filter((v) => v !== undefined && v !== null)
+          }
+
+          if (opts.length < 2) {
+            opts = [m.option_a || m.optionA, m.option_b || m.optionB, m.option_c || m.optionC, m.option_d || m.optionD, m.option_e || m.optionE].filter(Boolean)
+          }
+
+          if (opts.length < 2) {
+            opts = ['Option A', 'Option B', 'Option C', 'Option D']
+          }
 
           let correctIdx = 0
           if (typeof m.correct === 'number') correctIdx = m.correct
           else if (typeof m.correct_answer === 'number') correctIdx = m.correct_answer
           else if (typeof m.correct_answer === 'string' || typeof m.correctAnswer === 'string') {
             const strKey = String(m.correct_answer || m.correctAnswer || 'A').trim().toUpperCase()
-            const map = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
+            const map = { A: 0, B: 1, C: 2, D: 3, E: 4, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4 }
             correctIdx = map[strKey] ?? 0
           }
 

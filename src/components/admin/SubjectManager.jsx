@@ -26,6 +26,7 @@ import { subjectService, getSubjectIconByName } from '../../services/subjectServ
 import { chapterService } from '../../services/chapterService'
 import { mcqService } from '../../services/mcqService'
 import IconPicker from './IconPicker'
+import ChapterNotesEditorModal from './ChapterNotesEditorModal'
 
 const COLOR_PRESETS = [
   '#F1621B',
@@ -794,6 +795,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
   const [activeTab, setActiveTab] = useState('chapters')
   const [showChapterModal, setShowChapterModal] = useState(false)
   const [editingChapter, setEditingChapter] = useState(null)
+  const [notesEditorModal, setNotesEditorModal] = useState({ open: false, chapter: null })
 
   // Chapter Delete Security Modal State
   const [deleteSecurityModal, setDeleteSecurityModal] = useState({
@@ -1185,6 +1187,14 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
                     <div className="sm-ch-actions">
                       <button
                         type="button"
+                        className="sm-icon-action-btn notes"
+                        onClick={() => setNotesEditorModal({ open: true, chapter: ch })}
+                        title="Author / Edit Chapter Notes"
+                      >
+                        <AppIcon name="notesTab" size={14} />
+                      </button>
+                      <button
+                        type="button"
                         className="sm-icon-action-btn"
                         onClick={() => handleResetChapterState(ch)}
                         title="Reset Readiness & Accuracy State for this Chapter"
@@ -1257,15 +1267,32 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
       {/* Tab 3: Subject Actions */}
       {activeTab === 'settings' && (
         <div className="sm-tab-content">
-          <h4 className="sm-block-title">Subject Quick Actions</h4>
-          <div className="sm-quick-actions-grid">
-            <Button variant="secondary" onClick={() => onEditSubject(selectedSubject)}>
-              <AppIcon name="edit" size={15} /> Edit Subject Details
-            </Button>
-            <Button variant="secondary" onClick={() => onToggleLock(selectedSubject.id)}>
-              <AppIcon name={selectedSubject.locked ? 'lockOpen' : 'lock'} size={15} />
-              {selectedSubject.locked ? 'Unlock Subject' : 'Lock Subject'}
-            </Button>
+          <h4 className="sm-block-title">Subject Configuration</h4>
+          <div className="sm-settings-grid">
+            <div className="sm-setting-card">
+              <div>
+                <h5>Edit Subject Details</h5>
+                <p>Change name, description, icon, and accent color.</p>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => onEditSubject(selectedSubject)}>
+                <AppIcon name="edit" size={13} /> Edit
+              </Button>
+            </div>
+
+            <div className="sm-setting-card">
+              <div>
+                <h5>Lock / Unlock Subject</h5>
+                <p>Prevent or allow student access to this subject's content.</p>
+              </div>
+              <Button
+                variant={selectedSubject.locked ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => onToggleLock(selectedSubject.id)}
+              >
+                <AppIcon name={selectedSubject.locked ? 'lockOpen' : 'lock'} size={13} />
+                {selectedSubject.locked ? 'Unlock' : 'Lock'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -1278,6 +1305,23 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
           existingChapters={subjectChapters}
           onSave={handleSaveChapter}
           onClose={() => setShowChapterModal(false)}
+        />
+      )}
+
+      {/* Chapter Notes Editor Modal */}
+      {notesEditorModal.open && notesEditorModal.chapter && (
+        <ChapterNotesEditorModal
+          isOpen={notesEditorModal.open}
+          onClose={() => setNotesEditorModal({ open: false, chapter: null })}
+          courseId={activeCourseId}
+          subjectId={selectedSubject?.id}
+          subjectName={selectedSubject?.name}
+          chapterId={notesEditorModal.chapter?.id}
+          chapterName={notesEditorModal.chapter?.name}
+          chapterNumber={notesEditorModal.chapter?.number || 1}
+          onSaved={() => {
+            // Updated in Supabase and auto-synced
+          }}
         />
       )}
 

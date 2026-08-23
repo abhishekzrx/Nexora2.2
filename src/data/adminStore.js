@@ -15,6 +15,7 @@ import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, u
 import { subjectService } from '../services/subjectService.js'
 import { chapterService } from '../services/chapterService.js'
 import { mcqService } from '../services/mcqService.js'
+import { noteService } from '../services/noteService.js'
 
 let listeners = []
 let version = 0
@@ -112,16 +113,19 @@ let subjects = []
 let chapters = []
 let mcqs = []
 let flashcards = []
+let notes = []
 
 let snapshot = {
   allSubjects: [],
   allChapters: [],
   allMcqs: [],
   allFlashcards: [],
+  allNotes: [],
   subjects: [],
   chapters: [],
   mcqs: [],
   flashcards: [],
+  notes: [],
   activeCourseId: null,
 }
 
@@ -132,11 +136,12 @@ export async function hydrateAdminStoreFromSupabase() {
   hydrationPromise = (async () => {
     try {
       const activeCourseId = getActiveWorkspaceId()
-      const [subjectsRes, chaptersRes, mcqsRes, flashcardsRes] = await Promise.all([
+      const [subjectsRes, chaptersRes, mcqsRes, flashcardsRes, notesRes] = await Promise.all([
         activeCourseId ? subjectService.getSubjects(activeCourseId) : Promise.resolve({ success: true, data: [] }),
         activeCourseId ? chapterService.getChapters(activeCourseId, '') : Promise.resolve({ success: true, data: [] }),
         activeCourseId ? mcqService.getMcqs(activeCourseId, '', '') : Promise.resolve({ success: true, data: [] }),
         activeCourseId ? mcqService.getFlashcards(activeCourseId, '', '') : Promise.resolve({ success: true, data: [] }),
+        activeCourseId ? noteService.getNotes({ courseId: activeCourseId }) : Promise.resolve({ success: true, data: [] }),
       ])
 
       if (subjectsRes.success && Array.isArray(subjectsRes.data)) {
@@ -150,6 +155,9 @@ export async function hydrateAdminStoreFromSupabase() {
       }
       if (flashcardsRes.success && Array.isArray(flashcardsRes.data)) {
         flashcards = flashcardsRes.data
+      }
+      if (notesRes.success && Array.isArray(notesRes.data)) {
+        notes = notesRes.data
       }
 
       updateSnapshot()
@@ -172,10 +180,12 @@ function updateSnapshot() {
     allChapters: chapters,
     allMcqs: mcqs,
     allFlashcards: flashcards,
+    allNotes: notes,
     subjects: subjects.filter((s) => s.courseId === activeCourseId),
     chapters: chapters.filter((c) => c.courseId === activeCourseId),
     mcqs: mcqs.filter((m) => m.courseId === activeCourseId),
     flashcards: flashcards.filter((f) => f.courseId === activeCourseId),
+    notes: notes.filter((n) => n.courseId === activeCourseId),
     activeCourseId,
   }
 }
@@ -1087,6 +1097,33 @@ export function updateMcqInStore(updatedMcq) {
     }
     return m
   })
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function replaceNotes(newNotes) {
+  notes = Array.isArray(newNotes) ? newNotes : []
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function addNote(note) {
+  if (!note || !note.id) return
+  notes = [note, ...notes.filter((n) => String(n.id) !== String(note.id))]
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function updateNoteInStore(updatedNote) {
+  if (!updatedNote || !updatedNote.id) return
+  notes = notes.map((n) => (String(n.id) === String(updatedNote.id) ? { ...n, ...updatedNote } : n))
+  recomputeAllSubjectStats()
+  emit()
+}
+
+export function deleteNoteFromStore(noteId) {
+  if (!noteId) return
+  notes = notes.filter((n) => String(n.id) !== String(noteId))
   recomputeAllSubjectStats()
   emit()
 }

@@ -708,6 +708,59 @@
   }
 }
 
+.mcq-shell .qpanel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pyq-highlight-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.22) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #F59E0B;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pyq-highlight-badge.size-sm {
+  font-size: 10px;
+  padding: 1.5px 6px;
+}
+
+.pyq-highlight-badge.size-xs {
+  font-size: 9px;
+  padding: 1px 5px;
+}
+
+.pyq-star-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.structured-q-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.structured-q-container.standard-q-container {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--card-text);
+  line-height: 1.45;
+}
+
 .mcq-shell .question-text {
   font-size: 16px;
   font-weight: 700;

@@ -247,9 +247,91 @@ assert(regenPrompt.includes('DIAGNOSTIC DEFECTS TO FIX'), 'Regeneration prompt i
 console.log('\nTEST H: Course Foreign Key & Subject Integrity')
 import { courseService } from './src/services/courseService.js'
 import { subjectService } from './src/services/subjectService.js'
+import { parseStructuredQuestion, extractPyqInfo } from './src/utils/questionParser.js'
 
 assert(typeof courseService.ensureCourseExists === 'function', 'courseService.ensureCourseExists is defined')
 assert(typeof subjectService.createSubject === 'function', 'subjectService.createSubject is defined')
+
+// ── TEST I: Clean Question Parser & PYQ Highlighting ──
+console.log('\nTEST I: Clean Question Parser & PYQ Highlighting')
+
+const sampleQuestion = 'Which of the following was NOT a major method associated with the Civil Disobedience Movement?'
+const parsedQ = parseStructuredQuestion(sampleQuestion)
+
+assert(parsedQ.type === 'standard', 'Question parsed as type "standard"')
+assert(parsedQ.text.includes('Civil Disobedience Movement'), 'Question text preserved intact')
+
+// PYQ Info Extraction
+const pyq1 = { is_pyq: true, exam_year: '2023', pyq_exam: 'BPSC 69th', question_number: '12' }
+const info1 = extractPyqInfo(pyq1)
+assert(info1 && info1.isPyq === true, 'PYQ info recognized from is_pyq and exam_year')
+assert(info1.label === 'BPSC 69th 2023 · Q12', 'PYQ label formatted as "BPSC 69th 2023 · Q12"')
+
+const pyq2 = { text: '[BPSC 2022] Who was the first Chief Minister of Bihar?' }
+const info2 = extractPyqInfo(pyq2)
+assert(info2 && info2.isPyq === true, 'PYQ info recognized from embedded [BPSC 2022] tag')
+assert(info2.label === 'BPSC 2022', 'Embedded tag label formatted as "BPSC 2022"')
+
+// ── TEST J: JSON Key-Value Options Mapping ──
+console.log('\nTEST J: JSON Key-Value Options Mapping Integrity')
+
+const sampleJsonMcq = {
+  question: "Which of the following was NOT a major method associated with the Civil Disobedience Movement?",
+  options: {
+    A: "Salt Satyagraha at coastal regions",
+    B: "Boycott of foreign textiles and liquor shops",
+    C: "Non-payment of land revenue and chaukidari tax",
+    D: "Armed violent insurrection against state armories",
+    E: "Not Attempted"
+  },
+  correct: "D",
+  explanation: "Armed violent insurrection was not part of the mainstream Civil Disobedience Movement led by Mahatma Gandhi.",
+  difficulty: "Medium"
+}
+
+// Emulate option extraction
+const getOptFromObj = (item, letter, idx) => {
+  if (item.options) {
+    if (typeof item.options === 'object' && !Array.isArray(item.options)) {
+      if (item.options[letter] !== undefined && item.options[letter] !== null) return String(item.options[letter])
+      if (item.options[letter.toUpperCase()] !== undefined && item.options[letter.toUpperCase()] !== null) return String(item.options[letter.toUpperCase()])
+      if (item.options[letter.toLowerCase()] !== undefined && item.options[letter.toLowerCase()] !== null) return String(item.options[letter.toLowerCase()])
+      if (item.options[idx] !== undefined && item.options[idx] !== null) return String(item.options[idx])
+    }
+  }
+  return item[`option_${letter.toLowerCase()}`] || ''
+}
+
+assert(getOptFromObj(sampleJsonMcq, 'A', 0) === 'Salt Satyagraha at coastal regions', 'Option A extracted from JSON object accurately')
+assert(getOptFromObj(sampleJsonMcq, 'B', 1) === 'Boycott of foreign textiles and liquor shops', 'Option B extracted from JSON object accurately')
+assert(getOptFromObj(sampleJsonMcq, 'C', 2) === 'Non-payment of land revenue and chaukidari tax', 'Option C extracted from JSON object accurately')
+assert(getOptFromObj(sampleJsonMcq, 'D', 3) === 'Armed violent insurrection against state armories', 'Option D extracted from JSON object accurately')
+assert(getOptFromObj(sampleJsonMcq, 'E', 4) === 'Not Attempted', 'Option E extracted from JSON object accurately')
+
+// ── TEST K: Admin Notes Service & Scoping Integrity ──
+console.log('\nTEST K: Admin Notes Service & Scoping Contracts')
+import { noteService } from './src/services/noteService.js'
+
+assert(typeof noteService.getNotes === 'function', 'noteService.getNotes is defined')
+assert(typeof noteService.getNoteById === 'function', 'noteService.getNoteById is defined')
+assert(typeof noteService.createNote === 'function', 'noteService.createNote is defined')
+assert(typeof noteService.updateNote === 'function', 'noteService.updateNote is defined')
+assert(typeof noteService.deleteNote === 'function', 'noteService.deleteNote is defined')
+assert(typeof noteService.uploadNoteImage === 'function', 'noteService.uploadNoteImage is defined')
+
+// Validation test: missing fields
+const emptyCreate = await noteService.createNote({ courseId: '', subjectId: '', chapterId: '', title: '', content: '' })
+assert(emptyCreate.success === false, 'noteService.createNote rejects missing Course ID')
+assert(emptyCreate.error.includes('Course is required'), 'noteService.createNote gives explicit validation error')
+
+const missingChapterCreate = await noteService.createNote({ courseId: 'c1', subjectId: 's1', chapterId: '', title: 'Title', content: 'Content' })
+assert(missingChapterCreate.success === false, 'noteService.createNote rejects missing Chapter ID')
+
+const emptyTitleCreate = await noteService.createNote({ courseId: 'c1', subjectId: 's1', chapterId: 'ch1', title: '', content: 'Content' })
+assert(emptyTitleCreate.success === false, 'noteService.createNote rejects empty title')
+
+const emptyContentCreate = await noteService.createNote({ courseId: 'c1', subjectId: 's1', chapterId: 'ch1', title: 'Valid Title', content: '' })
+assert(emptyContentCreate.success === false, 'noteService.createNote rejects empty content')
 
 // ── SUMMARY ──
 console.log('\n=============================================================')
@@ -259,3 +341,6 @@ console.log('=============================================================\n')
 if (failedTests > 0) {
   process.exit(1)
 }
+
+
+

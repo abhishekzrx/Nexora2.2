@@ -4,6 +4,8 @@
    with high visual fidelity.
    ============================================ */
 
+@import './notes.css';
+
 .subject-detail-shell {
   --accent: #F1621B;
   --accent-light: #FF7A2E;

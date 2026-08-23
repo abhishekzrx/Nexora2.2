@@ -4,6 +4,8 @@
    Uses design tokens from tokens.css
    ============================================ */
 
+@import './notes.css';
+
 /* ── Mobile Admin Shell ─────────────────────────────────── */
 
 .admin-phone {

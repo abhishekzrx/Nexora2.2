@@ -83,6 +83,24 @@ import LockRounded from '@mui/icons-material/LockRounded'
 import LockOpenRounded from '@mui/icons-material/LockOpenRounded'
 import LightModeRounded from '@mui/icons-material/LightModeRounded'
 import DarkModeRounded from '@mui/icons-material/DarkModeRounded'
+import FormatBoldRounded from '@mui/icons-material/FormatBoldRounded'
+import FormatItalicRounded from '@mui/icons-material/FormatItalicRounded'
+import FormatUnderlinedRounded from '@mui/icons-material/FormatUnderlinedRounded'
+import StrikethroughSRounded from '@mui/icons-material/StrikethroughSRounded'
+import FormatListBulletedRounded from '@mui/icons-material/FormatListBulletedRounded'
+import FormatListNumberedRounded from '@mui/icons-material/FormatListNumberedRounded'
+import FormatQuoteRounded from '@mui/icons-material/FormatQuoteRounded'
+import TitleRounded from '@mui/icons-material/TitleRounded'
+import LinkRounded from '@mui/icons-material/LinkRounded'
+import ImageRounded from '@mui/icons-material/ImageRounded'
+import VisibilityRounded from '@mui/icons-material/VisibilityRounded'
+import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded'
+import SaveRounded from '@mui/icons-material/SaveRounded'
+import TableChartRounded from '@mui/icons-material/TableChartRounded'
+import VerticalSplitRounded from '@mui/icons-material/VerticalSplitRounded'
+import TextFieldsRounded from '@mui/icons-material/TextFieldsRounded'
+import NotesRounded from '@mui/icons-material/NotesRounded'
+import InsertDriveFileRounded from '@mui/icons-material/InsertDriveFileRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
@@ -184,6 +202,26 @@ export const iconRegistry = {
   copy: { component: ContentCopyRounded, optical: 0 },
   lock: { component: LockRounded, optical: 0 },
   lockOpen: { component: LockOpenRounded, optical: 0 },
+
+  // ── Notes & Rich Text Editor ───────────────────────────────
+  formatBold: { component: FormatBoldRounded, optical: 0 },
+  formatItalic: { component: FormatItalicRounded, optical: 0 },
+  formatUnderline: { component: FormatUnderlinedRounded, optical: 0 },
+  formatStrikethrough: { component: StrikethroughSRounded, optical: 0 },
+  formatListBulleted: { component: FormatListBulletedRounded, optical: 0 },
+  formatListNumbered: { component: FormatListNumberedRounded, optical: 0 },
+  formatQuote: { component: FormatQuoteRounded, optical: 0 },
+  title: { component: TitleRounded, optical: 0 },
+  textFields: { component: TextFieldsRounded, optical: 0 },
+  link: { component: LinkRounded, optical: 0 },
+  image: { component: ImageRounded, optical: 0 },
+  preview: { component: VisibilityRounded, optical: 0 },
+  previewOff: { component: VisibilityOffRounded, optical: 0 },
+  save: { component: SaveRounded, optical: 0 },
+  tableChart: { component: TableChartRounded, optical: 0 },
+  splitScreen: { component: VerticalSplitRounded, optical: 0 },
+  notesList: { component: NotesRounded, optical: 0 },
+  fileDoc: { component: InsertDriveFileRounded, optical: 0 },
 }
 
 export default iconRegistry

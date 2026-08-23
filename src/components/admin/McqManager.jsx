@@ -11,6 +11,8 @@ import { useWorkspaceStore } from '../../data/workspaceStore'
 import { mcqService } from '../../services/mcqService'
 import { showToast } from '../../data/feedbackStore'
 import { getActiveExamKey, getExamProfile } from '../../data/examProfiles'
+import FormattedQuestionText from '../mcq/FormattedQuestionText'
+import PyqBadge from '../mcq/PyqBadge'
 
 export default function McqManager() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
@@ -752,7 +754,20 @@ export default function McqManager() {
         ) : (
           <div className="mcq-cards-grid notebook-questions-list">
             {filteredMcqs.map((mcq, index) => {
-              const opts = mcq.options || [mcq.option_a, mcq.option_b, mcq.option_c, mcq.option_d]
+              let opts = []
+              if (Array.isArray(mcq.options) && mcq.options.length > 0) {
+                opts = mcq.options
+              } else if (mcq.options && typeof mcq.options === 'object') {
+                opts = ['A', 'B', 'C', 'D', 'E']
+                  .map((k) => mcq.options[k] ?? mcq.options[k.toLowerCase()])
+                  .filter((v) => v !== undefined && v !== null)
+              }
+              if (opts.length < 2) {
+                opts = [mcq.option_a, mcq.option_b, mcq.option_c, mcq.option_d, mcq.option_e].filter(Boolean)
+              }
+              if (opts.length < 2) {
+                opts = ['Option A', 'Option B', 'Option C', 'Option D']
+              }
               const correctIdx = typeof mcq.correct === 'number' ? mcq.correct : (mcq.correct_answer ?? 0)
               const userChoice = userSelectedOpts[mcq.id]
               const isExplanationOpen = expandedExplanations[mcq.id]
@@ -775,11 +790,9 @@ export default function McqManager() {
                     <div className="card-header-left">
                       <span className="notebook-q-badge">Q{index + 1}</span>
                       <span className={`difficulty-tag tag-${difficultyTag.toLowerCase()}`}>
-                        {difficultyTag}
+                         {difficultyTag}
                       </span>
-                      {showPyqBadge && mcq.is_pyq && (
-                        <span className="pyq-badge">⭐ PYQ</span>
-                      )}
+                      <PyqBadge question={mcq} size="xs" />
                     </div>
 
                     <div className="mcq-card-actions">
@@ -804,7 +817,7 @@ export default function McqManager() {
 
                   {/* Question Prompt */}
                   <div className="mcq-card-question notebook-question-text">
-                    {mcq.question || mcq.text}
+                    <FormattedQuestionText text={mcq.question || mcq.text} question={mcq} />
                   </div>
 
                   {/* Interactive Options Grid */}

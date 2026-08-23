@@ -19,8 +19,8 @@ import {
 
 function mapMcqToPayload(item, subjectId, chapterId) {
   const isValidUuid = item.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
-  const correctMap = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
-  const rawCorrect = item.correct !== undefined ? item.correct : item.correct_answer
+  const correctMap = { A: 0, B: 1, C: 2, D: 3, E: 4, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4 }
+  const rawCorrect = item.correct !== undefined ? item.correct : (item.correct_answer !== undefined ? item.correct_answer : item.correctAnswer)
   const correctInt = typeof rawCorrect === 'number' ? rawCorrect : (correctMap[String(rawCorrect || 'A').trim().toUpperCase()] ?? 0)
 
   let diffInt = 2
@@ -32,20 +32,46 @@ function mapMcqToPayload(item, subjectId, chapterId) {
     diffInt = 3
   }
 
-  return {
+  const getOpt = (letter, idx) => {
+    if (item.options) {
+      if (typeof item.options === 'object' && !Array.isArray(item.options)) {
+        if (item.options[letter] !== undefined && item.options[letter] !== null) return String(item.options[letter])
+        if (item.options[letter.toUpperCase()] !== undefined && item.options[letter.toUpperCase()] !== null) return String(item.options[letter.toUpperCase()])
+        if (item.options[letter.toLowerCase()] !== undefined && item.options[letter.toLowerCase()] !== null) return String(item.options[letter.toLowerCase()])
+        if (item.options[idx] !== undefined && item.options[idx] !== null) return String(item.options[idx])
+        if (item.options[String(idx)] !== undefined && item.options[String(idx)] !== null) return String(item.options[String(idx)])
+      } else if (Array.isArray(item.options)) {
+        if (item.options[idx] !== undefined && item.options[idx] !== null) return String(item.options[idx])
+      }
+    }
+    const directVal = item[`option_${letter.toLowerCase()}`] ?? item[`option_${letter.toUpperCase()}`] ?? item[`option${letter.toUpperCase()}`] ?? item[`option${letter.toLowerCase()}`] ?? item[letter.toLowerCase()] ?? item[letter.toUpperCase()]
+    if (directVal !== undefined && directVal !== null) {
+      return String(directVal)
+    }
+    return ''
+  }
+
+  const optA = getOpt('A', 0) || 'Option A'
+  const optB = getOpt('B', 1) || 'Option B'
+  const optC = getOpt('C', 2) || 'Option C'
+  const optD = getOpt('D', 3) || 'Option D'
+
+  const payload = {
     id: isValidUuid ? item.id : crypto.randomUUID(),
     subject_id: subjectId,
     chapter_id: chapterId,
-    question: item.question,
-    option_a: item.options?.[0] || item.option_a || item.optionA || 'Option A',
-    option_b: item.options?.[1] || item.option_b || item.optionB || 'Option B',
-    option_c: item.options?.[2] || item.option_c || item.optionC || 'Option C',
-    option_d: item.options?.[3] || item.option_d || item.optionD || 'Option D',
+    question: item.question || item.text || '',
+    option_a: optA,
+    option_b: optB,
+    option_c: optC,
+    option_d: optD,
     correct_answer: correctInt,
     explanation: item.explanation || '',
     difficulty: diffInt,
     status: item.status || 'active',
   }
+
+  return payload
 }
 
 function mapFlashcardToPayload(item, subjectId, chapterId) {
@@ -640,16 +666,36 @@ export const mcqService = {
       return { success: false, error: 'MCQ ID is required for update' }
     }
 
-    const correctMap = { A: 0, B: 1, C: 2, D: 3, '0': 0, '1': 1, '2': 2, '3': 3 }
-    const rawCorrect = updatePayload.correct !== undefined ? updatePayload.correct : updatePayload.correct_answer
+    const correctMap = { A: 0, B: 1, C: 2, D: 3, E: 4, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4 }
+    const rawCorrect = updatePayload.correct !== undefined ? updatePayload.correct : (updatePayload.correct_answer !== undefined ? updatePayload.correct_answer : updatePayload.correctAnswer)
     const correctInt = typeof rawCorrect === 'number' ? rawCorrect : (correctMap[String(rawCorrect || 'A').trim().toUpperCase()] ?? 0)
 
+    const getOpt = (letter, idx) => {
+      if (updatePayload.options) {
+        if (typeof updatePayload.options === 'object' && !Array.isArray(updatePayload.options)) {
+          if (updatePayload.options[letter] !== undefined && updatePayload.options[letter] !== null) return String(updatePayload.options[letter])
+          if (updatePayload.options[letter.toUpperCase()] !== undefined && updatePayload.options[letter.toUpperCase()] !== null) return String(updatePayload.options[letter.toUpperCase()])
+          if (updatePayload.options[letter.toLowerCase()] !== undefined && updatePayload.options[letter.toLowerCase()] !== null) return String(updatePayload.options[letter.toLowerCase()])
+          if (updatePayload.options[idx] !== undefined && updatePayload.options[idx] !== null) return String(updatePayload.options[idx])
+        } else if (Array.isArray(updatePayload.options)) {
+          if (updatePayload.options[idx] !== undefined && updatePayload.options[idx] !== null) return String(updatePayload.options[idx])
+        }
+      }
+      const direct = updatePayload[`option_${letter.toLowerCase()}`] ?? updatePayload[`option_${letter.toUpperCase()}`] ?? updatePayload[`option${letter.toUpperCase()}`] ?? updatePayload[`option${letter.toLowerCase()}`] ?? updatePayload[letter.toLowerCase()] ?? updatePayload[letter.toUpperCase()]
+      return direct !== undefined && direct !== null ? String(direct) : ''
+    }
+
+    const optA = getOpt('A', 0) || 'Option A'
+    const optB = getOpt('B', 1) || 'Option B'
+    const optC = getOpt('C', 2) || 'Option C'
+    const optD = getOpt('D', 3) || 'Option D'
+
     const dbPayload = {
-      question: updatePayload.question,
-      option_a: updatePayload.options?.[0] || updatePayload.option_a || 'Option A',
-      option_b: updatePayload.options?.[1] || updatePayload.option_b || 'Option B',
-      option_c: updatePayload.options?.[2] || updatePayload.option_c || 'Option C',
-      option_d: updatePayload.options?.[3] || updatePayload.option_d || 'Option D',
+      question: updatePayload.question || updatePayload.text || '',
+      option_a: optA,
+      option_b: optB,
+      option_c: optC,
+      option_d: optD,
       correct_answer: correctInt,
       explanation: updatePayload.explanation || '',
     }
