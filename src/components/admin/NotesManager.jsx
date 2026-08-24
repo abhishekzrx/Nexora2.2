@@ -8,7 +8,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import AppIcon from '../ui/AppIcon'
 import Button from '../ui/Button'
 import ChapterNotesEditorModal from './ChapterNotesEditorModal'
-import { useAdminStore } from '../../data/adminStore'
+import { useAdminStore, hydrateAdminStoreFromSupabase } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
 import { noteService } from '../../services/noteService'
 
@@ -43,6 +43,13 @@ export default function NotesManager({ courseName = '' }) {
     const list = allNotes && allNotes.length > 0 ? allNotes : notes
     return list.filter((n) => n.courseId === activeWorkspaceId)
   }, [activeWorkspaceId, notes, allNotes])
+
+  // Hydrate store from Supabase when workspace changes
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      hydrateAdminStoreFromSupabase().catch(() => {})
+    }
+  }, [activeWorkspaceId])
 
   // Select first subject by default if not set
   useEffect(() => {

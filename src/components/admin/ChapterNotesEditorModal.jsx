@@ -213,11 +213,19 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
     try {
       if (noteId) {
         // Update existing record
-        const res = await noteService.updateNote(noteId, { title, content, status })
+        const res = await noteService.updateNote(noteId, {
+          courseId: effectiveCourseId,
+          subjectId: effectiveSubjectId,
+          chapterId: effectiveChapterId,
+          chapterName: chapterName,
+          title,
+          content,
+          status,
+        })
         if (res.success && res.data) {
           setFeedback({
             type: 'success',
-            message: `✓ ${res.message || 'Note updated successfully'} (${new Date().toLocaleTimeString()})`,
+            message: `✓ ${res.message || 'Note updated and synchronized to Supabase'} (${new Date().toLocaleTimeString()})`,
             timestamp: new Date().toLocaleTimeString(),
           })
           onSaved?.(res.data)
@@ -234,6 +242,7 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           courseId: effectiveCourseId,
           subjectId: effectiveSubjectId,
           chapterId: effectiveChapterId,
+          chapterName: chapterName,
           title,
           content,
           status,
@@ -242,7 +251,7 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           setNoteId(res.data.id)
           setFeedback({
             type: 'success',
-            message: `✓ ${res.message || 'Note created and saved successfully'} (${new Date().toLocaleTimeString()})`,
+            message: `✓ ${res.message || 'Note created and synchronized to Supabase'} (${new Date().toLocaleTimeString()})`,
             timestamp: new Date().toLocaleTimeString(),
           })
           onSaved?.(res.data)

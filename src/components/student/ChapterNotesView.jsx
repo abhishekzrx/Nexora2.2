@@ -59,6 +59,7 @@ export default function ChapterNotesView({
           courseId,
           subjectId: subject?.id,
           chapterId: selectedChapter.id || selectedChapter.num,
+          chapterName: selectedChapter.name || selectedChapter.title || '',
         })
 
         if (!isCancelled) {

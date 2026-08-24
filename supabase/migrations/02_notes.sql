@@ -22,9 +22,16 @@ CREATE INDEX IF NOT EXISTS idx_notes_course ON public.notes (course_id);
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 
 -- Permissive policies for PostgREST client operations
+DROP POLICY IF EXISTS "Allow select notes" ON public.notes;
 CREATE POLICY "Allow select notes" ON public.notes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert notes" ON public.notes;
 CREATE POLICY "Allow insert notes" ON public.notes FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update notes" ON public.notes;
 CREATE POLICY "Allow update notes" ON public.notes FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow delete notes" ON public.notes;
 CREATE POLICY "Allow delete notes" ON public.notes FOR DELETE USING (true);
 
 -- Storage bucket for note images
@@ -32,7 +39,14 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('notes-images', 'notes-images', true)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Allow public select notes-images" ON storage.objects;
 CREATE POLICY "Allow public select notes-images" ON storage.objects FOR SELECT USING (bucket_id = 'notes-images');
+
+DROP POLICY IF EXISTS "Allow public insert notes-images" ON storage.objects;
 CREATE POLICY "Allow public insert notes-images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'notes-images');
+
+DROP POLICY IF EXISTS "Allow public update notes-images" ON storage.objects;
 CREATE POLICY "Allow public update notes-images" ON storage.objects FOR UPDATE USING (bucket_id = 'notes-images');
+
+DROP POLICY IF EXISTS "Allow public delete notes-images" ON storage.objects;
 CREATE POLICY "Allow public delete notes-images" ON storage.objects FOR DELETE USING (bucket_id = 'notes-images');
