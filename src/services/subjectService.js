@@ -10,6 +10,7 @@ import {
   updateSubject as updateSubjectInStore,
   deleteSubject as deleteSubjectFromStore,
 } from '../data/adminStore.js'
+import { BPSC_PRELIMS_SUBJECTS } from '../data/bpscPrelimsSeed.js'
 
 export function getSubjectIconByName(name, fallback = 'chapters') {
   if (!name) return fallback
@@ -22,27 +23,43 @@ export function getSubjectIconByName(name, fallback = 'chapters') {
   if (n.includes('structure') || n.includes('algo') || n.includes('dsa') || n.includes('python') || n.includes('code') || n.includes('programming')) return 'dataStructures'
   if (n.includes('theory') || n.includes('toc') || n.includes('automata')) return 'code'
   if (n.includes('compiler') || n.includes('design')) return 'computer'
+  if (n.includes('history')) return 'chapters'
+  if (n.includes('geography') || n.includes('environment')) return 'earth'
+  if (n.includes('polity') || n.includes('governance')) return 'law'
+  if (n.includes('economy')) return 'analyticsTab'
+  if (n.includes('bihar')) return 'location'
+  if (n.includes('current affairs') || n.includes('news')) return 'target'
+  if (n.includes('science')) return 'science'
   if (n.includes('physics') || n.includes('kinematic') || n.includes('motion') || n.includes('thermo')) return 'physics'
   if (n.includes('chem')) return 'chemistry'
   if (n.includes('bio')) return 'biology'
   if (n.includes('math') || n.includes('calculus') || n.includes('algebra')) return 'analytics'
-  if (n.includes('aptitude') || n.includes('reasoning') || n.includes('intelligence') || n.includes('fund')) return 'computer'
+  if (n.includes('aptitude') || n.includes('reasoning') || n.includes('intelligence') || n.includes('mental')) return 'computer'
   return fallback || 'chapters'
 }
 
 function mapRowToSubject(row) {
   if (!row) return null
   const inferredIcon = getSubjectIconByName(row.name, row.icon_type)
+  const bpscMatch = BPSC_PRELIMS_SUBJECTS.find(
+    (b) =>
+      String(b.name).toLowerCase().trim() === String(row.name).toLowerCase().trim() ||
+      b.aliases.some((a) => a.toLowerCase().trim() === String(row.name).toLowerCase().trim())
+  )
+
+  const order = bpscMatch ? bpscMatch.order : Number(row.order) || Number(row.number) || 1
+
   return {
     id: row.id,
     courseId: row.course_id || row.courseId,
     name: row.name,
-    icon: (row.icon_type && row.icon_type !== 'chapters') ? row.icon_type : inferredIcon,
+    icon: row.icon_type && row.icon_type !== 'chapters' ? row.icon_type : inferredIcon,
     desc: row.description || '',
-    color: row.color || '#F1621B',
+    color: row.color || (bpscMatch ? bpscMatch.color : '#F1621B'),
     status: row.status || 'active',
     locked: false,
-    order: 1,
+    order,
+    weightage: bpscMatch ? bpscMatch.weightage : null,
     stats: [
       { value: '0', label: 'Chapters' },
       { value: '0', label: 'MCQs' },
@@ -53,11 +70,12 @@ function mapRowToSubject(row) {
 }
 
 function toSlug(name, suffix) {
-  const base = (name || 'subject')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'subject'
+  const base =
+    (name || 'subject')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'subject'
   return suffix ? `${base}-${suffix}` : base
 }
 
@@ -68,7 +86,7 @@ function mapSubjectToPayload(payload, courseId) {
     id: isValidUuid ? payload.id : crypto.randomUUID(),
     course_id: courseId || payload.courseId,
     name: payload.name,
-    description: payload.desc || '',
+    description: payload.desc || payload.description || '',
     icon_type: payload.icon || 'chapters',
     color: payload.color || '#F1621B',
     status: payload.status || 'active',
@@ -80,9 +98,12 @@ function mapSubjectToPayload(payload, courseId) {
 export const subjectService = {
   async getSubjects(courseId) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
-    const res = await apiService.get(`/subjects?course_id=eq.${courseId}`)
+    const res = await apiService.get(`/subjects?course_id=eq.${encodeURIComponent(courseId)}`)
     if (res.success && Array.isArray(res.data)) {
-      return { success: true, data: res.data.map(mapRowToSubject) }
+      const mapped = res.data.map(mapRowToSubject)
+      // Sort subjects by canonical order
+      mapped.sort((a, b) => (a.order || 0) - (b.order || 0))
+      return { success: true, data: mapped }
     }
     return { success: false, error: res.error || 'Failed to fetch subjects from database' }
   },

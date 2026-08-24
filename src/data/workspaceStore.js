@@ -134,7 +134,7 @@ function getSeedWorkspaces() {
     },
     {
       id: 'bpsc-prelims',
-      name: 'BPSC Prelims',
+      name: 'BPSC PRE LIMS',
       icon: 'adminDashboard',
       themeColor: '#F1621B',
       description: 'Bihar Public Service Commission – Preliminary Examination',

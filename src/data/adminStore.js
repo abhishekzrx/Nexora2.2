@@ -16,6 +16,7 @@ import { subjectService } from '../services/subjectService.js'
 import { chapterService } from '../services/chapterService.js'
 import { mcqService } from '../services/mcqService.js'
 import { noteService, getLocalNotes } from '../services/noteService.js'
+import { BPSC_PRELIMS_SUBJECTS, BPSC_PRELIMS_COURSE_ID } from './bpscPrelimsSeed.js'
 
 let listeners = []
 let version = 0
@@ -23,6 +24,25 @@ let version = 0
 const DEFAULT_COURSE_ID = 'bpsc-tre-4'
 
 function getSeedSubjects() {
+  const bpscPrelimsSeedSubs = BPSC_PRELIMS_SUBJECTS.map((s) => ({
+    id: `s-bpsc-prelims-${s.order}`,
+    courseId: BPSC_PRELIMS_COURSE_ID,
+    name: s.name,
+    icon: s.icon,
+    desc: s.desc,
+    status: 'active',
+    locked: false,
+    color: s.color,
+    order: s.order,
+    weightage: s.weightage,
+    stats: [
+      { value: '0', label: 'Chapters' },
+      { value: '0', label: 'MCQs' },
+      { value: '0', label: 'Flashcards' },
+      { value: 'Active', label: 'Status' },
+    ],
+  }))
+
   return [
     ...adminSubjects.map((s) => ({
       ...s,
@@ -33,6 +53,7 @@ function getSeedSubjects() {
       order: adminSubjects.findIndex((x) => x.id === s.id) + 1,
       stats: s.stats.map((st) => ({ ...st })),
     })),
+    ...bpscPrelimsSeedSubs,
     {
       id: 's-cbse12-1',
       courseId: 'cbse-12-cs',

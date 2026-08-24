@@ -25,7 +25,7 @@ export const templatePresets = [
   },
   {
     id: 'bpsc-prelims',
-    label: 'BPSC Prelims',
+    label: 'BPSC PRE LIMS',
     icon: 'target',
     values: { className: 'Graduate', examination: 'BPSC CCE Prelims', difficulty: 'BPSC Authentic Mix', language: 'English', withExplanations: 'Yes', withPreviousYear: 'Yes', withNegative: 'Yes' },
   },
