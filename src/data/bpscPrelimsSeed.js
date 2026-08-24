@@ -7,6 +7,7 @@
  */
 
 import { apiService } from '../services/apiService.js'
+import { seedBpscPrelimsChapters } from './bpscPrelimsChapters.js'
 
 export const BPSC_PRELIMS_COURSE_ID = 'bpsc-prelims'
 export const BPSC_PRELIMS_COURSE_NAME = 'BPSC PRE LIMS'
@@ -204,9 +205,21 @@ export async function seedBpscPrelimsCourseAndSubjects() {
       }
     }
 
-    return { success: true }
+    // 4. Seed / Reconcile the 57 BPSC Prelims chapters
+    const chapterSeedRes = await seedBpscPrelimsChapters()
+
+    return { success: true, chapters: chapterSeedRes }
   } catch (err) {
     console.warn('[bpscPrelimsSeed] Error running seed:', err)
     return { success: false, error: err.message }
   }
 }
+
+export {
+  BPSC_PRELIMS_CHAPTERS,
+  BPSC_PRIORITY_MAP,
+  formatPriority,
+  getBpscChapterByCode,
+  getBpscChapterMeta,
+  seedBpscPrelimsChapters,
+} from './bpscPrelimsChapters.js'

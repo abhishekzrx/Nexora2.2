@@ -2,9 +2,9 @@
  * ChapterCard
  * Reusable clickable chapter row showing:
  * - Chapter Number & Title
- * - Dynamic Real MCQ Count ("X MCQs" or "Y / X MCQs")
- * - Question Attempt Coverage (Circular SVG progress indicator colored by 4-level system)
- * - Mastery Value (Numeric % indicator calculated from unique student attempts)
+ * - Priority Chip (Always visible: VH, H, M, L)
+ * - Overall Progress % (Circular ring + bar)
+ * - Optional Detailed Trends (MCQ Count, Coverage %, Mastery %, Remaining %, Accuracy %) when showTrends is active at Subject level.
  * - Navigation chevron
  */
 import AppIcon from '../ui/AppIcon'
@@ -59,7 +59,7 @@ export function CircularCoverageRing({ percent = 0, color = '#12B76A', size = 20
   )
 }
 
-function ChapterCard({ chapter, onClick }) {
+function ChapterCard({ chapter, showTrends = false, onClick }) {
   const coveragePercent = typeof chapter.coveragePercent === 'number' ? chapter.coveragePercent : (chapter.progress || 0)
   const masteryPercent = typeof chapter.masteryPercent === 'number' ? chapter.masteryPercent : (parseInt(chapter.pct, 10) || 0)
   const accuracyPercent = typeof chapter.accuracyPercent === 'number' ? chapter.accuracyPercent : masteryPercent
@@ -72,34 +72,49 @@ function ChapterCard({ chapter, onClick }) {
   const remainingQuestions = chapter.remainingQuestions ?? Math.max(0, totalMcqs - attemptedMcqs)
   const remainingPercent = totalMcqs > 0 ? Math.round((remainingQuestions / totalMcqs) * 100) : 0
 
-  const subText = attemptedMcqs > 0
-    ? `${attemptedMcqs} / ${totalMcqs} MCQs`
-    : `${totalMcqs} MCQs`
+  const priorityCode = (chapter.priority || 'M').toUpperCase().trim()
+  const priorityLabel = chapter.priorityLabel || priorityCode
 
   return (
-    <button type="button" className="chapter-item" onClick={() => onClick?.(chapter)}>
+    <button
+      type="button"
+      className={`chapter-item${showTrends ? ' trends-expanded' : ' clean-view'}`}
+      onClick={() => onClick?.(chapter)}
+    >
       <div className="chapter-row-inner">
         <div className="chapter-num">{chapter.num}</div>
         <div className="chapter-body">
           <div className="chapter-title-row">
             <span className="chapter-title">{chapter.title}</span>
-            <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
+            {priorityCode && (
+              <span
+                className={`chapter-priority-chip prio-${priorityCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                title={`Priority: ${priorityLabel}`}
+              >
+                {priorityLabel}
+              </span>
+            )}
+            {showTrends && (
+              <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
+            )}
           </div>
           
-          <div className="chapter-metrics-chips">
-            <span className="chap-chip chip-cov" style={{ color: levelColor }}>
-              Cov {Math.round(coveragePercent)}%
-            </span>
-            <span className="chap-chip chip-mast">
-              Mast {Math.round(masteryPercent)}%
-            </span>
-            <span className="chap-chip chip-rem" title={`${remainingQuestions} remaining out of ${totalMcqs}`}>
-              Rem {remainingPercent}% ({remainingQuestions})
-            </span>
-            <span className="chap-chip chip-acc">
-              Acc {Math.round(accuracyPercent)}%
-            </span>
-          </div>
+          {showTrends && (
+            <div className="chapter-metrics-chips">
+              <span className="chap-chip chip-cov" style={{ color: levelColor }}>
+                Cov {Math.round(coveragePercent)}%
+              </span>
+              <span className="chap-chip chip-mast">
+                Mast {Math.round(masteryPercent)}%
+              </span>
+              <span className="chap-chip chip-rem" title={`${remainingQuestions} remaining out of ${totalMcqs}`}>
+                Rem {remainingPercent}% ({remainingQuestions})
+              </span>
+              <span className="chap-chip chip-acc">
+                Acc {Math.round(accuracyPercent)}%
+              </span>
+            </div>
+          )}
 
           <div className="chapter-progress-track">
             <div
@@ -114,8 +129,8 @@ function ChapterCard({ chapter, onClick }) {
 
         <div className="chapter-right">
           <div className="chapter-status">
-            <span className="chapter-pct" style={{ color: levelColor }} title="Mastery %">
-              {Math.round(masteryPercent)}%
+            <span className="chapter-pct" style={{ color: levelColor }} title="Overall Progress">
+              {Math.round(coveragePercent)}%
             </span>
             <CircularCoverageRing percent={coveragePercent} color={levelColor} />
             <span className="chevron">

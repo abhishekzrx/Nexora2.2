@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { useAdminStore, matchContentToChapter } from './adminStore'
-import { useUserProgressStore } from './progressStore'
+import { useAdminStore, matchContentToChapter } from './adminStore.js'
+import { useUserProgressStore } from './progressStore.js'
 import {
   calculateChapterMetrics,
   calculateSubjectMetrics,
   getAttemptCoverageLevel,
-} from '../services/mcqAnalyticsService'
+} from '../services/mcqAnalyticsService.js'
+import { formatPriority, getBpscChapterMeta } from './bpscPrelimsChapters.js'
 
 const ACCENT_PALETTE = [
   { accent: '#F1621B', accentLight: '#FF7A2E', accentBg: '#FFF1E6', accentSoft: '#FDECE3' },
@@ -63,6 +64,11 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
 
       const metrics = calculateChapterMetrics(totalMcqs, chProgressRecords)
 
+      const bpscMeta = getBpscChapterMeta(ch.name || ch.title, ch.code || ch.slug)
+      const code = ch.code || (bpscMeta ? bpscMeta.code : '')
+      const rawPriority = ch.priority || (bpscMeta ? bpscMeta.priority : 'M')
+      const prioInfo = formatPriority(rawPriority)
+
       const subText = metrics.attemptedMcqs > 0
         ? `${metrics.attemptedMcqs} / ${metrics.totalMcqs} MCQs`
         : `${metrics.totalMcqs} MCQs`
@@ -70,6 +76,12 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
       return {
         id: ch.id,
         num: String(ch.number || ci + 1).padStart(2, '0'),
+        number: Number(ch.number) || ci + 1,
+        code,
+        priority: prioInfo.code,
+        priorityLabel: prioInfo.label,
+        priorityTone: prioInfo.tone,
+        desc: ch.desc || ch.description || (bpscMeta ? bpscMeta.description : ''),
         title: ch.name || ch.title || 'Chapter',
         sub: subText,
         totalMcqs: metrics.totalMcqs,

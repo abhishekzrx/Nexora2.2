@@ -1,14 +1,10 @@
-/**
- * chapterService.js
- * Centralized API Service for Subject-Scoped Chapters with Supabase column mapping.
- */
-
 import { apiService } from './apiService.js'
 import {
   addChapter,
   updateChapter as updateChapterInStore,
   deleteChapter as deleteChapterFromStore,
 } from '../data/adminStore.js'
+import { getBpscChapterMeta, formatPriority } from '../data/bpscPrelimsChapters.js'
 
 function toSlug(name, suffix) {
   const base = (name || 'chapter')
@@ -21,6 +17,11 @@ function toSlug(name, suffix) {
 
 function mapRowToChapter(row, courseId) {
   if (!row) return null
+  const bpscMeta = getBpscChapterMeta(row.name, row.slug)
+  const code = row.chapter_code || row.code || (bpscMeta ? bpscMeta.code : '')
+  const priority = row.priority || (bpscMeta ? bpscMeta.priority : 'M')
+  const priorityMeta = formatPriority(priority)
+
   return {
     id: row.id,
     courseId: courseId || row.course_id || row.courseId,
@@ -29,6 +30,10 @@ function mapRowToChapter(row, courseId) {
     name: row.name,
     desc: row.description || row.desc || '',
     number: Number(row.number) || 1,
+    code,
+    priority,
+    priorityLabel: bpscMeta ? bpscMeta.priorityLabel : priorityMeta.label,
+    slug: row.slug || '',
     status: row.status || 'active',
     mcqs: row.mcqs_count || row.mcqs || 0,
     flashcards: row.flashcards_count || row.flashcards || 0,
@@ -56,7 +61,9 @@ export const chapterService = {
     if (subjectId) {
       const res = await apiService.get(`/chapters?subject_id=eq.${encodeURIComponent(subjectId)}`)
       if (res.success && Array.isArray(res.data)) {
-        return { success: true, data: res.data.map((r) => mapRowToChapter(r, courseId)) }
+        const mapped = res.data.map((r) => mapRowToChapter(r, courseId))
+        mapped.sort((a, b) => (a.number || 0) - (b.number || 0))
+        return { success: true, data: mapped }
       }
       return { success: false, error: res.error || 'Failed to fetch chapters from database' }
     }
@@ -71,7 +78,9 @@ export const chapterService = {
     const subjectIds = subRes.data.map((s) => s.id)
     const res = await apiService.get(`/chapters?subject_id=in.(${subjectIds.map((id) => encodeURIComponent(id)).join(',')})`)
     if (res.success && Array.isArray(res.data)) {
-      return { success: true, data: res.data.map((r) => mapRowToChapter(r, courseId)) }
+      const mapped = res.data.map((r) => mapRowToChapter(r, courseId))
+      mapped.sort((a, b) => (a.number || 0) - (b.number || 0))
+      return { success: true, data: mapped }
     }
     return { success: false, error: res.error || 'Failed to fetch chapters from database' }
   },

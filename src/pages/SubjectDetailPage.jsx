@@ -48,12 +48,18 @@ function SubjectDetailPage({
   const subject = registry.subjectCatalog[subjectKey] || null
   const derived = useMemo(() => subject ? deriveAnalytics(subject) : null, [subject])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
+  const [showChapterTrends, setShowChapterTrends] = useState(false)
 
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
 
   useEffect(() => {
     subjectTabs[subjectKey] = activeTab
   }, [subjectKey, activeTab])
+
+  // Subject isolation: Reset chapter trends toggle to default (OFF) when changing subjects
+  useEffect(() => {
+    setShowChapterTrends(false)
+  }, [subjectKey])
 
   if (!subject) {
     return (
@@ -79,17 +85,18 @@ function SubjectDetailPage({
       return (
         <>
           <div className="chapters-header">
-            <div className="chapters-title">All Chapters ({subject.chapters.length})</div>
+            <div className="chapters-title-wrap">
+              <span className="chapters-title">All Chapters ({subject.chapters.length})</span>
+            </div>
             <div className="chapters-actions">
-              <button type="button" className="sort-btn" disabled>
-                <AppIcon name="sort" size={14} />
-                Sort
-              </button>
-              <button type="button" className="view-btn active" disabled>
-                <AppIcon name="viewList" size={16} />
-              </button>
-              <button type="button" className="view-btn" disabled>
-                <AppIcon name="viewGrid" size={16} />
+              <button
+                type="button"
+                className={`subject-trends-toggle-btn${showChapterTrends ? ' active' : ''}`}
+                onClick={() => setShowChapterTrends((prev) => !prev)}
+                title={showChapterTrends ? 'Hide detailed statistics across all chapters' : 'Expand detailed statistics across all chapters'}
+              >
+                <AppIcon name={showChapterTrends ? 'eyeOff' : 'analyticsTab'} size={13} />
+                <span>{showChapterTrends ? 'Hide Trends' : 'Show Trends'}</span>
               </button>
             </div>
           </div>
@@ -109,7 +116,12 @@ function SubjectDetailPage({
           ) : (
             <div className="chapter-list">
               {subject.chapters.map((chapter) => (
-                <ChapterCard key={chapter.id || chapter.num} chapter={chapter} onClick={onChapterClick} />
+                <ChapterCard
+                  key={chapter.id || chapter.num}
+                  chapter={chapter}
+                  showTrends={showChapterTrends}
+                  onClick={onChapterClick}
+                />
               ))}
             </div>
           )}

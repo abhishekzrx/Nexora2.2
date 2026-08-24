@@ -11,6 +11,21 @@
  * - PYQ behavior
  */
 
+import { BPSC_PRELIMS_CHAPTERS } from './bpscPrelimsChapters.js'
+
+function getBpscChaptersForSubject(subjectName) {
+  return BPSC_PRELIMS_CHAPTERS
+    .filter((c) => c.subject.toLowerCase() === subjectName.toLowerCase())
+    .map((c) => ({
+      code: c.code,
+      number: c.number,
+      name: c.title,
+      desc: c.description,
+      priority: c.priority,
+      priorityLabel: c.priorityLabel,
+    }))
+}
+
 export const COURSE_CONFIGS = {
   'bpsc-tre-4': {
     courseId: 'bpsc-tre-4',
@@ -108,7 +123,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '16.7%–20.0%',
             strategicPriority: 'Very High (VH)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('General Science'),
         },
         {
           order: 2,
@@ -121,7 +136,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '13.3%–18.0%',
             strategicPriority: 'Very High (VH)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Current Affairs'),
         },
         {
           order: 3,
@@ -134,7 +149,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '13.3%–16.7%',
             strategicPriority: 'Very High (VH)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Bihar Special Knowledge'),
         },
         {
           order: 4,
@@ -147,7 +162,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '13.3%–16.7%',
             strategicPriority: 'Very High (VH)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Indian History'),
         },
         {
           order: 5,
@@ -160,7 +175,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '8.0%–10.0%',
             strategicPriority: 'High (H)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Geography & Environment'),
         },
         {
           order: 6,
@@ -173,7 +188,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '6.7%–10.0%',
             strategicPriority: 'High (H)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Indian Polity & Governance'),
         },
         {
           order: 7,
@@ -186,7 +201,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '5.3%–10.0%',
             strategicPriority: 'High (H) / Medium (M)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('Indian Economy'),
         },
         {
           order: 8,
@@ -199,7 +214,7 @@ export const COURSE_CONFIGS = {
             percentageShare: '6.7%',
             strategicPriority: 'Medium (M)',
           },
-          chapters: [],
+          chapters: getBpscChaptersForSubject('General Mental Ability & Quantitative Aptitude'),
         },
       ],
     },

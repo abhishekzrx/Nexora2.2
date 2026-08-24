@@ -27,6 +27,7 @@ import { chapterService } from '../../services/chapterService'
 import { mcqService } from '../../services/mcqService'
 import IconPicker from './IconPicker'
 import ChapterNotesEditorModal from './ChapterNotesEditorModal'
+import { formatPriority, BPSC_PRIORITY_MAP, getBpscChapterMeta } from '../../data/bpscPrelimsChapters'
 
 const COLOR_PRESETS = [
   '#F1621B',
@@ -420,7 +421,9 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
   }, [existingChapters, isEditing, initialData])
 
   const [name, setName] = useState(initialData?.name || '')
-  const [desc, setDesc] = useState(initialData?.desc || '')
+  const [code, setCode] = useState(initialData?.code || '')
+  const [priority, setPriority] = useState(initialData?.priority || 'M')
+  const [desc, setDesc] = useState(initialData?.desc || initialData?.description || '')
   const [number, setNumber] = useState(initialData?.number ?? defaultNextNumber)
 
   useEffect(() => {
@@ -436,6 +439,8 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
       id: initialData?.id,
       subject: subjectName,
       name: name.trim(),
+      code: code.trim().toUpperCase(),
+      priority: priority || 'M',
       desc: desc.trim(),
       number: Number(number) || defaultNextNumber,
     })
@@ -493,13 +498,13 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
         )}
 
         <form onSubmit={handleSubmit} className="sm-modal-form">
-          <div className="sm-form-row-2">
+          <div className="sm-form-row-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '12px' }}>
             <div className="sm-field">
               <label className="sm-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Chapter Number</span>
+                <span>Chapter #</span>
                 {!isEditing && (
                   <span style={{ fontSize: '10px', color: '#12B76A', fontWeight: 600, backgroundColor: 'rgba(18, 183, 106, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>
-                    Auto-Incremented
+                    Auto
                   </span>
                 )}
               </label>
@@ -511,32 +516,62 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
                 onChange={(e) => setNumber(e.target.value)}
               />
             </div>
-            <div className="sm-field" style={{ flex: 2 }}>
-              <label className="sm-label">Chapter Title *</label>
+
+            <div className="sm-field">
+              <label className="sm-label">Chapter Code</label>
               <input
                 type="text"
                 className="sm-input"
-                placeholder="e.g., Array & Linked List Fundamentals"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoFocus
+                placeholder="e.g. HIST-01"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                style={{ textTransform: 'uppercase', fontFamily: 'monospace' }}
               />
+            </div>
+
+            <div className="sm-field">
+              <label className="sm-label">Priority</label>
+              <select
+                className="sm-input"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="VH">Very High (VH)</option>
+                <option value="H">High (H)</option>
+                <option value="H/M">High / Medium (H/M)</option>
+                <option value="M">Medium (M)</option>
+                <option value="L/M">Low / Medium (L/M)</option>
+                <option value="L">Low (L)</option>
+              </select>
             </div>
           </div>
 
-          <div className="sm-field">
-            <label className="sm-label">Description / Summary</label>
+          <div className="sm-field" style={{ marginTop: '10px' }}>
+            <label className="sm-label">Chapter Title *</label>
             <input
               type="text"
               className="sm-input"
-              placeholder="Brief chapter overview..."
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
+              placeholder="e.g., Gandhian Era & Freedom Movements (1917–1947)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
             />
           </div>
 
-          <div className="sm-modal-actions">
+          <div className="sm-field" style={{ marginTop: '10px' }}>
+            <label className="sm-label">Description / Summary (Detailed Topics for Item Generation)</label>
+            <textarea
+              className="sm-input"
+              rows={3}
+              placeholder="Detailed content description from syllabus..."
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+
+          <div className="sm-modal-actions" style={{ marginTop: '16px' }}>
             <Button variant="secondary" type="button" onClick={onClose}>
               Cancel
             </Button>
@@ -939,7 +974,14 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
 
     try {
       if (data.id) {
-        const res = await chapterService.updateChapter(data.id, data)
+        const res = await chapterService.updateChapter(data.id, {
+          name: data.name,
+          number: data.number,
+          code: data.code,
+          priority: data.priority,
+          desc: data.desc,
+          courseId: activeCourseId,
+        })
         if (res.success) {
           showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
         } else {
@@ -948,6 +990,8 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
       } else {
         const res = await chapterService.createChapter(activeCourseId, targetSubject.id, {
           name: data.name,
+          code: data.code,
+          priority: data.priority,
           desc: data.desc,
           subjectName: targetSubject.name,
           number: data.number,
@@ -1180,12 +1224,28 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
             <div className="sm-chapters-list">
               {subjectChapters.map((ch, idx) => {
                 const counts = getChapterContentCounts(ch, idx)
-                const chNum = idx + 1
+                const chNum = ch.number || idx + 1
+                const meta = getBpscChapterMeta(ch.name, ch.code)
+                const displayCode = ch.code || (meta ? meta.code : '')
+                const displayPriority = ch.priority || (meta ? meta.priority : '')
+                const prioMeta = formatPriority(displayPriority)
+                const displayDesc = ch.desc || ch.description || (meta ? meta.description : '')
+
                 return (
                   <div key={ch.id || idx} className="sm-chapter-row">
                     <span className="sm-ch-num-badge">Ch. {chNum}</span>
+                    {displayCode && <span className="sm-ch-code-badge">{displayCode}</span>}
+
                     <div className="sm-ch-titles">
-                      <h5 className="sm-ch-name">{ch.name}</h5>
+                      <div className="sm-ch-name-row">
+                        <h5 className="sm-ch-name">{ch.name}</h5>
+                        {displayPriority && (
+                          <span className={`sm-ch-prio-badge prio-${displayPriority.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                            {prioMeta.label || displayPriority}
+                          </span>
+                        )}
+                      </div>
+                      {displayDesc && <p className="sm-ch-desc-snippet">{displayDesc}</p>}
                     </div>
 
                     <div className="sm-ch-meta">

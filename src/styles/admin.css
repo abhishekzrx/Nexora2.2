@@ -5920,9 +5920,87 @@
   flex-shrink: 0;
 }
 
+.sm-ch-code-badge {
+  padding: 3px 7px;
+  background: #1E293B;
+  color: #F8FAFC;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  flex-shrink: 0;
+}
+
+.sm-ch-prio-badge {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sm-prio-vh, .prio-vh {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.sm-prio-h, .prio-h {
+  background: rgba(249, 115, 22, 0.12);
+  color: #EA580C;
+  border: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+.sm-prio-h-m, .prio-h-m {
+  background: rgba(234, 179, 8, 0.12);
+  color: #CA8A04;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+.sm-prio-m, .prio-m {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.sm-prio-l-m, .prio-l-m {
+  background: rgba(20, 184, 166, 0.12);
+  color: #0D9488;
+  border: 1px solid rgba(20, 184, 166, 0.25);
+}
+
+.sm-prio-l, .prio-l {
+  background: rgba(107, 114, 128, 0.12);
+  color: #4B5563;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+
+.sm-ch-desc-snippet {
+  font-size: 11.5px;
+  color: #64748B;
+  line-height: 1.4;
+  margin: 3px 0 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .sm-ch-titles {
   flex: 1;
   min-width: 0;
+}
+
+.sm-ch-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .sm-ch-name {

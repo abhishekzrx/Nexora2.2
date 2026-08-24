@@ -17,6 +17,7 @@ import { chapterService } from '../services/chapterService.js'
 import { mcqService } from '../services/mcqService.js'
 import { noteService, getLocalNotes } from '../services/noteService.js'
 import { BPSC_PRELIMS_SUBJECTS, BPSC_PRELIMS_COURSE_ID } from './bpscPrelimsSeed.js'
+import { BPSC_PRELIMS_CHAPTERS } from './bpscPrelimsChapters.js'
 
 let listeners = []
 let version = 0
@@ -106,6 +107,23 @@ function getSeedSubjects() {
 }
 
 function getSeedChapters() {
+  const bpscPrelimsSeedChapters = BPSC_PRELIMS_CHAPTERS.map((c) => ({
+    id: `c-bpsc-prelims-${c.code.toLowerCase()}`,
+    courseId: BPSC_PRELIMS_COURSE_ID,
+    subject: c.subject,
+    name: c.title,
+    number: c.number,
+    code: c.code,
+    priority: c.priority,
+    priorityLabel: c.priorityLabel,
+    desc: c.description,
+    status: 'active',
+    locked: false,
+    mcqs: 0,
+    flashcards: 0,
+    notes: 0,
+  }))
+
   return [
     ...allChapters.map((c, i) => ({
       ...c,
@@ -114,6 +132,7 @@ function getSeedChapters() {
       locked: false,
       number: i + 1,
     })),
+    ...bpscPrelimsSeedChapters,
     { id: 'c-cbse12-1', courseId: 'cbse-12-cs', subject: 'Python Programming', name: 'Functions & Recursion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
     { id: 'c-cbse12-2', courseId: 'cbse-12-cs', subject: 'Database Querying (SQL)', name: 'SQL Joins & Grouping', number: 1, status: 'active', mcqs: 20, flashcards: 12, notes: 1 },
     { id: 'c-cbse11-1', courseId: 'cbse-11-ph', subject: 'Kinematics & Laws of Motion', name: 'Vectors & Projectile Motion', number: 1, status: 'active', mcqs: 15, flashcards: 10, notes: 1 },
@@ -169,7 +188,13 @@ export async function hydrateAdminStoreFromSupabase() {
         subjects = subjectsRes.data
       }
       if (chaptersRes.success && Array.isArray(chaptersRes.data)) {
-        chapters = chaptersRes.data
+        chapters = chaptersRes.data.map((c) => {
+          const parentSub = subjects.find((s) => s.id === c.subjectId)
+          return {
+            ...c,
+            subject: parentSub ? parentSub.name : c.subject || c.subjectId,
+          }
+        })
       }
       if (mcqsRes.success && Array.isArray(mcqsRes.data)) {
         mcqs = mcqsRes.data
