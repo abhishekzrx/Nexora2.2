@@ -66,7 +66,20 @@ export default function ChapterNotesView({
             const published = res.data.find((n) => n.status === 'published') || res.data[0]
             setNote(published)
           } else {
-            setNote(null)
+            // Fallback check matching across course notes
+            const allRes = await noteService.getNotes({ courseId })
+            if (allRes.success && Array.isArray(allRes.data)) {
+              const chapNameLower = String(selectedChapter.name || selectedChapter.title || '').trim().toLowerCase()
+              const matched = allRes.data.find(
+                (n) =>
+                  String(n.chapterId || n.chapter_id) === String(selectedChapter.id || selectedChapter.num) ||
+                  (chapNameLower && n.title && n.title.toLowerCase().includes(chapNameLower)) ||
+                  (chapNameLower && n.chapterName && n.chapterName.toLowerCase() === chapNameLower)
+              )
+              setNote(matched || null)
+            } else {
+              setNote(null)
+            }
           }
           setLoading(false)
         }

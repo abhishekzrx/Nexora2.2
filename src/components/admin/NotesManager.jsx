@@ -17,7 +17,6 @@ export default function NotesManager({ courseName = '' }) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
 
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
-  const [selectedChapterId, setSelectedChapterId] = useState('')
   const [activeEditorNote, setActiveEditorNote] = useState(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -47,10 +46,25 @@ export default function NotesManager({ courseName = '' }) {
 
   // Select first subject by default if not set
   useEffect(() => {
-    if (courseSubjects.length > 0 && !selectedSubjectId) {
+    if (courseSubjects.length > 0 && (!selectedSubjectId || !courseSubjects.some(s => s.id === selectedSubjectId))) {
       setSelectedSubjectId(courseSubjects[0].id)
     }
   }, [courseSubjects, selectedSubjectId])
+
+  // Helper to get note for a chapter with robust string/title matching
+  const getNoteForChapter = useCallback((chapter) => {
+    if (!chapter) return null
+    const chapIdStr = String(chapter.id || '').trim()
+    const chapNameLower = String(chapter.name || chapter.title || '').trim().toLowerCase()
+    
+    return courseNotes.find((n) => {
+      const nChapIdStr = String(n.chapterId || n.chapter_id || '').trim()
+      if (nChapIdStr && chapIdStr && nChapIdStr === chapIdStr) return true
+      if (n.title && chapNameLower && n.title.toLowerCase().includes(chapNameLower)) return true
+      if (n.chapterName && chapNameLower && n.chapterName.toLowerCase() === chapNameLower) return true
+      return false
+    }) || null
+  }, [courseNotes])
 
   // Filtered chapters for current selection
   const visibleChapters = useMemo(() => {
@@ -59,8 +73,8 @@ export default function NotesManager({ courseName = '' }) {
     if (selectedSubjectId) {
       list = list.filter(
         (c) =>
-          c.subjectId === selectedSubjectId ||
-          c.subject_id === selectedSubjectId ||
+          String(c.subjectId) === String(selectedSubjectId) ||
+          String(c.subject_id) === String(selectedSubjectId) ||
           (c.subject && courseSubjects.find((s) => s.id === selectedSubjectId)?.name === c.subject)
       )
     }
@@ -71,29 +85,29 @@ export default function NotesManager({ courseName = '' }) {
     }
 
     if (statusFilter === 'has_notes') {
-      list = list.filter((c) => courseNotes.some((n) => n.chapterId === c.id))
+      list = list.filter((c) => getNoteForChapter(c) !== null)
     } else if (statusFilter === 'no_notes') {
-      list = list.filter((c) => !courseNotes.some((n) => n.chapterId === c.id))
+      list = list.filter((c) => getNoteForChapter(c) === null)
     }
 
     return list
-  }, [courseChapters, selectedSubjectId, searchQuery, statusFilter, courseNotes, courseSubjects])
-
-  // Helper to get note for a chapter
-  const getNoteForChapter = useCallback((chapter) => {
-    if (!chapter) return null
-    return courseNotes.find(
-      (n) =>
-        n.chapterId === chapter.id ||
-        (n.title && n.title.toLowerCase().includes(chapter.name?.toLowerCase()))
-    ) || null
-  }, [courseNotes])
+  }, [courseChapters, selectedSubjectId, searchQuery, statusFilter, courseSubjects, getNoteForChapter])
 
   // Open Editor for a chapter
   const handleOpenEditor = (chapter) => {
     const existingNote = getNoteForChapter(chapter)
-    const subject = courseSubjects.find((s) => s.id === (chapter.subjectId || selectedSubjectId)) || courseSubjects[0]
-    
+    const chapSubId = String(chapter.subjectId || chapter.subject_id || '').trim()
+    const chapSubName = String(chapter.subject || '').trim().toLowerCase()
+
+    const subject =
+      courseSubjects.find(
+        (s) =>
+          (chapSubId && String(s.id).trim() === chapSubId) ||
+          (chapSubName && String(s.name).trim().toLowerCase() === chapSubName) ||
+          String(s.id).trim() === String(selectedSubjectId).trim()
+      ) ||
+      courseSubjects[0] || { id: chapSubId || 'general', name: chapter.subject || 'General' }
+
     setActiveEditorNote({
       chapter,
       subject,
@@ -304,7 +318,9 @@ export default function NotesManager({ courseName = '' }) {
           chapterNumber={activeEditorNote.chapter?.number || 1}
           initialNote={activeEditorNote.note}
           onSaved={(savedNote) => {
-            // Note store automatically synced via noteService & hydrateAdminStoreFromSupabase
+            if (savedNote && activeEditorNote) {
+              setActiveEditorNote((prev) => (prev ? { ...prev, note: savedNote } : null))
+            }
           }}
         />
       )}

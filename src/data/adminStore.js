@@ -1,6 +1,6 @@
 /**
  * adminStore
- *Mutable in-memory cache for the Admin Content Management System.
+ * Mutable in-memory cache for the Admin Content Management System.
  * Supabase is the authoritative source; local state is refreshed from
  * successful DB responses so the UI stays in sync without a reload.
  */
@@ -15,7 +15,7 @@ import { getActiveWorkspaceId, subscribe as subscribeWorkspace, getWorkspaces, u
 import { subjectService } from '../services/subjectService.js'
 import { chapterService } from '../services/chapterService.js'
 import { mcqService } from '../services/mcqService.js'
-import { noteService } from '../services/noteService.js'
+import { noteService, getLocalNotes } from '../services/noteService.js'
 
 let listeners = []
 let version = 0
@@ -113,19 +113,19 @@ let subjects = []
 let chapters = []
 let mcqs = []
 let flashcards = []
-let notes = []
+let notes = typeof getLocalNotes === 'function' ? getLocalNotes() : []
 
 let snapshot = {
   allSubjects: [],
   allChapters: [],
   allMcqs: [],
   allFlashcards: [],
-  allNotes: [],
+  allNotes: notes,
   subjects: [],
   chapters: [],
   mcqs: [],
   flashcards: [],
-  notes: [],
+  notes: notes,
   activeCourseId: null,
 }
 
@@ -156,10 +156,16 @@ export async function hydrateAdminStoreFromSupabase() {
       if (flashcardsRes.success && Array.isArray(flashcardsRes.data)) {
         flashcards = flashcardsRes.data
       }
-      if (notesRes.success && Array.isArray(notesRes.data)) {
+      if (notesRes.success && Array.isArray(notesRes.data) && notesRes.data.length > 0) {
         notes = notesRes.data
+      } else {
+        const localList = typeof getLocalNotes === 'function' ? getLocalNotes() : []
+        if (localList.length > 0) {
+          notes = localList
+        }
       }
 
+      recomputeAllSubjectStats()
       updateSnapshot()
       emit()
     } catch (err) {
@@ -265,7 +271,6 @@ export function matchContentToChapter(item, chapter) {
   }
 
   if (itemChapId || chapId) {
-    // One has ID and the other doesn't, or IDs don't match
     return false
   }
 
@@ -275,27 +280,38 @@ export function matchContentToChapter(item, chapter) {
     return false
   }
 
-  const itemChap = String(item.chapter || item.chapterName || '').trim().toLowerCase()
+  const itemChap = String(item.chapter || item.chapterName || item.title || '').trim().toLowerCase()
   const chapName = String(chapter.name || chapter.title || '').trim().toLowerCase()
   if (!itemChap || !chapName) return false
 
-  return itemChap === chapName
+  return itemChap === chapName || itemChap.includes(chapName) || chapName.includes(itemChap)
 }
 
 function recomputeAllChapterStats() {
   chapters = chapters.map((ch) => {
     const matchingMcqs = mcqs.filter((m) => {
-      if (m.courseId && ch.courseId && m.courseId !== ch.courseId) return false
+      if (m.courseId && ch.courseId && String(m.courseId) !== String(ch.courseId)) return false
       return matchContentToChapter(m, ch)
     })
 
     const matchingFlashcards = flashcards.filter((f) => {
-      if (f.courseId && ch.courseId && f.courseId !== ch.courseId) return false
+      if (f.courseId && ch.courseId && String(f.courseId) !== String(ch.courseId)) return false
       return matchContentToChapter(f, ch)
+    })
+
+    const matchingNotes = notes.filter((n) => {
+      if (n.courseId && ch.courseId && String(n.courseId) !== String(ch.courseId)) return false
+      return (
+        matchContentToChapter(n, ch) ||
+        String(n.chapterId || n.chapter_id) === String(ch.id) ||
+        (n.title && ch.name && n.title.toLowerCase().includes(ch.name.toLowerCase())) ||
+        (n.chapterName && ch.name && n.chapterName.toLowerCase() === ch.name.toLowerCase())
+      )
     })
 
     const countMcqs = matchingMcqs.length
     const countFlashcards = matchingFlashcards.length
+    const countNotes = matchingNotes.length
 
     return {
       ...ch,
@@ -303,6 +319,8 @@ function recomputeAllChapterStats() {
       totalMcqs: countMcqs,
       flashcards: countFlashcards,
       totalFlashcards: countFlashcards,
+      notes: countNotes,
+      totalNotes: countNotes,
     }
   })
 }
@@ -382,7 +400,6 @@ export function seedDefaultSubjects(courseId) {
     { name: 'Computer Science', icon: 'mcqs', desc: 'Python Programming, Data Structures, and Networking', color: '#F1621B' },
   ]
   templates.forEach((tmpl) => {
-    // Only add if subject with same name doesn't already exist for this course
     if (!subjects.some((s) => s.courseId === targetCourseId && s.name.toLowerCase() === tmpl.name.toLowerCase())) {
       addSubject({ ...tmpl, status: 'active', courseId: targetCourseId })
     }
@@ -400,7 +417,6 @@ export function updateSubject(id, { name, icon, desc, color, status }) {
       color: color || subject.color,
       status: status || subject.status,
     }
-    // Rename cascades to chapters/mcqs/flashcards within the same course
     chapters = chapters.map((c) => (c.subject === subject.name && c.courseId === subject.courseId ? { ...c, subject: updated.name } : c))
     mcqs = mcqs.map((m) => (m.subject === subject.name && m.courseId === subject.courseId ? { ...m, subject: updated.name } : m))
     flashcards = flashcards.map((f) => (f.subject === subject.name && f.courseId === subject.courseId ? { ...f, subject: updated.name } : f))
@@ -434,7 +450,6 @@ export function deleteSubject(id) {
     const flashcardCount = flashcards.filter(isTargetFlashcard).length
     impacted = { name: target.name, chapters: chapterCount, mcqs: mcqCount, flashcards: flashcardCount }
 
-    // CASCADE DELETE: Remove all chapters, MCQs, and flashcards belonging to this subject
     chapters = chapters.filter((c) => !isTargetChapter(c))
     mcqs = mcqs.filter((m) => !isTargetMcq(m))
     flashcards = flashcards.filter((f) => !isTargetFlashcard(f))
@@ -485,10 +500,6 @@ export function toggleSubjectLock(id) {
   emit()
 }
 
-/**
- * getDeleteSubjectImpact — returns affected child-content counts for a subject
- * WITHOUT deleting. Used to preview confirmation dialogs.
- */
 export function getDeleteSubjectImpact(id) {
   const target = subjects.find((s) => s.id === id || s.name === id)
   if (!target) return { name: '', chapters: 0, mcqs: 0, flashcards: 0 }
@@ -594,7 +605,6 @@ export function setChapterStatus(id, status) {
       ...c,
       status: isActive ? 'success' : 'warning',
       statusText: isActive ? 'Active' : 'Disabled',
-      ...(status === 'active' ? { statusText: 'Active' } : { statusText: 'Disabled' }),
     }
   })
   recomputeAllSubjectStats()
@@ -632,10 +642,6 @@ export function deleteChapter(id) {
   return impacted
 }
 
-/**
- * getDeleteChapterImpact — returns affected MCQ/flashcard counts for a chapter
- * WITHOUT deleting. Used to preview confirmation dialogs.
- */
 export function getDeleteChapterImpact(id) {
   const target = chapters.find((c) => c.id === id)
   if (!target) return { name: '', subject: '', mcqs: 0, flashcards: 0 }
@@ -1101,6 +1107,7 @@ export function updateMcqInStore(updatedMcq) {
   emit()
 }
 
+// ── Note CRUD ─────────────────────────────────────────────────────
 export function replaceNotes(newNotes) {
   notes = Array.isArray(newNotes) ? newNotes : []
   recomputeAllSubjectStats()

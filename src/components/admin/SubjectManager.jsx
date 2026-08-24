@@ -791,7 +791,7 @@ function DeleteChapterSecurityModal({
 }
 
 /* ── Right Selected Subject Analytics & Chapter Workspace Panel ──── */
-function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onEditSubject, onToggleLock, activeCourseId }) {
+function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, notes = [], onEditSubject, onToggleLock, activeCourseId }) {
   const [activeTab, setActiveTab] = useState('chapters')
   const [showChapterModal, setShowChapterModal] = useState(false)
   const [editingChapter, setEditingChapter] = useState(null)
@@ -865,13 +865,29 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
         return matchesSubject && matchesChapter
       })
 
+      // 3. Exact matching notes from notes store
+      const matchingN = (notes || []).filter((n) => {
+        const matchesSubject =
+          !selectedSubject ||
+          n.subjectId === selectedSubject.id ||
+          n.subject_id === selectedSubject.id ||
+          (n.subject && String(n.subject).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
+
+        const matchesChapter =
+          String(n.chapterId || n.chapter_id) === String(ch.id) ||
+          (n.title && String(ch.name) && n.title.toLowerCase().includes(String(ch.name).toLowerCase())) ||
+          (n.chapter && String(n.chapter).trim().toLowerCase() === String(ch.name).trim().toLowerCase())
+
+        return matchesSubject && matchesChapter
+      })
+
       const mCount = matchingM.length > 0 ? matchingM.length : (typeof ch.mcqs === 'number' ? ch.mcqs : 0)
       const fCount = matchingF.length > 0 ? matchingF.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
-      const nCount = typeof ch.notes === 'number' ? ch.notes : (ch.id ? 1 : 0)
+      const nCount = matchingN.length > 0 ? matchingN.length : (typeof ch.notes === 'number' ? ch.notes : 0)
 
       return { mcqs: mCount, flashcards: fCount, notes: nCount }
     },
-    [mcqs, flashcards, selectedSubject],
+    [mcqs, flashcards, notes, selectedSubject],
   )
 
   const chapterCount = subjectChapters.length
@@ -1319,8 +1335,13 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
           chapterId={notesEditorModal.chapter?.id}
           chapterName={notesEditorModal.chapter?.name}
           chapterNumber={notesEditorModal.chapter?.number || 1}
+          initialNote={(notes || []).find((n) => String(n.chapterId || n.chapter_id) === String(notesEditorModal.chapter?.id))}
           onSaved={() => {
-            // Updated in Supabase and auto-synced
+            showToast({
+              type: 'success',
+              title: 'Note Saved',
+              message: `Notes for "${notesEditorModal.chapter?.name}" updated successfully.`,
+            })
           }}
         />
       )}
@@ -1343,7 +1364,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, onE
 /* ── Main SubjectManager Component ────────────────────────────── */
 function SubjectManager({ courseName: _courseName, onNavigate }) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
-  const { subjects, chapters, mcqs, flashcards, allSubjects } = useAdminStore()
+  const { subjects, chapters, mcqs, flashcards, notes, allSubjects } = useAdminStore()
 
   const [search, setSearch] = useState('')
   const [filterStatus, _setFilterStatus] = useState('all')
@@ -1706,6 +1727,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
               chapters={chapters}
               mcqs={mcqs}
               flashcards={flashcards}
+              notes={notes}
               onEditSubject={handleOpenEdit}
               onToggleLock={toggleSubjectLock}
               activeCourseId={activeCourse?.id}

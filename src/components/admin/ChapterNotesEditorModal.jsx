@@ -122,36 +122,43 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
     }, 0)
   }, [content])
 
-  // Image Upload Handler
+  // Image Modal Dialog State
+  const [showImageDialog, setShowImageDialog] = useState(false)
+  const [imageUrlData, setImageUrlData] = useState({ url: '', alt: '' })
+
+  // Image Upload Handler with automatic dual fallback (Supabase Cloud + Local Base64 Embedding)
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setIsUploadingImage(true)
-    setUploadProgressText(`Uploading ${file.name}...`)
+    setUploadProgressText(`Processing ${file.name}...`)
     setFeedback({ type: null, message: '', timestamp: null })
 
     try {
       const res = await noteService.uploadNoteImage(file, { courseId, chapterId })
       if (res.success && res.url) {
-        insertFormatting(`\n![${file.name.replace(/\.[^/.]+$/, '')}](${res.url})\n`, '')
+        const caption = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ')
+        insertFormatting(`\n![${caption}](${res.url})\n`, '')
         setFeedback({
           type: 'success',
-          message: `Image uploaded successfully and added to note.`,
+          message: res.isCloud
+            ? `✓ Image uploaded to cloud storage and inserted.`
+            : `✓ Image processed and embedded into note successfully.`,
           timestamp: new Date().toLocaleTimeString(),
         })
+        setShowImageDialog(false)
       } else {
-        // Fallback: Ask user for public image URL if storage bucket fails
         setFeedback({
           type: 'error',
-          message: `Image upload notice: ${res.error || 'Unable to upload to storage'}. You can also insert image URLs directly.`,
+          message: `⚠️ Image notice: ${res.error || 'Failed to process image'}. You can also insert image URLs directly.`,
           timestamp: new Date().toLocaleTimeString(),
         })
       }
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: `Upload error: ${err.message}`,
+        message: `⚠️ Error processing image: ${err.message}`,
         timestamp: new Date().toLocaleTimeString(),
       })
     } finally {
@@ -159,6 +166,20 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
       setUploadProgressText('')
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  // Insert Web Image URL Handler
+  const handleApplyImageUrl = () => {
+    if (!imageUrlData.url.trim()) return
+    const alt = imageUrlData.alt.trim() || 'Diagram'
+    insertFormatting(`\n![${alt}](${imageUrlData.url.trim()})\n`, '')
+    setImageUrlData({ url: '', alt: '' })
+    setShowImageDialog(false)
+    setFeedback({
+      type: 'success',
+      message: '✓ Image URL inserted into note.',
+      timestamp: new Date().toLocaleTimeString(),
+    })
   }
 
   // Insert Link Handler
@@ -170,21 +191,13 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
     setShowLinkDialog(false)
   }
 
-  // Save Note (Admin → Supabase)
+  // Save Note (Admin → Supabase / LocalStorage Dual Sync)
   const handleSave = async () => {
+    const effectiveCourseId = String(courseId || 'bpsc-tre-4').trim()
+    const effectiveSubjectId = String(subjectId || subjectName || 'general').trim()
+    const effectiveChapterId = String(chapterId || chapterName || 'ch-1').trim()
+
     // 1. Validation
-    if (!courseId) {
-      setFeedback({ type: 'error', message: 'Course is missing. Please select a valid course.', timestamp: new Date().toLocaleTimeString() })
-      return
-    }
-    if (!subjectId) {
-      setFeedback({ type: 'error', message: 'Subject is missing. Please select a valid subject.', timestamp: new Date().toLocaleTimeString() })
-      return
-    }
-    if (!chapterId) {
-      setFeedback({ type: 'error', message: 'Chapter is missing. Please select a valid chapter.', timestamp: new Date().toLocaleTimeString() })
-      return
-    }
     if (!title.trim()) {
       setFeedback({ type: 'error', message: 'Please enter a note title.', timestamp: new Date().toLocaleTimeString() })
       return
@@ -204,23 +217,23 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
         if (res.success && res.data) {
           setFeedback({
             type: 'success',
-            message: res.message || `✓ Note updated successfully at ${new Date().toLocaleTimeString()}`,
+            message: `✓ ${res.message || 'Note updated successfully'} (${new Date().toLocaleTimeString()})`,
             timestamp: new Date().toLocaleTimeString(),
           })
           onSaved?.(res.data)
         } else {
           setFeedback({
             type: 'error',
-            message: `⚠️ Save Failed: ${res.error || 'Database rejected update request'}`,
+            message: `⚠️ Save Failed: ${res.error || 'Failed to update note'}`,
             timestamp: new Date().toLocaleTimeString(),
           })
         }
       } else {
         // Create new record
         const res = await noteService.createNote({
-          courseId,
-          subjectId,
-          chapterId,
+          courseId: effectiveCourseId,
+          subjectId: effectiveSubjectId,
+          chapterId: effectiveChapterId,
           title,
           content,
           status,
@@ -229,14 +242,14 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           setNoteId(res.data.id)
           setFeedback({
             type: 'success',
-            message: res.message || `✓ Note created and saved successfully at ${new Date().toLocaleTimeString()}`,
+            message: `✓ ${res.message || 'Note created and saved successfully'} (${new Date().toLocaleTimeString()})`,
             timestamp: new Date().toLocaleTimeString(),
           })
           onSaved?.(res.data)
         } else {
           setFeedback({
             type: 'error',
-            message: `⚠️ Save Failed: ${res.error || 'Database rejected insert request'}`,
+            message: `⚠️ Save Failed: ${res.error || 'Failed to create note'}`,
             timestamp: new Date().toLocaleTimeString(),
           })
         }
@@ -525,16 +538,16 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
                 className="cne-tool-btn cne-upload-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                title="Upload image to Supabase Storage"
+                title="Upload image from device / tablet"
               >
                 <AppIcon name="upload" size={15} />
-                {isUploadingImage ? uploadProgressText || 'Uploading...' : 'Upload Image'}
+                {isUploadingImage ? uploadProgressText || 'Processing...' : 'Upload Image'}
               </button>
               <button
                 type="button"
                 className="cne-tool-btn"
-                onClick={() => insertFormatting('![Caption](https://images.unsplash.com/photo-...)\n', '')}
-                title="Insert External Image URL"
+                onClick={() => setShowImageDialog(true)}
+                title="Insert Image by URL or browse device"
               >
                 <AppIcon name="image" size={15} /> Image URL
               </button>
@@ -576,9 +589,14 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
 
         {/* ── 5. Feedback Notification Banner ──────────────────────── */}
         {feedback.message && (
-          <div className={`cne-feedback-banner ${feedback.type}`}>
-            <AppIcon name={feedback.type === 'success' ? 'check' : 'warning'} size={16} />
-            <span className="cne-feedback-text">{feedback.message}</span>
+          <div className={`cne-feedback-banner ${feedback.type || 'info'}`}>
+            <div className="cne-feedback-left">
+              <AppIcon
+                name={feedback.type === 'success' ? 'check' : feedback.type === 'error' ? 'warning' : 'info'}
+                size={16}
+              />
+              <span className="cne-feedback-text">{feedback.message}</span>
+            </div>
             <button
               type="button"
               className="cne-feedback-dismiss"
@@ -589,51 +607,32 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           </div>
         )}
 
-        {/* ── 6. Modal Footer ──────────────────────────────────────── */}
+        {/* ── 6. Modal Bottom Action Bar ───────────────────────────── */}
         <div className="cne-modal-footer">
-          <div className="cne-footer-stats">
-            <span className="cne-stat-item">
-              <AppIcon name="document" size={13} /> {wordCount} words
+          <div className="cne-footer-left">
+            <span className="cne-count-chip">
+              <strong>{content.trim().split(/\s+/).filter(Boolean).length}</strong> words
             </span>
-            <span className="cne-stat-item">
-              <AppIcon name="clock" size={13} /> ~{readTimeMin} min read
+            <span className="cne-count-chip">
+              <strong>~{Math.max(1, Math.ceil(content.trim().split(/\s+/).filter(Boolean).length / 200))}</strong> min read
             </span>
-            <span className="cne-stat-item">
-              {charCount} characters
-            </span>
+            {isUploadingImage && (
+              <span className="cne-uploading-chip">
+                <span className="cne-spin-dot" /> {uploadProgressText || 'Uploading image...'}
+              </span>
+            )}
           </div>
 
           <div className="cne-footer-actions">
-            {noteId && !showDeleteConfirm && (
+            {noteId && (
               <Button
                 variant="danger"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isSaving || isDeleting}
+                onClick={handleDeleteNote}
+                disabled={isDeleting || isSaving}
               >
-                <AppIcon name="delete" size={14} /> Delete Note
+                <AppIcon name="delete" size={15} />
+                {isDeleting ? 'Deleting...' : 'Delete Note'}
               </Button>
-            )}
-
-            {showDeleteConfirm && (
-              <div className="cne-delete-confirm-bar">
-                <span className="cne-delete-msg">Delete this chapter note permanently?</span>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={handleDeleteNote}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Deleting...' : 'Yes, Delete'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
             )}
 
             <Button
@@ -685,6 +684,52 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
                 </Button>
                 <Button variant="primary" size="sm" onClick={handleApplyLink} disabled={!linkData.url}>
                   Insert Link
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 8. Insert Image Dialog Modal ─────────────────────────── */}
+        {showImageDialog && (
+          <div className="cne-dialog-backdrop" onClick={() => setShowImageDialog(false)}>
+            <div className="cne-dialog-box" onClick={(e) => e.stopPropagation()}>
+              <h4 className="cne-dialog-title">Insert Image Illustration</h4>
+              
+              <div className="cne-dialog-field">
+                <label>Image Caption / Alt Text</label>
+                <input
+                  type="text"
+                  placeholder="e.g. OSI Model Architecture Diagram"
+                  value={imageUrlData.alt}
+                  onChange={(e) => setImageUrlData({ ...imageUrlData, alt: e.target.value })}
+                />
+              </div>
+
+              <div className="cne-dialog-field">
+                <label>Direct Image URL *</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/... or any image link"
+                  value={imageUrlData.url}
+                  onChange={(e) => setImageUrlData({ ...imageUrlData, url: e.target.value })}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px', color: '#475467', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span>Or select a file from device:</span>
+                <Button size="sm" variant="secondary" onClick={() => { setShowImageDialog(false); fileInputRef.current?.click() }} disabled={isUploadingImage}>
+                  Browse Device File...
+                </Button>
+              </div>
+
+              <div className="cne-dialog-actions" style={{ marginTop: '12px' }}>
+                <Button variant="secondary" size="sm" onClick={() => setShowImageDialog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleApplyImageUrl} disabled={!imageUrlData.url}>
+                  Insert Image
                 </Button>
               </div>
             </div>

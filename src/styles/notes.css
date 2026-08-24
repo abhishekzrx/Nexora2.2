@@ -1617,3 +1617,189 @@
   box-shadow: none;
   padding: 0;
 }
+
+/* ==========================================================================
+   XIAOMI MI PAD 5 & TABLET NOTES STYLING SUITE (11" 1600x2560 WQHD+ 16:10)
+   ========================================================================== */
+
+@media screen and (min-width: 768px) and (max-width: 1280px) {
+  /* ── 1. Notes Manager Studio Tablet Layout ──────────────────────── */
+  .nm-root-container {
+    padding: 16px 20px;
+    gap: 16px;
+  }
+
+  .nm-stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .nm-stat-card {
+    padding: 14px 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .nm-subject-pills-row {
+    padding: 6px 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+  }
+  .nm-subject-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nm-subject-pill {
+    min-height: 40px;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .nm-search-filter-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .nm-search-input-wrap {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .nm-search-input,
+  .nm-status-filter-select {
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  /* ── 2. Chapter Cards Grid on Tablet ──────────────────────────── */
+  .nm-chapters-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .nm-chapter-card {
+    padding: 16px !important;
+    border-radius: 14px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .nm-card-actions button {
+    min-height: 40px;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  /* ── 3. Chapter Notes Editor Modal (Stylus & Touch Optimization) ── */
+  .cne-modal-container {
+    width: 96vw !important;
+    max-width: 1200px !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+    border-radius: 18px !important;
+    margin: auto !important;
+  }
+
+  .cne-modal-header {
+    padding: 12px 18px !important;
+    min-height: 56px;
+  }
+
+  .cne-toolbar-section {
+    padding: 8px 14px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+  }
+  .cne-toolbar-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cne-tool-btn {
+    min-width: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .cne-split-container {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .cne-editor-pane,
+  .cne-preview-pane {
+    -webkit-overflow-scrolling: touch;
+    padding: 16px !important;
+  }
+
+  .cne-textarea {
+    font-size: 14.5px !important;
+    line-height: 1.65 !important;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace, sans-serif !important;
+    padding: 14px !important;
+    border-radius: 10px !important;
+  }
+
+  .cne-modal-footer {
+    padding: 12px 18px !important;
+    min-height: 60px;
+    gap: 12px;
+  }
+
+  .cne-save-btn,
+  .cne-cancel-btn {
+    min-height: 42px !important;
+    padding: 8px 18px !important;
+    font-size: 13.5px !important;
+  }
+
+  /* ── 4. Student Chapter Notes Reader ──────────────────────────── */
+  .cnv-container {
+    padding: 16px 20px 60px 20px;
+  }
+
+  .cnv-content-card {
+    padding: 24px 28px !important;
+    border-radius: 16px !important;
+  }
+
+  .cnv-note-title {
+    font-size: 22px !important;
+    line-height: 1.35 !important;
+  }
+}
+
+/* Portrait specific tweaks for 800px width */
+@media screen and (min-width: 768px) and (max-width: 960px) and (orientation: portrait) {
+  .nm-chapters-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cne-split-container {
+    flex-direction: column !important;
+  }
+
+  .cne-preview-pane {
+    display: none !important;
+  }
+
+  .cne-modal-container.view-preview .cne-editor-pane {
+    display: none !important;
+  }
+
+  .cne-modal-container.view-preview .cne-preview-pane {
+    display: block !important;
+  }
+}
+
