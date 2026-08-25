@@ -630,83 +630,95 @@ export default function ChapterMcqInjection() {
   // ── 7. Store Search & Modal State ─────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, _setEditingItem] = useState(null)
+  const [mobileTab, setMobileTab] = useState('prompt') // 'prompt' | 'inject'
 
   const [mcqModalForm, setMcqModalForm] = useState({ question: '', options: ['', '', '', ''], correct: 0, difficulty: 'Medium' })
   const [flashModalForm, setFlashModalForm] = useState({ front: '', back: '' })
 
   return (
     <div className="chapter-mcq-injection-shell smart-viewport">
-      {/* ── TOP UNIFIED CONTEXT & METRICS STRIP ── */}
+      {/* ── TOP UNIFIED CONTEXT & METRICS STRIP (Responsive Cascading Selector) ── */}
       <div className="smart-context-strip">
         <div className="context-select-group">
-          {/* 1. Course */}
-          <div className="smart-select-pill" title="Selected Course">
-            <span className="pill-prefix">Course:</span>
-            <select
-              className="smart-inline-select"
-              value={selectedCourseId}
-              title={selectedCourse?.name || 'Select Course'}
-              onChange={(e) => handleCourseChange(e.target.value)}
-            >
-              {workspaces.map((w) => (
-                <option key={w.id} value={w.id} title={w.name}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
+          {/* Top Row for Mobile: Course & Subject */}
+          <div className="context-top-tier">
+            {/* 1. Course */}
+            <div className="smart-select-pill course-pill" title="Selected Course">
+              <span className="pill-prefix">
+                <AppIcon name="folder" size={12} /> Course:
+              </span>
+              <select
+                className="smart-inline-select"
+                value={selectedCourseId}
+                title={selectedCourse?.name || 'Select Course'}
+                onChange={(e) => handleCourseChange(e.target.value)}
+              >
+                {workspaces.map((w) => (
+                  <option key={w.id} value={w.id} title={w.name}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Subject */}
+            <div className="smart-select-pill subject-pill" title="Selected Subject">
+              <span className="pill-prefix">
+                <AppIcon name="chapters" size={12} /> Subject:
+              </span>
+              <select
+                className="smart-inline-select"
+                value={selectedSubjectId}
+                title={activeSubject?.name || 'Select Subject'}
+                onChange={(e) => {
+                  const newSubId = e.target.value
+                  setSelectedSubjectId(newSubId)
+                  const chs = adminState.allChapters.filter(
+                    (c) =>
+                      (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
+                      c.courseId === selectedCourseId
+                  )
+                  setSelectedChapterId(chs[0]?.id || '')
+                }}
+                disabled={currentCourseSubjects.length === 0}
+              >
+                {currentCourseSubjects.map((s) => (
+                  <option key={s.id} value={s.id} title={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* 2. Subject */}
-          <div className="smart-select-pill" title="Selected Subject">
-            <span className="pill-prefix">Subject:</span>
-            <select
-              className="smart-inline-select"
-              value={selectedSubjectId}
-              title={activeSubject?.name || 'Select Subject'}
-              onChange={(e) => {
-                const newSubId = e.target.value
-                setSelectedSubjectId(newSubId)
-                const chs = adminState.allChapters.filter(
-                  (c) =>
-                    (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
-                    c.courseId === selectedCourseId
-                )
-                setSelectedChapterId(chs[0]?.id || '')
-              }}
-              disabled={currentCourseSubjects.length === 0}
-            >
-              {currentCourseSubjects.map((s) => (
-                <option key={s.id} value={s.id} title={s.name}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Middle Row: Chapter (Full width on mobile) */}
+          <div className="context-chapter-tier">
+            <div className="smart-select-pill chapter-pill" title="Selected Chapter">
+              <span className="pill-prefix">
+                <AppIcon name="document" size={12} /> Chapter:
+              </span>
+              <select
+                className="smart-inline-select"
+                value={selectedChapterId}
+                title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
+                onChange={(e) => setSelectedChapterId(e.target.value)}
+                disabled={currentChapters.length === 0}
+              >
+                {currentChapters.map((c) => (
+                  <option key={c.id} value={c.id} title={`Ch ${c.number}: ${c.name}`}>
+                    Ch {c.number}: {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 3. Chapter */}
-          <div className="smart-select-pill chapter-pill" title="Selected Chapter">
-            <span className="pill-prefix">Chapter:</span>
-            <select
-              className="smart-inline-select"
-              value={selectedChapterId}
-              title={activeChapter ? `Ch ${activeChapter.number}: ${activeChapter.name}` : 'Select Chapter'}
-              onChange={(e) => setSelectedChapterId(e.target.value)}
-              disabled={currentChapters.length === 0}
-            >
-              {currentChapters.map((c) => (
-                <option key={c.id} value={c.id} title={`Ch ${c.number}: ${c.name}`}>
-                  Ch {c.number}: {c.name}
-                </option>
-              ))}
-            </select>
+            {/* Exam Profile Badge */}
+            {activeExamProfile && activeExamProfile.key === 'BPSC_PRELIMS' && (
+              <span className="bpsc-mode-badge-pill" title="Post-68th BPSC Prelims rules active">
+                ⭐ BPSC PRELIMS
+              </span>
+            )}
           </div>
-
-          {/* Exam Profile Badge */}
-          {activeExamProfile && activeExamProfile.key === 'BPSC_PRELIMS' && (
-            <span className="bpsc-mode-badge-pill" title="Post-68th BPSC Prelims rules active">
-              ⭐ BPSC PRELIMS
-            </span>
-          )}
         </div>
 
         {/* Live Metrics Quick Badges */}
@@ -734,10 +746,33 @@ export default function ChapterMcqInjection() {
         </div>
       </div>
 
-      {/* ── MAIN WORKSPACE (2-COLUMN DIV SPLIT) ── */}
-      <div className="main-workspace-grid compact-grid">
+      {/* ── MOBILE WORKSPACE TAB NAVIGATION ── */}
+      <div className="cmi-mobile-nav-bar">
+        <button
+          type="button"
+          className={`cmi-mobile-tab-btn ${mobileTab === 'prompt' ? 'active' : ''}`}
+          onClick={() => setMobileTab('prompt')}
+        >
+          <AppIcon name="edit" size={14} />
+          <span>1. Prompt Studio</span>
+        </button>
+        <button
+          type="button"
+          className={`cmi-mobile-tab-btn ${mobileTab === 'inject' ? 'active' : ''}`}
+          onClick={() => setMobileTab('inject')}
+        >
+          <AppIcon name="upload" size={14} />
+          <span>2. Inject JSON</span>
+          {jsonItemCount > 0 && (
+            <span className="cmi-mobile-badge">{jsonItemCount}</span>
+          )}
+        </button>
+      </div>
+
+      {/* ── MAIN WORKSPACE (2-COLUMN DIV SPLIT WITH MOBILE TAB CONDITIONAL) ── */}
+      <div className={`main-workspace-grid compact-grid mobile-tab-${mobileTab}`}>
         {/* ── LEFT DIV: CONTENT GENERATOR PANEL ── */}
-        <div className="prompt-builder-left-div smart-card">
+        <div className={`prompt-builder-left-div smart-card ${mobileTab === 'prompt' ? 'mobile-visible' : 'mobile-hidden'}`}>
           <div className="studio-card-header">
             <div className="studio-title-group">
               <AppIcon name="edit" size={16} className="studio-icon" />
@@ -1010,11 +1045,37 @@ export default function ChapterMcqInjection() {
                 </div>
               )}
             </div>
+
+            {/* Mobile-Only Quick Transition to Injection Tab */}
+            <div className="cmi-mobile-proceed-wrap">
+              <button
+                type="button"
+                className="cmi-mobile-proceed-btn"
+                onClick={() => {
+                  handleCopyPrompt()
+                  setMobileTab('inject')
+                }}
+              >
+                <AppIcon name="copy" size={14} />
+                <span>Copy & Proceed to Inject {contentMode.toUpperCase()} →</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── RIGHT DIV: INJECTION STATUS CARD WORKSPACE ── */}
-        <div className="content-right-div smart-card">
+        <div className={`content-right-div smart-card ${mobileTab === 'inject' ? 'mobile-visible' : 'mobile-hidden'}`}>
+          {/* Mobile Back Button to Prompt Studio */}
+          <div className="cmi-mobile-back-wrap">
+            <button
+              type="button"
+              className="cmi-mobile-back-btn"
+              onClick={() => setMobileTab('prompt')}
+            >
+              <AppIcon name="arrow_back" size={14} />
+              <span>← Back to Prompt Studio</span>
+            </button>
+          </div>
           <InjectionStatusCard
             chapterName={activeChapter?.name || 'Selected Chapter'}
             chapterDescription={chapterDescription}

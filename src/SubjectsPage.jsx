@@ -53,6 +53,39 @@ const drawerSections = [
   },
 ]
 
+function generateSmoothPath(points, width = 200, height = 34, padding = 4) {
+  if (!points || points.length === 0) {
+    points = [40, 55, 50, 68, 75, 82, 88]
+  }
+  
+  const min = Math.min(...points)
+  const max = Math.max(...points)
+  const range = (max - min) === 0 ? 1 : (max - min)
+  
+  const coords = points.map((val, idx) => {
+    const x = padding + (idx / Math.max(1, points.length - 1)) * (width - padding * 2)
+    const y = height - padding - ((val - min) / range) * (height - padding * 2)
+    return { x, y }
+  })
+  
+  let d = `M ${coords[0].x} ${coords[0].y}`
+  for (let i = 0; i < coords.length - 1; i++) {
+    const curr = coords[i]
+    const next = coords[i + 1]
+    const cp1x = curr.x + (next.x - curr.x) / 2
+    const cp1y = curr.y
+    const cp2x = curr.x + (next.x - curr.x) / 2
+    const cp2y = next.y
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`
+  }
+  
+  const last = coords[coords.length - 1]
+  const first = coords[0]
+  const area = `${d} L ${last.x} ${height} L ${first.x} ${height} Z`
+  
+  return { path: d, area, lastPoint: last }
+}
+
 function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigatePractice = () => {}, onNavigateAdmin = () => {} }) {
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -219,6 +252,25 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
     }
   }, [registry])
 
+  const courseTrendPoints = useMemo(() => {
+    if (subjects && subjects.length >= 2) {
+      const pts = subjects.map((s) => Number(s.progress || s.accuracyPercent || s.coveragePercent || 50))
+      return pts.length > 7 ? pts.slice(-7) : pts
+    }
+    const base = courseAnalysis.overallAccuracy || 65
+    return [
+      Math.max(10, base - 15),
+      Math.max(15, base - 8),
+      Math.max(20, base - 10),
+      Math.max(25, base + 5),
+      Math.max(30, base - 2),
+      Math.max(35, base + 7),
+      base,
+    ]
+  }, [subjects, courseAnalysis])
+
+  const courseSparkline = useMemo(() => generateSmoothPath(courseTrendPoints, 200, 34, 3), [courseTrendPoints])
+
   const filteredSubjects = subjects.filter((subject) =>
     subject.title.toLowerCase().includes(search.toLowerCase()),
   )
@@ -279,133 +331,103 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
         </header>
 
         <main className="content subjects-content">
-          {/* Dark EdTech Course Hero Banner — Premium "One Course, One Value" Design */}
-          <section className="course-hero-dark">
-            <div className="course-hero-top">
-              <div className="course-hero-badge">
-                <span className="green-dot" />
-                {activeCourse?.name?.toUpperCase() || 'BPSC 4.0 COMPUTER SCIENCE'}
-              </div>
-            </div>
-
-            {/* Grand Course-Level Metric Rings ("One Course, One Value") */}
-            <div className="course-grand-rings-grid">
-              {/* Grand Metric 1: Overall Coverage */}
-              <div className="grand-ring-card" title="Overall Coverage across all subjects in this course">
-                <ProgressRing
-                  size={58}
-                  radius={23}
-                  strokeWidth={5}
-                  progress={courseAnalysis.overallCoverage}
-                  trackColor="rgba(255, 255, 255, 0.12)"
-                  fillColor="#38BDF8"
-                >
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#38BDF8' }}>
-                    {courseAnalysis.overallCoverage}%
-                  </span>
-                </ProgressRing>
-                <div style={{ textAlign: 'center' }}>
-                  <div className="grand-ring-title" style={{ color: '#38BDF8' }}>Coverage</div>
-                  <div className="grand-ring-subtitle">
-                    {courseAnalysis.attemptedMcqs > 0
-                      ? `${formatInteger(courseAnalysis.attemptedMcqs)} MCQs`
-                      : '0 Attempted'}
+          {/* Pro Dark Course Hero Banner */}
+          <section className="course-hero-dark hero-pro-theme">
+            <div className="course-hero-main-content">
+              {/* Performance Trend Graph Section */}
+              <div className="course-hero-perf-card">
+                <div className="course-hero-perf-header">
+                  <div className="course-hero-badge-wrap">
+                    <span className="course-hero-live-dot" />
+                    <span className="course-hero-title">
+                      {activeCourse?.name?.toUpperCase() || 'BPSC 4.0 COMPUTER SCIENCE'}
+                    </span>
                   </div>
+                  <span className="course-hero-stat-pill">
+                    {courseAnalysis.overallAccuracy > 0 ? `${courseAnalysis.overallAccuracy}% Acc.` : 'Live Prep'}
+                  </span>
+                </div>
+
+                <div className="course-hero-perf-svg-wrap">
+                  <svg viewBox="0 0 200 34" preserveAspectRatio="none" className="course-hero-perf-svg">
+                    <defs>
+                      <linearGradient id="courseHeroPerfGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.45" />
+                        <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={courseSparkline.area} fill="url(#courseHeroPerfGrad)" />
+                    <path d={courseSparkline.path} fill="none" stroke="#38BDF8" strokeWidth="2.2" strokeLinecap="round" />
+                    <circle
+                      cx={courseSparkline.lastPoint.x}
+                      cy={courseSparkline.lastPoint.y}
+                      r="3"
+                      fill="#FFFFFF"
+                      stroke="#0284C7"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
                 </div>
               </div>
 
-              {/* Grand Metric 2: Overall Mastery */}
-              <div className="grand-ring-card" title="Overall Mastery percentage across all subjects">
-                <ProgressRing
-                  size={58}
-                  radius={23}
-                  strokeWidth={5}
-                  progress={courseAnalysis.overallAccuracy}
-                  trackColor="rgba(255, 255, 255, 0.12)"
-                  fillColor="#A855F7"
-                >
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#A855F7' }}>
-                    {courseAnalysis.overallAccuracy}%
+              {/* Small Chip UI: Subjects, Chapters, MCQs, Remaining */}
+              <div className="course-hero-chips-row">
+                <div className="course-hero-chip" title={`${courseAnalysis.totalSubjects} Total Subjects`}>
+                  <span className="course-chip-icon subjects-icon">
+                    <AppIcon name="subjects" size={11} />
                   </span>
-                </ProgressRing>
-                <div style={{ textAlign: 'center' }}>
-                  <div className="grand-ring-title" style={{ color: '#A855F7' }}>Mastery</div>
-                  <div className="grand-ring-subtitle">
-                    {courseAnalysis.masteredMcqs > 0
-                      ? `${formatInteger(courseAnalysis.masteredMcqs)} Mastered`
-                      : '0 Mastered'}
-                  </div>
+                  <span className="course-chip-text">
+                    <strong>{courseAnalysis.totalSubjects}</strong> Subjects
+                  </span>
                 </div>
-              </div>
 
-              {/* Grand Metric 3: Overall Accuracy */}
-              <div className="grand-ring-card" title="Overall Precision Accuracy rate across all responses">
-                <ProgressRing
-                  size={58}
-                  radius={23}
-                  strokeWidth={5}
-                  progress={courseAnalysis.overallAccuracy}
-                  trackColor="rgba(255, 255, 255, 0.12)"
-                  fillColor="#10B981"
-                >
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#10B981' }}>
-                    {courseAnalysis.overallAccuracy}%
+                <div className="course-hero-chip" title={`${courseAnalysis.totalChapters} Total Chapters`}>
+                  <span className="course-chip-icon chapters-icon">
+                    <AppIcon name="chapters" size={11} />
                   </span>
-                </ProgressRing>
-                <div style={{ textAlign: 'center' }}>
-                  <div className="grand-ring-title" style={{ color: '#10B981' }}>Accuracy</div>
-                  <div className="grand-ring-subtitle">Precision Score</div>
+                  <span className="course-chip-text">
+                    <strong>{formatInteger(courseAnalysis.totalChapters)}</strong> Chapters
+                  </span>
                 </div>
-              </div>
 
-              {/* Grand Metric 4: Course Readiness Index (Single Ring) */}
-              <div className="grand-ring-card" title="Overall Course Readiness Index">
-                <ProgressRing
-                  size={58}
-                  radius={23}
-                  strokeWidth={5}
-                  progress={courseAnalysis.overallCoverage}
-                  trackColor="rgba(255, 255, 255, 0.12)"
-                  fillColor="#F1621B"
-                >
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#F1621B' }}>
-                    {courseAnalysis.overallCoverage}%
+                <div className="course-hero-chip" title={`${courseAnalysis.totalMcqs} Total MCQs`}>
+                  <span className="course-chip-icon mcqs-icon">
+                    <AppIcon name="mcqs" size={11} />
                   </span>
-                </ProgressRing>
-                <div style={{ textAlign: 'center' }}>
-                  <div className="grand-ring-title" style={{ color: '#F1621B' }}>Readiness</div>
-                  <div className="grand-ring-subtitle">Course Score</div>
+                  <span className="course-chip-text">
+                    <strong>{formatInteger(courseAnalysis.totalMcqs)}</strong> MCQs
+                  </span>
+                </div>
+
+                <div className="course-hero-chip" title="Remaining MCQs">
+                  <span className="course-chip-icon rem-icon">
+                    <AppIcon name="analytics" size={11} />
+                  </span>
+                  <span className="course-chip-text">
+                    <strong>{formatInteger(courseAnalysis.remainingMcqs)}</strong> Rem
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Dynamic Aggregate Bottom Stat Glass Tiles (Clean Icon-Free Grid, No Overflow) */}
-            <div className="course-bottom-stats">
-              <div className="course-stat-tile">
-                <div className="course-stat-val">{courseAnalysis.totalSubjects}</div>
-                <div className="course-stat-lbl">Subjects</div>
-              </div>
+            {/* Vertical divider before Concentric Ring Graph */}
+            <div className="course-hero-ring-divider" aria-hidden="true" />
 
-              <div className="course-stat-tile">
-                <div className="course-stat-val">{formatInteger(courseAnalysis.totalChapters)}</div>
-                <div className="course-stat-lbl">Chapters</div>
-              </div>
-
-              <div className="course-stat-tile">
-                <div className="course-stat-val">{formatInteger(courseAnalysis.totalMcqs)}</div>
-                <div className="course-stat-lbl">Total MCQs</div>
-              </div>
-
-              <div className="course-stat-tile">
-                <div className="course-stat-val">
-                  {courseAnalysis.attemptedMcqs > 0
-                    ? `${formatInteger(courseAnalysis.attemptedMcqs)} / ${formatInteger(courseAnalysis.remainingMcqs)}`
-                    : `${formatInteger(courseAnalysis.remainingMcqs)} Rem`}
-                </div>
-                <div className="course-stat-lbl">
-                  {courseAnalysis.attemptedMcqs > 0 ? 'Attempted / Rem' : 'Remaining MCQs'}
-                </div>
-              </div>
+            {/* Concentric Ring Coverage Graph */}
+            <div className="course-hero-ring-zone" title="Multi-Layer Ring: Outer=Coverage, Middle=Mastery, Inner=Accuracy">
+              <ConcentricRingGraph
+                size={90}
+                coveragePercent={courseAnalysis.overallCoverage}
+                masteryPercent={courseAnalysis.overallAccuracy}
+                accuracyPercent={courseAnalysis.overallAccuracy}
+                showLegend
+                colors={{
+                  coverage: '#FFFFFF',
+                  mastery: '#FBBF24',
+                  accuracy: '#34D399',
+                  track: 'rgba(255, 255, 255, 0.18)',
+                }}
+              />
             </div>
           </section>
 

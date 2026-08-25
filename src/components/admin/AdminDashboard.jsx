@@ -48,7 +48,7 @@ const MOBILE_SECTION_MAP = {
   analytics: 'Analytics',
 }
 
-function AdminDashboard({ activeSection, onNavigate }) {
+function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
   const [isMobile, setIsMobile] = useState(getIsMobile)
   const { subjects, chapters, mcqs, flashcards, allSubjects, allChapters, allMcqs, allFlashcards } = useAdminStore()
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
@@ -194,8 +194,9 @@ function AdminDashboard({ activeSection, onNavigate }) {
     return (
       <AdminMobileLayout
         activeTab={mobileSection}
-        onNavigate={(item) => onNavigate?.(item.label.toLowerCase())}
+        onNavigate={(key) => onNavigate?.(key)}
         courseName={activeCourse?.name}
+        onBackHome={onBackHome}
       >
         <div className="admin-mobile-section">
           {activeSection === 'dashboard' ? (

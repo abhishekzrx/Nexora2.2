@@ -58,7 +58,12 @@ export const BPSC_PRELIMS_SUBJECTS = [
   {
     order: 4,
     name: 'Indian History',
-    aliases: ['indian history', 'history'],
+    aliases: [
+      'indian history',
+      'history',
+      'indian history & freedom movement',
+      'indian history and freedom movement',
+    ],
     desc: 'Indian history and freedom movement with emphasis on socio-economic transformations, political developments and the national movement.',
     icon: 'chapters',
     color: '#F1621B',
@@ -205,7 +210,7 @@ export async function seedBpscPrelimsCourseAndSubjects() {
       }
     }
 
-    // 4. Seed / Reconcile the 57 BPSC Prelims chapters
+    // 4. Seed / Reconcile the 61 BPSC Prelims chapters
     const chapterSeedRes = await seedBpscPrelimsChapters()
 
     return { success: true, chapters: chapterSeedRes }

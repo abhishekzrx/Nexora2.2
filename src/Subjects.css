@@ -145,164 +145,210 @@ img{
   padding:0 16px;
 }
 
-/* Sleek Dark Obsidian Course Hero Banner (One Course, One Value Premium Design) */
+/* Sleek Dark Obsidian Course Hero Banner — Pro Redesign */
 .course-hero-dark {
-  background: linear-gradient(135deg, #0B0F19 0%, #131927 60%, #1F172B 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 22px;
-  padding: 18px 20px;
-  margin-bottom: 20px;
+  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
   color: #fff;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
-}
-
-/* Subtle background glow effect */
-.course-hero-dark::before {
-  content: '';
-  position: absolute;
-  top: -50px;
-  right: -50px;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, rgba(241, 98, 27, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
-  pointer-events: none;
-}
-
-.course-hero-top {
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* Top-left two-line text removed per user request, badge aligned to right */
-  margin-bottom: 18px;
-}
-
-.course-hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(30, 39, 56, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-  border-radius: 20px;
-  padding: 6px 15px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #F8FAFC;
-  letter-spacing: 0.6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.course-hero-badge .green-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 10px #10B981;
-}
-
-/* Middle Row: Grand Course Metric Rings ("One Course, One Value") */
-.course-grand-rings-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 18px;
-}
-
-@media (max-width: 480px) {
-  .course-grand-rings-grid {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-  }
-  .course-grand-rings-grid::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.grand-ring-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: rgba(23, 31, 46, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(6px);
-  border-radius: 16px;
-  padding: 14px 10px;
-  min-width: 90px;
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-}
-
-.grand-ring-card:hover {
-  transform: translateY(-2px);
-  background: rgba(30, 41, 61, 0.9);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.grand-ring-title {
-  font-size: 11px;
-  font-weight: 800;
-  color: #F8FAFC;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.grand-ring-subtitle {
-  font-size: 9.5px;
-  font-weight: 600;
-  color: #94A3B8;
-  white-space: nowrap;
-  text-align: center;
-}
-
-/* Bottom Row: Stat Glass Tiles (Clean Icon-Free Grid, Fits Perfectly Without Overflow) */
-.course-bottom-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
   box-sizing: border-box;
 }
 
-.course-stat-tile {
-  background: rgba(24, 32, 48, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  padding: 10px 6px;
+.course-hero-main-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+/* Performance Trend Graph Section */
+.course-hero-perf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
+
+.course-hero-perf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+
+.course-hero-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.course-hero-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #38BDF8;
+  box-shadow: 0 0 8px #38BDF8;
+  animation: courseHeroPulse 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes courseHeroPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.course-hero-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.course-hero-stat-pill {
+  font-size: 10px;
+  font-weight: 800;
+  color: #38BDF8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 1.5px 6px;
+  border-radius: 10px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.course-hero-perf-svg-wrap {
+  width: 100%;
+  height: 30px;
+  position: relative;
+  overflow: visible;
+}
+
+.course-hero-perf-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Horizontal Info Chips (Subjects, Chapters, MCQs, Remaining) */
+.course-hero-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  padding: 1px 0;
+}
+
+.course-hero-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.course-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2.5px 6.5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+}
+
+.course-hero-chip strong {
+  color: #FFFFFF;
+  font-weight: 800;
+}
+
+.course-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.course-chip-icon.subjects-icon { color: #818CF8; }
+.course-chip-icon.chapters-icon { color: #FB923C; }
+.course-chip-icon.mcqs-icon { color: #60A5FA; }
+.course-chip-icon.rem-icon { color: #34D399; }
+
+/* Vertical divider before Progress Ring */
+.course-hero-ring-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* Ring Zone */
+.course-hero-ring-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  min-width: 0;
-  overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
 
-.course-stat-val {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: #F8FAFC;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
+@media (max-width: 480px) {
+  .course-hero-dark {
+    padding: 10px 12px;
+    gap: 8px;
+  }
 
-.course-stat-lbl {
-  font-size: 9.5px;
-  font-weight: 600;
-  color: #64748B;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  margin-top: 2px;
+  .course-hero-title {
+    font-size: 10px;
+  }
+
+  .course-hero-stat-pill {
+    font-size: 9.5px;
+    padding: 1px 5px;
+  }
+
+  .course-hero-perf-svg-wrap {
+    height: 26px;
+  }
+
+  .course-hero-chips-row {
+    gap: 4px;
+  }
+
+  .course-hero-chip {
+    font-size: 9.5px;
+    padding: 2px 5px;
+    gap: 3px;
+  }
+
+  .course-hero-ring-zone {
+    transform: scale(0.86);
+    transform-origin: center right;
+  }
 }
 
 .search-block{

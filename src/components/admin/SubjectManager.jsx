@@ -119,57 +119,193 @@ function StatusBadge({ status, locked }) {
   return <span className={`sm-badge sm-badge-${cfg.tone}`}>{cfg.label}</span>
 }
 
-/* ── Course Selector Bar Component ───────────────────────────── */
-function CourseSelectorBar({ workspaces, activeCourseId, allSubjects, onSelectCourse, onAddSubject }) {
+/* ── Course Dashboard Banner (Ultra-Compact Orange Header) ── */
+function CourseDashboardBanner({
+  activeCourse,
+  workspaces,
+  onSelectCourse,
+  onAddSubject,
+  summaryKpis,
+  search,
+  onSearchChange,
+  filterStatus,
+  onFilterChange,
+  sortBy,
+  onSortChange,
+}) {
+  const [showCourseDropdown, setShowCourseDropdown] = useState(false)
+  const courseDropdownRef = useRef(null)
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(e.target)) {
+        setShowCourseDropdown(false)
+      }
+    }
+    if (showCourseDropdown) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [showCourseDropdown])
+
   return (
-    <div className="sm-course-selector-bar">
-      <div className="sm-course-bar-header">
-        <div className="sm-course-bar-title-wrap">
-          <AppIcon name="folder" size={16} />
-          <h4 className="sm-course-bar-title">Select Working Course ({workspaces.length})</h4>
+    <div className="sm-orange-banner">
+      {/* 6 KPI Stat Pills in a single sleek compact row */}
+      <div className="sm-banner-kpi-row">
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
+            <AppIcon name="chapters" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.totalSubjects}</span>
+            <span className="sm-kpi-lbl">Total Subjects</span>
+          </div>
         </div>
-        <Button variant="primary" size="sm" onClick={onAddSubject}>
-          <AppIcon name="add" size={14} /> Add Subject to Course
-        </Button>
+
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
+            <AppIcon name="check" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.activeSubjects}</span>
+            <span className="sm-kpi-lbl">Active Subjects</span>
+          </div>
+        </div>
+
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>
+            <AppIcon name="lock" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.lockedSubjects}</span>
+            <span className="sm-kpi-lbl">Locked Subjects</span>
+          </div>
+        </div>
+
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
+            <AppIcon name="document" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.totalChapters}</span>
+            <span className="sm-kpi-lbl">Total Chapters</span>
+          </div>
+        </div>
+
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
+            <AppIcon name="help" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.totalMcqs}</span>
+            <span className="sm-kpi-lbl">Total MCQs</span>
+          </div>
+        </div>
+
+        <div className="sm-kpi-pill">
+          <span className="sm-kpi-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
+            <AppIcon name="flashcardsTab" size={13} />
+          </span>
+          <div className="sm-kpi-texts">
+            <span className="sm-kpi-val">{summaryKpis.totalFlashcards}</span>
+            <span className="sm-kpi-lbl">Total Flashcards</span>
+          </div>
+        </div>
       </div>
 
-      <div className="sm-course-pills-grid">
-        {workspaces.map((course) => {
-          const isSelected = course.id === activeCourseId
-          const subjectCount = (allSubjects || []).filter((s) => s.courseId === course.id).length
-          const isDraft = course.status === 'draft'
-
-          return (
-            <div
-              key={course.id}
-              className={`sm-course-pill-card${isSelected ? ' selected' : ''}`}
-              onClick={() => onSelectCourse(course.id)}
+      {/* Bottom Row: Search, Course Switcher, Filters & Add Subject */}
+      <div className="sm-banner-toolbar">
+        <div className="sm-banner-search-box">
+          <AppIcon name="search" size={14} />
+          <input
+            type="text"
+            placeholder="Search subjects..."
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+          {search && (
+            <button
+              type="button"
+              className="sm-clear-search-btn"
+              onClick={() => onSearchChange('')}
+              title="Clear search"
             >
-              <div className="sm-pill-top">
-                <span
-                  className="sm-pill-icon"
-                  style={{ background: course.themeColor || (isDraft ? '#F59E0B' : '#F1621B') }}
-                >
-                  <AppIcon name={course.icon || 'folder'} size={15} />
-                </span>
-                <span className={`sm-pill-status ${isDraft ? 'draft' : 'active'}`}>
-                  {course.status ? course.status.toUpperCase() : 'ACTIVE'}
-                </span>
-              </div>
+              <AppIcon name="close" size={12} />
+            </button>
+          )}
+        </div>
 
-              <div className="sm-pill-name" title={course.name}>
-                {course.name}
-              </div>
+        <div className="sm-banner-filter-group">
+          {/* Quick Course Switcher Dropdown */}
+          {workspaces.length > 1 && (
+            <div className="sm-course-switcher-wrap" ref={courseDropdownRef}>
+              <button
+                type="button"
+                className="sm-course-switcher-btn"
+                onClick={() => setShowCourseDropdown(!showCourseDropdown)}
+                title="Switch Working Course"
+              >
+                <AppIcon name="folder" size={13} />
+                <span className="sm-switcher-name">{activeCourse?.name || 'Select Course'}</span>
+                <AppIcon name="expandMore" size={13} />
+              </button>
 
-              <div className="sm-pill-bottom">
-                <span className="sm-pill-count-badge">
-                  <AppIcon name="chapters" size={12} /> {subjectCount} {subjectCount === 1 ? 'Subject' : 'Subjects'}
-                </span>
-                {isSelected && <span className="sm-pill-active-check">✓ Active</span>}
-              </div>
+              {showCourseDropdown && (
+                <div className="sm-course-dropdown-menu">
+                  <div className="sm-dropdown-heading">Switch Course</div>
+                  {workspaces.map((course) => (
+                    <button
+                      key={course.id}
+                      type="button"
+                      className={`sm-course-option${course.id === activeCourse?.id ? ' selected' : ''}`}
+                      onClick={() => {
+                        onSelectCourse(course.id)
+                        setShowCourseDropdown(false)
+                      }}
+                    >
+                      <span className="sm-course-opt-name">{course.name}</span>
+                      {course.id === activeCourse?.id && <span className="sm-opt-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )
-        })}
+          )}
+
+          <select
+            className="sm-banner-select"
+            value={filterStatus}
+            onChange={(e) => onFilterChange(e.target.value)}
+            title="Filter by status"
+          >
+            <option value="all">All Subjects</option>
+            <option value="active">Active Only</option>
+            <option value="locked">Locked Only</option>
+            <option value="disabled">Disabled Only</option>
+          </select>
+
+          <select
+            className="sm-banner-select"
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            title="Sort subjects"
+          >
+            <option value="order">⇅ Sort: Default</option>
+            <option value="name-asc">⇅ Sort: A-Z</option>
+            <option value="name-desc">⇅ Sort: Z-A</option>
+            <option value="newest">⇅ Sort: Newest</option>
+          </select>
+
+          <button
+            type="button"
+            className="sm-banner-add-btn"
+            onClick={onAddSubject}
+            title="Add Subject to Course"
+          >
+            <AppIcon name="add" size={14} />
+            <span>Add Subject</span>
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -657,7 +793,7 @@ function DeleteSubjectSecurityModal({
   )
 }
 
-/* ── Subject Row Item ─────────────────────────────────────────── */
+/* ── Subject List Row Item ─────────────────────────────────────── */
 function SubjectListRow({
   subject,
   isSelected,
@@ -700,22 +836,22 @@ function SubjectListRow({
 
   return (
     <div
-      className={`sm-subject-row-item${isSelected ? ' selected' : ''}`}
+      className={`sm-subject-card-item${isSelected ? ' selected' : ''}`}
       onClick={() => onSelect(subject.id)}
     >
-      <div className="sm-row-left">
-        <span className="sm-row-icon-badge" style={{ background: subject.color || '#F1621B' }}>
+      <div className="sm-subject-card-left">
+        <span className="sm-subject-card-icon" style={{ background: subject.color || '#F1621B' }}>
           <AppIcon name={subject.icon || 'chapters'} size={16} />
         </span>
-        <div className="sm-row-titles">
-          <h4 className="sm-row-subject-name">{subject.name}</h4>
-          <span className="sm-row-sub-text">
-            {stats.chapters} Chapters · {stats.mcqs} MCQs
+        <div className="sm-subject-card-info">
+          <h4 className="sm-subject-card-name" title={subject.name}>{subject.name}</h4>
+          <span className="sm-subject-card-meta">
+            {stats.chapters} Chapters • {stats.mcqs} MCQs
           </span>
         </div>
       </div>
 
-      <div className="sm-row-right" onClick={(e) => e.stopPropagation()}>
+      <div className="sm-subject-card-right" onClick={(e) => e.stopPropagation()}>
         <StatusBadge status={subject.status} locked={subject.locked} />
 
         <div className="sm-action-menu-wrap" ref={menuRef}>
@@ -723,7 +859,8 @@ function SubjectListRow({
             type="button"
             className="sm-three-dots-btn"
             onClick={() => setShowMenu(!showMenu)}
-            aria-label="Actions"
+            aria-label="Subject Actions"
+            title="Subject Actions"
           >
             <AppIcon name="moreVert" size={15} />
           </button>
@@ -746,8 +883,6 @@ function SubjectListRow({
             </div>
           )}
         </div>
-
-        <span className="sm-row-chevron">&rsaquo;</span>
       </div>
     </div>
   )
@@ -825,7 +960,7 @@ function DeleteChapterSecurityModal({
   )
 }
 
-/* ── Right Selected Subject Analytics & Chapter Workspace Panel ──── */
+/* ── Right Selected Subject Workspace Panel (Mockup Aligned) ──── */
 function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, notes = [], onEditSubject, onToggleLock, activeCourseId }) {
   const [activeTab, setActiveTab] = useState('chapters')
   const [showChapterModal, setShowChapterModal] = useState(false)
@@ -851,7 +986,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
     )
   }
 
-  // Chapter content for this specific subject (Returns ONLY actual created/stored chapters from DB)
+  // Chapter content for this specific subject
   const subjectChapters = useMemo(() => {
     if (!selectedSubject) return []
     return chapters.filter(
@@ -863,12 +998,11 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
     )
   }, [chapters, selectedSubject])
 
-  // Helper to compute EXACT chapter content counts (MCQs, Flashcards, Notes) directly from DB store
+  // Helper to compute EXACT chapter content counts
   const getChapterContentCounts = useCallback(
     (ch) => {
       if (!ch) return { mcqs: 0, flashcards: 0, notes: 0 }
 
-      // 1. Exact matching questions from mcqs store
       const matchingM = mcqs.filter((m) => {
         const matchesSubject =
           !selectedSubject ||
@@ -884,7 +1018,6 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         return matchesSubject && matchesChapter
       })
 
-      // 2. Exact matching cards from flashcards store
       const matchingF = flashcards.filter((f) => {
         const matchesSubject =
           !selectedSubject ||
@@ -900,7 +1033,6 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         return matchesSubject && matchesChapter
       })
 
-      // 3. Exact matching notes from notes store
       const matchingN = (notes || []).filter((n) => {
         const matchesSubject =
           !selectedSubject ||
@@ -956,7 +1088,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         Math.min(100, (mcqCount / 100) * 100) +
         Math.min(100, (flashcardCount / 50) * 100)) /
         3,
-    ) || 75,
+    ) || 33,
   )
 
   const handleSaveChapter = async (data) => {
@@ -1107,191 +1239,215 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
   }
 
   return (
-    <div className="sm-analytics-panel sm-subject-card-panel">
-      {/* 1. SUBJECT TITLE AS PRIMARY PANEL HEADER */}
-      <div className="sm-subject-panel-header">
-        <div className="sm-subject-title-wrap">
-          <span className="sm-subject-icon-badge" style={{ background: selectedSubject.color || '#F1621B' }}>
-            <AppIcon name={selectedSubject.icon || 'chapters'} size={20} />
+    <div className="sm-selected-workspace-panel">
+      {/* 1. Subject Header: Large Icon + Title + Status */}
+      <div className="sm-subj-panel-top">
+        <div className="sm-subj-title-group">
+          <span className="sm-subj-large-icon" style={{ background: selectedSubject.color || '#F1621B' }}>
+            <AppIcon name={selectedSubject.icon || 'chapters'} size={24} />
           </span>
-          <div>
-            <div className="sm-subject-heading-row">
-              <h3 className="sm-subject-panel-title">{selectedSubject.name}</h3>
-              <StatusBadge status={selectedSubject.status} locked={selectedSubject.locked} />
-            </div>
+          <div className="sm-subj-title-row">
+            <h3 className="sm-subj-heading">{selectedSubject.name}</h3>
+            <StatusBadge status={selectedSubject.status} locked={selectedSubject.locked} />
           </div>
         </div>
       </div>
 
-      {/* 3. DYNAMIC SUBJECT SUMMARY METRICS ROW */}
-      <div className="sm-four-grid sm-subject-metrics-grid">
-        <div className="sm-four-card">
-          <span className="sm-four-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
+      {/* 2. 4 Compact Stat Cards in a row */}
+      <div className="sm-subj-stat-cards-grid">
+        <div className="sm-subj-stat-card">
+          <span className="sm-subj-stat-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
             <AppIcon name="document" size={16} />
           </span>
-          <div>
-            <div className="sm-four-val">{chapterCount}</div>
-            <div className="sm-four-label">Chapters</div>
+          <div className="sm-subj-stat-texts">
+            <div className="sm-subj-stat-num">{chapterCount}</div>
+            <div className="sm-subj-stat-label">Chapters</div>
           </div>
         </div>
 
-        <div className="sm-four-card">
-          <span className="sm-four-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
+        <div className="sm-subj-stat-card">
+          <span className="sm-subj-stat-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
             <AppIcon name="help" size={16} />
           </span>
-          <div>
-            <div className="sm-four-val">{mcqCount}</div>
-            <div className="sm-four-label">MCQs</div>
+          <div className="sm-subj-stat-texts">
+            <div className="sm-subj-stat-num">{mcqCount}</div>
+            <div className="sm-subj-stat-label">MCQs</div>
           </div>
         </div>
 
-        <div className="sm-four-card">
-          <span className="sm-four-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
+        <div className="sm-subj-stat-card">
+          <span className="sm-subj-stat-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
             <AppIcon name="flashcardsTab" size={16} />
           </span>
-          <div>
-            <div className="sm-four-val">{flashcardCount}</div>
-            <div className="sm-four-label">Flashcards</div>
+          <div className="sm-subj-stat-texts">
+            <div className="sm-subj-stat-num">{flashcardCount}</div>
+            <div className="sm-subj-stat-label">Flashcards</div>
           </div>
         </div>
 
-        <div className="sm-four-card">
-          <span className="sm-four-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
-            <AppIcon name="target" size={16} />
-          </span>
-          <div>
-            <div className="sm-four-val">{readinessScore}%</div>
-            <div className="sm-four-label">Readiness</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs inside Selected Subject */}
-      <div className="sm-analytics-tabs">
-        <button
-          type="button"
-          className={`sm-tab-btn${activeTab === 'chapters' ? ' active' : ''}`}
-          onClick={() => setActiveTab('chapters')}
-        >
-          Chapter Management ({chapterCount})
-        </button>
-        <button
-          type="button"
-          className={`sm-tab-btn${activeTab === 'graph' ? ' active' : ''}`}
-          onClick={() => setActiveTab('graph')}
-        >
-          Content Graph
-        </button>
-        <button
-          type="button"
-          className={`sm-tab-btn${activeTab === 'settings' ? ' active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          Subject Actions
-        </button>
-      </div>
-
-      {/* Tab 1: Chapter Management */}
-      {activeTab === 'chapters' && (
-        <div className="sm-tab-content">
-          <div className="sm-chapter-section-header">
-            <h4 className="sm-block-title">Chapters</h4>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleResetSubjectState}
-                disabled={subjectChapters.length === 0}
-                title="Reset readiness score, accuracy %, and student progress across all chapters in this subject"
-              >
-                <AppIcon name="timer" size={13} /> Reset All Chapter States
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}>
-                <AppIcon name="add" size={13} /> Add Chapter
-              </Button>
+        <div className="sm-subj-stat-card sm-readiness-stat-card">
+          <div className="sm-readiness-card-left">
+            <span className="sm-subj-stat-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
+              <AppIcon name="target" size={16} />
+            </span>
+            <div className="sm-subj-stat-texts">
+              <div className="sm-subj-stat-num">{readinessScore}%</div>
+              <div className="sm-subj-stat-label">Readiness</div>
             </div>
           </div>
+          <div className="sm-readiness-gauge-wrap">
+            <svg width="34" height="34" viewBox="0 0 36 36" className="sm-readiness-gauge">
+              <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="#F1F5F9"
+                strokeWidth="3.5"
+              />
+              <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="#F1621B"
+                strokeWidth="3.5"
+                strokeDasharray={`${readinessScore}, 100`}
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
 
+      {/* 3. Subheader: Tab Bar on Left, Action Buttons on Right */}
+      <div className="sm-tabs-action-bar">
+        <div className="sm-nav-tabs">
+          <button
+            type="button"
+            className={`sm-tab-button${activeTab === 'chapters' ? ' active' : ''}`}
+            onClick={() => setActiveTab('chapters')}
+          >
+            Chapters
+          </button>
+          <button
+            type="button"
+            className={`sm-tab-button${activeTab === 'graph' ? ' active' : ''}`}
+            onClick={() => setActiveTab('graph')}
+          >
+            Content Graph
+          </button>
+          <button
+            type="button"
+            className={`sm-tab-button${activeTab === 'settings' ? ' active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            Subject Actions
+          </button>
+        </div>
+
+        <div className="sm-tab-right-actions">
+          <button
+            type="button"
+            className="sm-ghost-action-btn"
+            onClick={handleResetSubjectState}
+            disabled={subjectChapters.length === 0}
+            title="Reset student progress across all chapters in this subject"
+          >
+            <AppIcon name="timer" size={14} />
+            <span>Reset All Progress</span>
+          </button>
+          <button
+            type="button"
+            className="sm-primary-action-btn"
+            onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
+            title="Add Chapter to Subject"
+          >
+            <AppIcon name="add" size={15} />
+            <span>Add Chapter</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Tab Content Area */}
+      {activeTab === 'chapters' && (
+        <div className="sm-tab-pane">
           {subjectChapters.length === 0 ? (
             <div className="sm-empty-chapters">
-              <AppIcon name="document" size={24} />
-              <p>No chapters created yet.</p>
-              <Button variant="primary" size="sm" onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}>
+              <AppIcon name="document" size={28} />
+              <p>No chapters created for {selectedSubject.name} yet.</p>
+              <button
+                type="button"
+                className="sm-primary-action-btn"
+                onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
+              >
                 <AppIcon name="add" size={14} /> Add Chapter
-              </Button>
+              </button>
             </div>
           ) : (
-            <div className="sm-chapters-list">
+            <div className="sm-chapters-scroll-area">
               {subjectChapters.map((ch, idx) => {
                 const counts = getChapterContentCounts(ch, idx)
-                const chNum = ch.number || idx + 1
+                const chNum = String(ch.number || idx + 1).padStart(2, '0')
                 const meta = getBpscChapterMeta(ch.name, ch.code)
                 const displayCode = ch.code || (meta ? meta.code : '')
                 const displayPriority = ch.priority || (meta ? meta.priority : '')
                 const prioMeta = formatPriority(displayPriority)
-                const displayDesc = ch.desc || ch.description || (meta ? meta.description : '')
+                const chapterName = ch.name || ch.title || 'Untitled Chapter'
 
                 return (
-                  <div key={ch.id || idx} className="sm-chapter-row">
-                    <span className="sm-ch-num-badge">Ch. {chNum}</span>
-                    {displayCode && <span className="sm-ch-code-badge">{displayCode}</span>}
-
-                    <div className="sm-ch-titles">
-                      <div className="sm-ch-name-row">
-                        <h5 className="sm-ch-name">{ch.name}</h5>
-                        {displayPriority && (
-                          <span className={`sm-ch-prio-badge prio-${displayPriority.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
-                            {prioMeta.label || displayPriority}
-                          </span>
-                        )}
-                      </div>
-                      {displayDesc && <p className="sm-ch-desc-snippet">{displayDesc}</p>}
+                  <div key={ch.id || idx} className="sm-chapter-aligned-card">
+                    {/* 1. Orange Chapter Number & Code */}
+                    <div className="sm-ch-index-group">
+                      <span className="sm-ch-order-num">{chNum}</span>
+                      {displayCode && <span className="sm-ch-code-pill">{displayCode}</span>}
                     </div>
 
-                    <div className="sm-ch-meta">
-                      <span className="sm-ch-stat-pill">
-                        <AppIcon name="help" size={12} /> {counts.mcqs} MCQs
-                      </span>
-                      <span className="sm-ch-stat-pill">
-                        <AppIcon name="flashcardsTab" size={12} /> {counts.flashcards} Flashcards
-                      </span>
-                      <span className="sm-ch-stat-pill">
-                        <AppIcon name="notesTab" size={12} /> {counts.notes} Notes
-                      </span>
+                    {/* 2. Full Chapter Name */}
+                    <div className="sm-ch-main-info">
+                      <h5 className="sm-ch-main-title" title={chapterName}>{chapterName}</h5>
                     </div>
 
-                    <div className="sm-ch-actions">
+                    {/* 3. Priority in Mini Chip form */}
+                    {displayPriority && (
+                      <span className={`sm-ch-prio-mini prio-${displayPriority.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                        {prioMeta.label || displayPriority}
+                      </span>
+                    )}
+
+                    {/* 4. Aligned Action Buttons */}
+                    <div className="sm-ch-action-buttons">
                       <button
                         type="button"
-                        className="sm-icon-action-btn notes"
+                        className="sm-ch-act-btn"
                         onClick={() => setNotesEditorModal({ open: true, chapter: ch })}
-                        title="Author / Edit Chapter Notes"
+                        title="View / Author Chapter Notes"
+                        aria-label="View / Author Chapter Notes"
                       >
-                        <AppIcon name="notesTab" size={14} />
+                        <AppIcon name="notesTab" size={13} />
                       </button>
                       <button
                         type="button"
-                        className="sm-icon-action-btn"
+                        className="sm-ch-act-btn"
                         onClick={() => handleResetChapterState(ch)}
-                        title="Reset Readiness & Accuracy State for this Chapter"
+                        title="Reset Chapter Progress & Accuracy"
+                        aria-label="Reset Chapter Progress & Accuracy"
                       >
-                        <AppIcon name="timer" size={14} />
+                        <AppIcon name="analyticsTab" size={13} />
                       </button>
                       <button
                         type="button"
-                        className="sm-icon-action-btn"
+                        className="sm-ch-act-btn"
                         onClick={() => { setEditingChapter(ch); setShowChapterModal(true) }}
-                        title="Edit Chapter"
+                        title="Edit Chapter Details"
+                        aria-label="Edit Chapter Details"
                       >
-                        <AppIcon name="edit" size={14} />
+                        <AppIcon name="edit" size={13} />
                       </button>
                       <button
                         type="button"
-                        className="sm-icon-action-btn danger"
+                        className="sm-ch-act-btn danger"
                         onClick={() => handleDeleteChapter(ch)}
                         title="Delete Chapter"
+                        aria-label="Delete Chapter"
                       >
-                        <AppIcon name="delete" size={14} />
+                        <AppIcon name="delete" size={13} />
                       </button>
                     </div>
                   </div>
@@ -1302,10 +1458,9 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         </div>
       )}
 
-
       {/* Tab 2: Content Breakdown Graph */}
       {activeTab === 'graph' && (
-        <div className="sm-tab-content">
+        <div className="sm-tab-pane">
           <h4 className="sm-block-title">Subject Content Distribution</h4>
           <div className="sm-bar-chart-container">
             <svg viewBox="0 0 360 140" className="sm-bar-svg">
@@ -1342,7 +1497,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
 
       {/* Tab 3: Subject Actions */}
       {activeTab === 'settings' && (
-        <div className="sm-tab-content">
+        <div className="sm-tab-pane">
           <h4 className="sm-block-title">Subject Configuration</h4>
           <div className="sm-settings-grid">
             <div className="sm-setting-card">
@@ -1427,8 +1582,8 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   const { subjects, chapters, mcqs, flashcards, notes, allSubjects } = useAdminStore()
 
   const [search, setSearch] = useState('')
-  const [filterStatus, _setFilterStatus] = useState('all')
-  const [sortBy, _setSortBy] = useState('order')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [sortBy, setSortBy] = useState('order')
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState(null)
   const [selectedSubjectId, setSelectedSubjectId] = useState(null)
@@ -1653,79 +1808,22 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
 
   return (
     <div className="sm-workspace-shell">
-      {/* ── COURSE SELECTOR BAR (List of Existing Courses with Status & Subject Counts) ── */}
-      <CourseSelectorBar
+      {/* ── COURSE DASHBOARD BANNER (Compact Orange Header matching Mockup) ── */}
+      <CourseDashboardBanner
+        activeCourse={activeCourse}
         workspaces={workspaces}
-        activeCourseId={activeCourse.id}
-        allSubjects={allSubjects}
         onSelectCourse={handleSelectCourse}
         onAddSubject={handleOpenCreate}
+        summaryKpis={summaryKpis}
+        search={search}
+        onSearchChange={setSearch}
+        filterStatus={filterStatus}
+        onFilterChange={setFilterStatus}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
       />
 
-      {/* Compact 6 KPI Summary Row */}
-      <div className="sm-summary-row">
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
-              <AppIcon name="chapters" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.totalSubjects}</span>
-          </div>
-          <div className="sm-summary-label">Total Subjects</div>
-        </div>
-
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
-              <AppIcon name="check" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.activeSubjects}</span>
-          </div>
-          <div className="sm-summary-label">Active Subjects</div>
-        </div>
-
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>
-              <AppIcon name="lock" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.lockedSubjects}</span>
-          </div>
-          <div className="sm-summary-label">Locked Subjects</div>
-        </div>
-
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
-              <AppIcon name="document" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.totalChapters}</span>
-          </div>
-          <div className="sm-summary-label">Total Chapters</div>
-        </div>
-
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
-              <AppIcon name="help" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.totalMcqs}</span>
-          </div>
-          <div className="sm-summary-label">Total MCQs</div>
-        </div>
-
-        <div className="sm-summary-card">
-          <div className="sm-summary-top">
-            <span className="sm-summary-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
-              <AppIcon name="flashcardsTab" size={14} />
-            </span>
-            <span className="sm-summary-num">{summaryKpis.totalFlashcards}</span>
-          </div>
-          <div className="sm-summary-label">Total Flashcards</div>
-        </div>
-      </div>
-
-      {/* TWO-COLUMN WORKSPACE GRID */}
+      {/* ── TWO-COLUMN WORKSPACE: LEFT (Subjects) / RIGHT (Selected Subject + Chapters) ── */}
       {courseSubjects.length === 0 ? (
         <div className="sm-empty-state">
           <span className="sm-empty-icon">
@@ -1745,25 +1843,16 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
           </div>
         </div>
       ) : (
-        <div className="cm-main-workspace-grid">
-          {/* Left Column: Subject List */}
-          <div className="cm-course-list-col">
-            {/* Search Subjects Field Aligned with Left Subject List */}
-            <div className="sm-search-box-compact">
-              <AppIcon name="search" size={15} />
-              <input
-                type="text"
-                placeholder="Search subjects..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+        <div className="sm-workspace-grid">
+          {/* Left Column: Subjects Panel (~32% width) */}
+          <div className="sm-subjects-column">
+            <div className="sm-subjects-header">
+              <h3 className="sm-subjects-title">
+                Subjects <span className="sm-count-badge">({filteredSubjects.length})</span>
+              </h3>
             </div>
 
-            <div className="cm-list-header">
-              <h4 className="cm-list-title">Subjects ({filteredSubjects.length})</h4>
-            </div>
-
-            <div className="cm-cards-stack">
+            <div className="sm-subjects-scroll-stack">
               {filteredSubjects.map((subject) => (
                 <SubjectListRow
                   key={subject.id}
@@ -1777,11 +1866,26 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
                   onOpenDeleteModal={handleOpenDeleteSubject}
                 />
               ))}
+              {filteredSubjects.length === 0 && (
+                <div className="sm-no-results-box">
+                  <p>No subjects match your filter criteria.</p>
+                  <button
+                    type="button"
+                    className="sm-reset-filter-btn"
+                    onClick={() => {
+                      setSearch('')
+                      setFilterStatus('all')
+                    }}
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column: Selected Subject Analytics & Chapter Workspace Panel */}
-          <div className="cm-analytics-col">
+          {/* Right Column: Selected Subject + Chapters Workspace (~68% width) */}
+          <div className="sm-chapters-column">
             <SelectedSubjectPanel
               selectedSubject={selectedSubject}
               chapters={chapters}
@@ -1795,7 +1899,6 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
           </div>
         </div>
       )}
-
 
       {/* Subject Modal */}
       {showSubjectModal && (

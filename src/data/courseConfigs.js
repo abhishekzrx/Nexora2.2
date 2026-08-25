@@ -15,7 +15,11 @@ import { BPSC_PRELIMS_CHAPTERS } from './bpscPrelimsChapters.js'
 
 function getBpscChaptersForSubject(subjectName) {
   return BPSC_PRELIMS_CHAPTERS
-    .filter((c) => c.subject.toLowerCase() === subjectName.toLowerCase())
+    .filter(
+      (c) =>
+        c.subject.toLowerCase() === subjectName.toLowerCase() ||
+        (subjectName.toLowerCase().includes('history') && c.subject.toLowerCase().includes('history'))
+    )
     .map((c) => ({
       code: c.code,
       number: c.number,
@@ -23,6 +27,8 @@ function getBpscChaptersForSubject(subjectName) {
       desc: c.description,
       priority: c.priority,
       priorityLabel: c.priorityLabel,
+      detailedFocusAreas: c.detailedFocusAreas || c.detailed_focus_areas || [],
+      detailed_focus_areas: c.detailed_focus_areas || c.detailedFocusAreas || [],
     }))
 }
 
@@ -89,6 +95,8 @@ export const COURSE_CONFIGS = {
       'current affairs',
       'bihar special knowledge',
       'indian history',
+      'indian history & freedom movement',
+      'indian history and freedom movement',
       'geography & environment',
       'indian polity & governance',
       'indian economy',
