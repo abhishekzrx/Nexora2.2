@@ -6947,6 +6947,48 @@
   }
 }
 
+/* ── Tablet Viewport Cascading Selector & Grid Optimization ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .smart-context-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .context-select-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.3fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .context-top-tier {
+    display: contents;
+  }
+
+  .context-chapter-tier {
+    width: 100%;
+  }
+
+  .smart-select-pill {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .metrics-strip-pills {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .main-workspace-grid.compact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
 @keyframes cmiFadeInSlide {
   from {
     opacity: 0;
@@ -10458,31 +10500,62 @@
   }
 }
 
-/* ── Specific Mi Pad 5 Portrait Viewport (~800px x 1280px) ─────── */
-@media screen and (min-width: 768px) and (max-width: 960px) and (orientation: portrait) {
+/* ── Specific Mi Pad 5 & Tablet Portrait Viewport (~768px - 1024px) ── */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
   .admin-sidebar {
-    width: 76px !important;
-    min-width: 76px !important;
-    padding: 16px 8px !important;
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    padding: 16px 6px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
     transition: width 0.2s ease;
   }
 
+  .admin-sidebar .admin-sidebar-title-block,
+  .admin-sidebar .admin-sidebar-title,
+  .admin-sidebar .admin-sidebar-course,
+  .admin-sidebar .admin-sidebar-label,
+  .admin-sidebar .admin-sidebar-user,
+  .admin-sidebar .admin-user-info,
+  .admin-sidebar .admin-user-chevron,
+  .admin-sidebar .admin-sidebar-active-bar,
   .admin-sidebar .admin-nav-label,
   .admin-sidebar .admin-logo-text,
-  .admin-sidebar .admin-user-info,
   .admin-sidebar .sidebar-badge {
     display: none !important;
   }
 
+  .admin-sidebar-header {
+    justify-content: center !important;
+    padding: 0 !important;
+    margin-bottom: 20px !important;
+  }
+
+  .admin-sidebar-item,
   .admin-sidebar .admin-nav-item {
     justify-content: center !important;
     padding: 10px 0 !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+  }
+
+  .admin-sidebar-icon {
+    margin: 0 !important;
   }
 
   .admin-dashboard-main,
   .admin-main-viewport {
-    padding: 14px 16px 80px 16px !important;
+    padding: 16px 20px 80px 20px !important;
+    margin-left: 0 !important;
+    width: calc(100% - 68px) !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .admin-dashboard-header {
+    margin-bottom: 16px !important;
   }
 
   .sm-workspace-shell .cm-main-workspace-grid,
@@ -10500,8 +10573,8 @@
   }
 }
 
-/* ── Specific Mi Pad 5 Landscape Viewport (~1280px x 800px) ────── */
-@media screen and (min-width: 961px) and (max-width: 1280px) and (orientation: landscape) {
+/* ── Specific Mi Pad 5 Landscape Viewport (~1025px - 1280px) ────── */
+@media screen and (min-width: 1025px) and (max-width: 1280px) and (orientation: landscape) {
   .admin-sidebar {
     width: 220px !important;
     min-width: 220px !important;

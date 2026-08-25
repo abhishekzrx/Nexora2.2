@@ -9,7 +9,7 @@ import AppIcon from '../ui/AppIcon'
 import Button from '../ui/Button'
 import ChapterNotesEditorModal from './ChapterNotesEditorModal'
 import { useAdminStore, hydrateAdminStoreFromSupabase } from '../../data/adminStore'
-import { useWorkspaceStore } from '../../data/workspaceStore'
+import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { noteService } from '../../services/noteService'
 
 export default function NotesManager({ courseName = '' }) {
@@ -53,7 +53,7 @@ export default function NotesManager({ courseName = '' }) {
 
   // Select first subject by default if not set
   useEffect(() => {
-    if (courseSubjects.length > 0 && (!selectedSubjectId || !courseSubjects.some(s => s.id === selectedSubjectId))) {
+    if (courseSubjects.length > 0 && selectedSubjectId && !courseSubjects.some(s => s.id === selectedSubjectId)) {
       setSelectedSubjectId(courseSubjects[0].id)
     }
   }, [courseSubjects, selectedSubjectId])
@@ -88,7 +88,7 @@ export default function NotesManager({ courseName = '' }) {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      list = list.filter((c) => c.name?.toLowerCase().includes(q))
+      list = list.filter((c) => (c.name || c.title || '').toLowerCase().includes(q))
     }
 
     if (statusFilter === 'has_notes') {
@@ -131,13 +131,32 @@ export default function NotesManager({ courseName = '' }) {
 
   return (
     <div className="nm-root-container">
-      {/* ── 1. Top Header & Stats ─────────────────────────────────── */}
+      {/* ── 1. Top Header & Course Selector ──────────────────────── */}
       <div className="nm-header-section">
-        <div>
+        <div className="nm-heading-wrap">
+          <div className="nm-eyebrow">
+            <span className="live-pulse-dot" />
+            <span>Active Notes Workspace</span>
+          </div>
           <h2 className="nm-heading">Chapter Study Notes Studio</h2>
           <p className="nm-subheading">
-            Create, format, and publish rich textbook notes and visual study guides for {activeCourse?.name || 'this course'}.
+            Create, format, and publish rich textbook notes and visual study guides.
           </p>
+        </div>
+
+        <div className="nm-course-switch-badge" title="Select Course to Manage Notes">
+          <span className="nm-course-badge-prefix">
+            <AppIcon name="folder" size={13} /> Course:
+          </span>
+          <select
+            className="nm-course-select"
+            value={activeWorkspaceId}
+            onChange={(e) => setActiveWorkspace(e.target.value)}
+          >
+            {workspaces.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -145,7 +164,7 @@ export default function NotesManager({ courseName = '' }) {
       <div className="nm-stats-grid">
         <div className="nm-stat-card">
           <div className="nm-stat-icon-wrap" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-            <AppIcon name="notesTab" size={20} />
+            <AppIcon name="notesTab" size={18} />
           </div>
           <div>
             <div className="nm-stat-value">{chaptersWithNotes}</div>
@@ -155,7 +174,7 @@ export default function NotesManager({ courseName = '' }) {
 
         <div className="nm-stat-card">
           <div className="nm-stat-icon-wrap" style={{ background: '#E0F2FE', color: '#0284C7' }}>
-            <AppIcon name="chapters" size={20} />
+            <AppIcon name="chapters" size={18} />
           </div>
           <div>
             <div className="nm-stat-value">{totalChapters}</div>
@@ -165,53 +184,64 @@ export default function NotesManager({ courseName = '' }) {
 
         <div className="nm-stat-card">
           <div className="nm-stat-icon-wrap" style={{ background: '#FEF3C7', color: '#D97706' }}>
-            <AppIcon name="warning" size={20} />
+            <AppIcon name="warning" size={18} />
           </div>
           <div>
             <div className="nm-stat-value">{chaptersMissingNotes}</div>
-            <div className="nm-stat-label">Chapters Missing Notes</div>
+            <div className="nm-stat-label">Missing Notes</div>
           </div>
         </div>
 
         <div className="nm-stat-card">
           <div className="nm-stat-icon-wrap" style={{ background: '#DCFCE7', color: '#16A34A' }}>
-            <AppIcon name="check" size={20} />
+            <AppIcon name="check" size={18} />
           </div>
           <div>
             <div className="nm-stat-value">{noteCoveragePct}%</div>
-            <div className="nm-stat-label">Notes Readiness</div>
+            <div className="nm-stat-label">Readiness</div>
           </div>
         </div>
       </div>
 
       {/* ── 3. Filters & Controls Row ─────────────────────────────── */}
       <div className="nm-controls-bar">
-        {/* Subject Pills */}
-        <div className="nm-subject-pills-row">
-          {courseSubjects.map((sub) => {
-            const isSelected = selectedSubjectId === sub.id
-            const subChaps = courseChapters.filter((c) => c.subjectId === sub.id || c.subject === sub.name)
-            const subNotesCount = subChaps.filter((c) => getNoteForChapter(c) !== null).length
+        {/* Subject Horizontal Pill Scroll Strip */}
+        <div className="nm-subject-scroll-container">
+          <div className="nm-subject-pills-row">
+            <button
+              type="button"
+              className={`nm-subject-pill${!selectedSubjectId ? ' active' : ''}`}
+              onClick={() => setSelectedSubjectId('')}
+            >
+              <AppIcon name="chapters" size={13} />
+              <span>All Subjects</span>
+              <span className="nm-pill-count">{chaptersWithNotes}/{totalChapters}</span>
+            </button>
+            {courseSubjects.map((sub) => {
+              const isSelected = selectedSubjectId === sub.id
+              const subChaps = courseChapters.filter((c) => c.subjectId === sub.id || c.subject === sub.name)
+              const subNotesCount = subChaps.filter((c) => getNoteForChapter(c) !== null).length
 
-            return (
-              <button
-                key={sub.id}
-                type="button"
-                className={`nm-subject-pill${isSelected ? ' active' : ''}`}
-                onClick={() => setSelectedSubjectId(sub.id)}
-              >
-                <AppIcon name={sub.icon || 'chapters'} size={14} />
-                <span>{sub.name}</span>
-                <span className="nm-pill-count">{subNotesCount}/{subChaps.length}</span>
-              </button>
-            )
-          })}
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={`nm-subject-pill${isSelected ? ' active' : ''}`}
+                  onClick={() => setSelectedSubjectId(sub.id)}
+                >
+                  <AppIcon name={sub.icon || 'chapters'} size={13} />
+                  <span>{sub.name}</span>
+                  <span className="nm-pill-count">{subNotesCount}/{subChaps.length}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {/* Search & Status Filter */}
+        {/* Search & Status Filter Row */}
         <div className="nm-search-filter-row">
           <div className="nm-search-input-wrap">
-            <AppIcon name="search" size={15} />
+            <AppIcon name="search" size={14} />
             <input
               type="text"
               placeholder="Search chapters..."
@@ -221,7 +251,7 @@ export default function NotesManager({ courseName = '' }) {
             />
             {searchQuery && (
               <button type="button" className="nm-clear-btn" onClick={() => setSearchQuery('')}>
-                <AppIcon name="close" size={13} />
+                <AppIcon name="close" size={12} />
               </button>
             )}
           </div>
@@ -231,7 +261,7 @@ export default function NotesManager({ courseName = '' }) {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="all">All Chapters ({courseChapters.length})</option>
+            <option value="all">All Status ({visibleChapters.length})</option>
             <option value="has_notes">With Notes ({chaptersWithNotes})</option>
             <option value="no_notes">Missing Notes ({chaptersMissingNotes})</option>
           </select>
