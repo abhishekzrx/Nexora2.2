@@ -47,9 +47,55 @@ export default function ChapterNotesView({
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [zoomedImage, setZoomedImage] = useState(null)
+  const [zoomLevel, setZoomLevel] = useState(1.0)
+  const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
   const stripRef = useRef(null)
   const searchInputRef = useRef(null)
+
+  const hasImageNotes = useMemo(() => {
+    return notesList.some((n) => n.type === 'IMAGE')
+  }, [notesList])
+
+  const openZoomReader = (url, caption) => {
+    setZoomedImage({ url, caption })
+    setZoomLevel(1.0)
+    setZoomPan({ x: 0, y: 0 })
+  }
+
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(4.0, Number((prev + 0.3).toFixed(1))))
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(0.6, Number((prev - 0.3).toFixed(1))))
+  const handleResetZoom = () => {
+    setZoomLevel(1.0)
+    setZoomPan({ x: 0, y: 0 })
+  }
+  const handleToggleFit = () => {
+    if (zoomLevel === 1.0) {
+      setZoomLevel(2.0)
+    } else {
+      handleResetZoom()
+    }
+  }
+
+  const handleMouseDown = (e) => {
+    if (zoomLevel > 1.0) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - zoomPan.x, y: e.clientY - zoomPan.y })
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoomLevel > 1.0) {
+      setZoomPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      })
+    }
+  }
+
+  const handleMouseUp = () => setIsDragging(false)
 
   const currentChapterIndex = useMemo(() => {
     return chapters.findIndex((c) => String(c.id || c.num) === String(selectedChapterId))
@@ -419,31 +465,34 @@ export default function ChapterNotesView({
           </div>
         ) : (
           <div className="cnv-note-article-wrapper">
-            <header className="cnv-note-header">
-              <div className="cnv-note-meta-pills">
-                <span className="cnv-crumb-chip subject-chip">
-                  <AppIcon name={subject?.icon || 'chapters'} size={12} /> {subject?.title || 'Subject'}
-                </span>
-                <span className="cnv-crumb-chip chapter-chip">
-                  Chapter {selectedChapter?.num || currentChapterIndex + 1}
-                </span>
-                {notesList.length > 1 && (
-                  <span className="cnv-crumb-chip count-chip">
-                    {notesList.length} Note Items
+            {/* Render header ONLY for text/pdf notes — hidden for image notes so ONLY the clean image is shown */}
+            {!hasImageNotes && (
+              <header className="cnv-note-header">
+                <div className="cnv-note-meta-pills">
+                  <span className="cnv-crumb-chip subject-chip">
+                    <AppIcon name={subject?.icon || 'chapters'} size={12} /> {subject?.title || 'Subject'}
                   </span>
-                )}
-                {totalWordCount > 0 && (
-                  <span className="cnv-crumb-chip reading-time-badge">
-                    <AppIcon name="clock" size={11} /> ~{readTimeMin} min read
+                  <span className="cnv-crumb-chip chapter-chip">
+                    Chapter {selectedChapter?.num || currentChapterIndex + 1}
                   </span>
-                )}
-              </div>
-              <h1 className="cnv-note-title">
-                {cleanDisplayTitle(notesList[0]?.title) !== 'Study Notes'
-                  ? cleanDisplayTitle(notesList[0]?.title)
-                  : (selectedChapter?.title || 'Study Notes')}
-              </h1>
-            </header>
+                  {notesList.length > 1 && (
+                    <span className="cnv-crumb-chip count-chip">
+                      {notesList.length} Note Items
+                    </span>
+                  )}
+                  {totalWordCount > 0 && (
+                    <span className="cnv-crumb-chip reading-time-badge">
+                      <AppIcon name="clock" size={11} /> ~{readTimeMin} min read
+                    </span>
+                  )}
+                </div>
+                <h1 className="cnv-note-title">
+                  {cleanDisplayTitle(notesList[0]?.title) !== 'Study Notes'
+                    ? cleanDisplayTitle(notesList[0]?.title)
+                    : (selectedChapter?.title || 'Study Notes')}
+                </h1>
+              </header>
+            )}
 
             <div className="cnv-note-body">
               {notesList.map((item, index) => {
@@ -479,16 +528,30 @@ export default function ChapterNotesView({
                       </div>
                     )}
 
-                    {/* Render Image Note Card — Only clean image shown, zero redundant titles */}
+                    {/* Render Image Note Card — Only clean image shown, zero distracting header or raw titles */}
                     {isImage && item.fileUrl && (
                       <div className="cnv-student-image-card">
+                        <div className="cnv-img-actions-bar">
+                          <span className="cnv-img-badge-tag">🖼️ Study Visual Note</span>
+                          <button
+                            type="button"
+                            className="cnv-img-action-btn"
+                            onClick={() => openZoomReader(item.fileUrl, cleanDisplayTitle(item.title))}
+                          >
+                            <AppIcon name="search" size={14} /> Fullscreen Zoom Reader
+                          </button>
+                        </div>
                         <div
                           className="cnv-img-wrapper"
-                          onClick={() => setZoomedImage({ url: item.fileUrl, caption: cleanDisplayTitle(item.title) })}
-                          title="Click to zoom image"
+                          onClick={() => openZoomReader(item.fileUrl, cleanDisplayTitle(item.title))}
+                          title="Click to open Fullscreen Zoom Reader"
                         >
-                          <img src={item.fileUrl} alt={cleanDisplayTitle(item.title) || 'Chapter Visual Note'} className="cnv-student-img" />
-                          <span className="cnv-zoom-hint">🔍 Click to Expand</span>
+                          <img
+                            src={item.fileUrl}
+                            alt={cleanDisplayTitle(item.title) || 'Chapter Visual Note'}
+                            className="cnv-student-img"
+                          />
+                          <span className="cnv-zoom-hint">🔍 Click / Double-Tap to Zoom & Read</span>
                         </div>
                         {item.content && !item.content.includes('file_') && item.content !== item.title && (
                           <div className="cnv-img-caption">
@@ -560,18 +623,52 @@ export default function ChapterNotesView({
         )}
       </div>
 
-      {/* ── 5. Fullscreen Image Zoom Lightbox Modal ───────────────── */}
+      {/* ── 5. Fullscreen Image Reader & Zoom Lightbox Modal ───────── */}
       {zoomedImage && (
         <div className="cnv-lightbox-overlay" onClick={() => setZoomedImage(null)}>
           <div className="cnv-lightbox-container" onClick={(e) => e.stopPropagation()}>
             <div className="cnv-lightbox-header">
-              <span className="cnv-lightbox-title">{zoomedImage.caption || 'Image View'}</span>
-              <button type="button" className="cnv-lightbox-close" onClick={() => setZoomedImage(null)}>
-                <AppIcon name="close" size={18} />
-              </button>
+              <span className="cnv-lightbox-title">{zoomedImage.caption || 'Visual Study Reader'}</span>
+
+              {/* Zoom Controls Toolbar */}
+              <div className="cnv-lightbox-controls">
+                <button type="button" className="cnv-zoom-btn" onClick={handleZoomOut} title="Zoom Out (-)">
+                  <AppIcon name="minus" size={14} /> Zoom Out
+                </button>
+                <span className="cnv-zoom-level-badge">{Math.round(zoomLevel * 100)}%</span>
+                <button type="button" className="cnv-zoom-btn" onClick={handleZoomIn} title="Zoom In (+)">
+                  <AppIcon name="plus" size={14} /> Zoom In
+                </button>
+                <button type="button" className="cnv-zoom-btn" onClick={handleToggleFit} title="Toggle 2x Fit / 100%">
+                  <AppIcon name="search" size={14} /> {zoomLevel === 1.0 ? '2x Fit' : '100%'}
+                </button>
+                <button type="button" className="cnv-zoom-btn" onClick={handleResetZoom} title="Reset Scale & Pan">
+                  Reset
+                </button>
+                <button type="button" className="cnv-lightbox-close" onClick={() => setZoomedImage(null)} title="Close Reader">
+                  <AppIcon name="close" size={18} />
+                </button>
+              </div>
             </div>
-            <div className="cnv-lightbox-body">
-              <img src={zoomedImage.url} alt={zoomedImage.caption || 'Zoomed Note'} className="cnv-lightbox-img" />
+
+            <div
+              className={`cnv-lightbox-body${zoomLevel > 1.0 ? ' zoomed-mode' : ''}`}
+              onWheel={handleWheelZoom}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <img
+                src={zoomedImage.url}
+                alt={zoomedImage.caption || 'Zoomed Note'}
+                className="cnv-lightbox-img zoomable"
+                onDoubleClick={handleToggleFit}
+                style={{
+                  transform: `scale(${zoomLevel}) translate(${zoomPan.x / zoomLevel}px, ${zoomPan.y / zoomLevel}px)`,
+                  cursor: zoomLevel > 1.0 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                }}
+              />
             </div>
           </div>
         </div>

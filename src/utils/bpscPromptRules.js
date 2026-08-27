@@ -14,25 +14,25 @@
 
 import { EXAM_PROFILES } from '../data/examProfiles.js'
 
-export const BPSC_PRELIMS_PROMPT_RULES = `You are a senior question-setter for the Bihar Public Service Commission (BPSC) Combined Competitive Preliminary Examination.
-Follow the modern post-68th BPSC Prelims examination calibration with rigorous precision.
+export function isTechnicalSubject(course = '', subject = '') {
+  const combined = `${course} ${subject}`.toLowerCase()
+  return /computer|code|program|network|dbms|operating system|data structure|algorithm|software|hardware|math|physics|tech|engineering|c\+\+|python|java/i.test(combined)
+}
+
+export const BPSC_PRELIMS_PROMPT_RULES = `You are a senior question-setter for competitive examinations.
+Follow examination calibration with rigorous precision.
 
 CORE PRINCIPLES:
 1. ONLY STANDARD MULTIPLE CHOICE QUESTIONS (MCQs): Every item must be a direct, standard multiple-choice question. Do NOT generate assertion-reason pairs.
-2. FACTUAL ANCHORING: Every question must be anchored in verifiable, concrete historical, geographical, administrative, scientific, economic, or constitutional facts. Avoid vague or speculative premises.
-3. MICRO-FACTUAL DEPTH & ANALYTICAL ELIMINATION: Test authentic depth (e.g. exact organizations, associated treaties, regional jurisdictions, act numbers, committee names, session venues, and chronology) with analytical elimination.
-4. DISTRACTOR ENGINEERING (OPTIONS A-D):
-   - All options A-D must belong to the exact same taxonomic category (e.g. all 4 are rivers of North Bihar, all 4 are 1920s peasant leaders, all 4 are constitutional articles).
-   - Distractors must be plausible and realistic—never obviously absurd, never joke answers.
-   - Avoid giveaway answer clues based on option length, grammatical agreement, or extreme qualifiers ("always", "never") unless authentic to the fact.
+2. FACTUAL ANCHORING: Every question must be anchored in verifiable, concrete facts, specifications, or core principles. Avoid vague or speculative premises.
+3. DISTRACTOR ENGINEERING (OPTIONS A-D):
+   - All options A-D must belong to the exact same taxonomic category (e.g. all 4 are networking protocols, all 4 are constitutional articles, or all 4 are historical treaties).
+   - Distractors must be plausible and realistic—never obviously absurd.
    - Do NOT use "All of the above" or "None of the above" in Options A-D.
-5. OPTION E ARCHITECTURE:
+4. OPTION E ARCHITECTURE:
    - Option E MUST ALWAYS BE EXACTLY: "Not Attempted".
-   - Do NOT put any subject content or "None of the above / More than one of the above" in Option E.
-6. BIHAR INTEGRATION (TARGET ~22%):
-   - Integrate Bihar-specific dimensions (Bihar History, Geography, Economy, Polity, Movements, Leaders, Schemes, and Statistics) wherever naturally relevant to the subject/chapter.
-   - Do not artificially force Bihar references into purely universal technical topics.
-7. LINGUISTIC PRECISION: Use formal, concise administrative Hindi/English examination wording.`
+   - Do NOT put any subject content in Option E.
+5. LINGUISTIC PRECISION: Use formal, concise examination wording.`
 
 /**
  * Calculates proportional integer distributions ensuring the sum of parts exactly equals the total quantity.
@@ -89,7 +89,7 @@ export function createBPSCBatchPlan({ quantity = 10, difficulty = 'Auto', questi
   } else if (normalizedDiff === 'very difficult' || normalizedDiff === 'verydifficult') {
     difficultyPlan = { easy: 0, moderate: 0, difficult: 0, veryDifficult: total }
   } else {
-    // Auto / Authentic BPSC Mix (25% Easy, 50% Moderate, 18% Difficult, 7% Very Difficult)
+    // Auto / Authentic BPSC Mix
     difficultyPlan = allocateIntegerDistribution(total, diffMap)
   }
 
@@ -127,7 +127,7 @@ export function createBPSCBatchPlan({ quantity = 10, difficulty = 'Auto', questi
 /**
  * Formats the Batch Plan into prompt directives for the AI model.
  */
-export function formatBPSCBatchPlan(plan) {
+export function formatBPSCBatchPlan(plan, isTech = false) {
   if (!plan) return []
   const lines = []
 
@@ -150,13 +150,8 @@ export function formatBPSCBatchPlan(plan) {
     threeStatement: 'Three-Statement Verification',
     matching: 'Matching Lists',
     chronology: 'Chronological Sequence',
-    assertionReason: 'Assertion-Reason',
-    causeEffect: 'Cause-Effect',
     conceptual: 'Conceptual',
     application: 'Application-Based',
-    mapLocation: 'Map / Geographical Location',
-    dataStatistics: 'Data / Statistics',
-    personalityEvent: 'Personality-Event Association',
   }
 
   const typeItems = Object.entries(plan.questionTypesPlan)
@@ -167,7 +162,9 @@ export function formatBPSCBatchPlan(plan) {
     lines.push(`- Question Structures: ${typeItems.join(', ')}`)
   }
 
-  lines.push(`- Bihar-Integrated Items: approximately ${plan.biharTargetCount} of ${plan.totalQuantity} questions (${plan.biharTargetPct}%) where contextually relevant.`)
+  if (!isTech) {
+    lines.push(`- Regional/Contextual Items: approximately ${plan.biharTargetCount} of ${plan.totalQuantity} questions where relevant.`)
+  }
   lines.push('- Option Architecture: Every question must contain 5 options (A, B, C, D as authentic content options, and Option E strictly as "Not Attempted").')
 
   return lines
@@ -175,10 +172,10 @@ export function formatBPSCBatchPlan(plan) {
 
 /**
  * Sanitizes chapter descriptions for AI Prompt Generation.
- * Strips raw JSON note payloads, Base64 data URLs, HTML markup, markdown tags, UUIDs,
- * and collapses formatting into a clean, concise educational summary (max 350 chars).
+ * Strips raw JSON note payloads, Base64 data URLs, raw file names (e.g. file 00000.png), HTML markup, markdown tags, UUIDs,
+ * and collapses formatting into a clean, concise educational summary.
  */
-export function cleanChapterDescriptionForPrompt(rawDesc) {
+export function cleanChapterDescriptionForPrompt(rawDesc, chapterTitle = '') {
   if (!rawDesc) return ''
   let desc = String(rawDesc).trim()
   if (!desc) return ''
@@ -195,29 +192,43 @@ export function cleanChapterDescriptionForPrompt(rawDesc) {
     }
   }
 
-  // 2. Remove base64 data URLs (data:image/...;base64,...)
+  // 2. Remove base64 data URLs
   desc = desc.replace(/data:image\/[a-zA-Z0-9+]+;base64,[a-zA-Z0-9+/=]+/g, '')
 
-  // 3. Remove Markdown images ![alt](url) and links [text](url)
+  // 3. Aggressively remove raw file attachment strings (e.g. file 00000000858c81f4958802eff325e58c.png, file_xxxx.png)
+  desc = desc.replace(/file[_\s-]?[0-9a-fA-F]{6,}\.[a-zA-Z0-9]+/g, '')
+  desc = desc.replace(/file[_\s-]?[a-zA-Z0-9_-]+\.(png|jpg|jpeg|pdf|webp|svg|txt)/gi, '')
+  desc = desc.replace(/\b[a-zA-Z0-9_-]+\.(png|jpg|jpeg|pdf|webp|svg)\b/gi, '')
+  desc = desc.replace(/\bfile\s+[0-9a-fA-F]+\b/gi, '')
+
+  // 4. Remove Markdown images ![alt](url) and links [text](url)
   desc = desc.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
   desc = desc.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
 
-  // 4. Remove Markdown formatting characters (#, *, _, `, >, ~)
+  // 5. Remove Markdown formatting characters
   desc = desc.replace(/[#*_`>~|-]/g, ' ')
 
-  // 5. Remove HTML tags
+  // 6. Remove HTML tags
   desc = desc.replace(/<[^>]*>/g, ' ')
 
-  // 6. Remove UUIDs & internal ID patterns
+  // 7. Remove UUIDs & internal ID patterns
   desc = desc.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '')
   desc = desc.replace(/\bnote-[a-z0-9_-]+\b/gi, '')
 
-  // 7. Collapse multi-space/newlines
+  // 8. Collapse multi-space/newlines
   desc = desc.replace(/\s+/g, ' ').trim()
 
-  // 8. Truncate long description to max 350 characters
-  if (desc.length > 350) {
-    desc = desc.substring(0, 350).trim() + '...'
+  // 9. Remove leading/trailing colons or dashes
+  desc = desc.replace(/^[:\s-]+/, '').replace(/[:\s-]+$/, '').trim()
+
+  // 10. If clean desc is identical to chapter title or empty, return empty
+  if (chapterTitle && desc.toLowerCase() === String(chapterTitle).toLowerCase().trim()) {
+    return ''
+  }
+
+  // 11. Truncate long description to max 250 characters
+  if (desc.length > 250) {
+    desc = desc.substring(0, 250).trim() + '...'
   }
 
   return desc
@@ -239,54 +250,54 @@ export function buildBPSCPrompt({
   pyqAnalysis = null,
 } = {}) {
   const plan = createBPSCBatchPlan({ quantity, difficulty })
-  const cleanDesc = cleanChapterDescriptionForPrompt(chapterDescription)
+  const cleanDesc = cleanChapterDescriptionForPrompt(chapterDescription, chapter)
+  const isTech = isTechnicalSubject(course, subject)
   const lines = []
 
-  lines.push(BPSC_PRELIMS_PROMPT_RULES)
+  // Subject-Aware Core Rules
+  if (isTech) {
+    lines.push(`You are a senior question-setter for ${course || 'Computer Science'} examinations.`)
+    lines.push('Generate authentic, standard multiple-choice questions focusing on core technical concepts, protocol specifications, and standard principles.')
+    lines.push('')
+    lines.push('CORE RULES:')
+    lines.push('1. STANDARD MCQs: Generate clear, standard multiple-choice questions.')
+    lines.push('2. TECHNICAL ANCHORING: Every question must be anchored in standard technical facts, specifications, architectures, or protocols.')
+    lines.push('3. DISTRACTOR ENGINEERING: Options A-D must belong to the exact same technical category (e.g., all 4 options are networking protocols, or all 4 are database normal forms).')
+    lines.push('4. OPTION E: Option E MUST ALWAYS BE EXACTLY: "Not Attempted".')
+  } else {
+    lines.push(BPSC_PRELIMS_PROMPT_RULES)
+  }
   lines.push('')
 
   lines.push('TARGET SYLLABUS & CONTEXT:')
-  lines.push(`- Examination Profile: BPSC Combined Competitive Examination (Prelims)`)
   lines.push(`- Course: ${course || 'BPSC Prelims'}`)
   lines.push(`- Subject: ${subject || 'General Studies'}`)
   lines.push(`- Chapter: ${chapter || 'Prescribed Chapter'}`)
-  if (cleanDesc) {
-    lines.push(`- Chapter Scope & Core Subtopics: ${cleanDesc}`)
+  if (cleanDesc && cleanDesc.toLowerCase() !== String(chapter).toLowerCase().trim()) {
+    lines.push(`- Chapter Scope: ${cleanDesc}`)
   }
   lines.push(`- Medium / Language: ${language || 'English'}`)
-  lines.push(`- Prompt Version: ${plan.promptVersion}`)
   lines.push('')
 
-  formatBPSCBatchPlan(plan).forEach((line) => lines.push(line))
+  formatBPSCBatchPlan(plan, isTech).forEach((line) => lines.push(line))
   lines.push('')
 
   if (matchedPYQs && matchedPYQs.length > 0) {
-    lines.push('PREVIOUS YEARS QUESTIONS (PYQ) BENCHMARK REFERENCE:')
-    lines.push(`- Count of historical questions available: ${matchedPYQs.length}`)
-    lines.push('- Use these to anchor difficulty, recurring tested facts, and distractor patterns.')
-    lines.push('- Do NOT copy or re-ask the exact same PYQ. Generate original BPSC-standard questions.')
-    lines.push('')
-    matchedPYQs.slice(0, 5).forEach((pyq, i) => {
-      const yr = pyq.exam_year || pyq.year || 'PYQ'
+    lines.push('BENCHMARK REFERENCE:')
+    matchedPYQs.slice(0, 3).forEach((pyq, i) => {
       const qText = pyq.question_text || pyq.question || ''
-      lines.push(`  PYQ ${i + 1} (${yr}): ${qText}`)
+      if (qText) lines.push(`  Sample ${i + 1}: ${qText}`)
     })
     lines.push('')
   }
 
-  if (pyqAnalysis && pyqAnalysis.total > 0 && pyqAnalysis.mostTested?.length) {
-    lines.push(`- PYQ Priority Micro-Topics: ${pyqAnalysis.mostTested.map((m) => m.topic).join(', ')}`)
-    lines.push('')
-  }
-
   if (specialInstructions) {
-    lines.push(`ADDITIONAL INSTRUCTIONS:`)
-    lines.push(specialInstructions)
+    lines.push(`ADDITIONAL INSTRUCTIONS: ${specialInstructions}`)
     lines.push('')
   }
 
   lines.push('OUTPUT SPECIFICATION:')
-  lines.push('Return the generated questions strictly as a raw JSON array. Do not enclose in backticks or markdown, and do not add conversational preamble.')
+  lines.push('Return the generated questions strictly as a raw JSON array. Do not enclose in backticks or markdown.')
   lines.push('Schema per question object:')
   lines.push('{')
   lines.push('  "question": "Full clear question stem here.",')
@@ -299,11 +310,9 @@ export function buildBPSCPrompt({
   lines.push('  },')
   lines.push('  "correct": "A",')
   lines.push('  "difficulty": "Moderate",')
-  lines.push('  "explanation": "Precise factual explanation of the correct answer and why the key distractors are incorrect.",')
+  lines.push('  "explanation": "Precise factual explanation of the correct answer and distractors.",')
   lines.push(`  "subject": "${subject || 'Subject name'}",`)
-  lines.push(`  "chapter": "${chapter || 'Chapter name'}",`)
-  lines.push('  "exam_profile": "BPSC_PRELIMS",')
-  lines.push(`  "prompt_version": "${plan.promptVersion}"`)
+  lines.push(`  "chapter": "${chapter || 'Chapter name'}"`)
   lines.push('}')
 
   return lines.join('\n')

@@ -1943,46 +1943,78 @@
 
 /* Student Image Note Card */
 .cnv-student-image-card {
-  margin: 18px 0;
+  margin: 12px 0;
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
-.cnv-img-note-title {
-  font-size: 15px;
+.cnv-img-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+.cnv-img-badge-tag {
+  font-size: 13px;
   font-weight: 700;
   color: #0F172A;
-  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cnv-img-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2563EB;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+  transition: all 0.15s ease;
+}
+.cnv-img-action-btn:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
 }
 .cnv-img-wrapper {
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #F1F5F9;
-  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  background: #0F172A;
   cursor: zoom-in;
   text-align: center;
 }
 .cnv-student-img {
   max-width: 100%;
-  max-height: 480px;
+  max-height: 520px;
   object-fit: contain;
   display: block;
   margin: 0 auto;
 }
 .cnv-zoom-hint {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(15, 23, 42, 0.75);
+  bottom: 10px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.85);
   color: #FFFFFF;
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
   backdrop-filter: blur(4px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 .cnv-img-caption {
   margin-top: 10px;
@@ -1994,62 +2026,106 @@
 .cnv-lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
 .cnv-lightbox-container {
-  background: #FFFFFF;
+  background: #0F172A;
+  border: 1px solid #334155;
   border-radius: 14px;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 95vw;
+  height: 92vh;
+  max-width: 1400px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
 }
 .cnv-lightbox-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  padding: 12px 20px;
+  background: #1E293B;
+  border-bottom: 1px solid #334155;
 }
 .cnv-lightbox-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: #0F172A;
+  color: #F8FAFC;
+}
+.cnv-lightbox-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cnv-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #334155;
+  border: 1px solid #475569;
+  color: #F8FAFC;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cnv-zoom-btn:hover {
+  background: #475569;
+  color: #FFFFFF;
+  border-color: #64748B;
+}
+.cnv-zoom-level-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #60A5FA;
+  background: #1E3A8A;
+  padding: 4px 10px;
+  border-radius: 6px;
+  min-width: 52px;
+  text-align: center;
 }
 .cnv-lightbox-close {
-  background: transparent;
-  border: none;
-  color: #64748B;
+  background: #334155;
+  border: 1px solid #475569;
+  color: #F8FAFC;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 6px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s ease;
 }
 .cnv-lightbox-close:hover {
-  background: #E2E8F0;
-  color: #0F172A;
+  background: #EF4444;
+  color: #FFFFFF;
+  border-color: #DC2626;
 }
 .cnv-lightbox-body {
+  flex: 1;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  background: #090D16;
 }
-.cnv-lightbox-img {
+.cnv-lightbox-img.zoomable {
   max-width: 100%;
-  max-height: 75vh;
+  max-height: 80vh;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 6px;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  user-select: none;
 }

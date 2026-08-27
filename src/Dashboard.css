@@ -390,6 +390,104 @@ img {
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Unified Readiness Container Dark Overrides */
+.unified-readiness-container .dash-header {
+  padding: 4px 0 6px 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+}
+
+.unified-readiness-container .dash-greeting-title {
+  color: #FFFFFF !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+.unified-readiness-container .dash-greeting-sub {
+  color: #94A3B8 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.unified-readiness-container .dash-menu-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #F8FAFC !important;
+}
+
+.unified-readiness-container .dash-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #FFFFFF !important;
+}
+
+.unified-readiness-container .student-course-selector-trigger {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #F8FAFC !important;
+  backdrop-filter: blur(8px);
+}
+
+.unified-readiness-container .student-course-selector-trigger:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.unified-readiness-container .student-course-name {
+  color: #F8FAFC !important;
+}
+
+.unified-readiness-container .dash-bell-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #F8FAFC !important;
+  backdrop-filter: blur(8px);
+}
+
+.unified-readiness-container .dash-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.unified-readiness-container .dash-bell-badge {
+  border-color: #0D1527 !important;
+}
+
+.unified-readiness-container .summary-stat-label {
+  color: #94A3B8;
+}
+.unified-readiness-container .summary-stat-val {
+  color: #F8FAFC;
+}
+.unified-readiness-container .summary-stat-sub {
+  color: #94A3B8;
+}
+.unified-readiness-container .summary-goal-line {
+  color: #F8FAFC;
+}
+.unified-readiness-container .summary-goal-line.subtle {
+  color: #94A3B8;
+}
+.unified-readiness-container .summary-stat-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+.unified-readiness-container .summary-icon-circle {
+  background: rgba(241, 98, 27, 0.22) !important;
+  color: #FF8C42 !important;
+  box-shadow: 0 0 12px rgba(241, 98, 27, 0.15);
+}
+.unified-readiness-container .summary-progress-pct {
+  color: #94A3B8;
+}
+.unified-readiness-container .summary-progress-pct b {
+  color: #F8FAFC;
+}
+.unified-readiness-container .summary-progress-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+.unified-readiness-container .summary-progress-fill {
+  background: linear-gradient(90deg, #F1621B, #FF8C42);
+}
+
 /* =========================================================
    4. EXAM READINESS CARD (Dark Premium Theme)
    ========================================================= */
@@ -593,20 +691,25 @@ img {
 .quick-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .quick-card {
-  background: #ffffff;
-  border: 1px solid #E8EDF2;
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 18px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  min-height: 130px;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  min-height: 138px;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .quick-card:active {
@@ -614,99 +717,113 @@ img {
 }
 
 .card-green {
-  background: #F4FAF6;
-  border-color: #E2F2E9;
+  background: linear-gradient(145deg, #ECFDF5 0%, #F0FDF4 100%);
+  border: 1px solid #A7F3D0;
 }
 
 .card-red {
-  background: #FDF5F5;
-  border-color: #FCE8E8;
+  background: linear-gradient(145deg, #FFF1F2 0%, #FEF2F2 100%);
+  border: 1px solid #FECDD3;
 }
 
 .card-purple {
-  background: #F8F5FD;
-  border-color: #EFE8FC;
+  background: linear-gradient(145deg, #F5F3FF 0%, #FAF5FF 100%);
+  border: 1px solid #DDD6FE;
 }
 
 .card-blue {
-  background: #F4F8FD;
-  border-color: #E5EFFB;
+  background: linear-gradient(145deg, #EFF6FF 0%, #F0F9FF 100%);
+  border: 1px solid #BFDBFE;
 }
 
 .quick-icon-box {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .icon-green {
-  background: #E4F7ED;
-  color: #12B76A;
+  background: #D1FAE5;
+  color: #059669;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);
 }
 
 .icon-red {
-  background: #FDEDEC;
-  color: #F04438;
+  background: #FFE4E6;
+  color: #E11D48;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15);
 }
 
 .icon-purple {
-  background: #F1EDFC;
+  background: #EDE9FE;
   color: #7C3AED;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
 }
 
 .icon-blue {
-  background: #E8F1FC;
-  color: #2E5CE6;
+  background: #DBEAFE;
+  color: #2563EB;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 .quick-card-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1E293B;
-  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 3px;
+  letter-spacing: -0.2px;
 }
 
 .quick-card-metric {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1px;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
 .num-green {
-  color: #12B76A;
+  color: #047857;
 }
 
 .num-red {
-  color: #F04438;
+  color: #BE123C;
 }
 
 .num-purple {
-  color: #7C3AED;
+  color: #6D28D9;
 }
 
 .quick-card-sub {
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
   color: #64748B;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .quick-card-action {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 800;
   margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.15s ease;
+}
+
+.quick-card:hover .quick-card-action {
+  transform: translateX(3px);
 }
 
 .act-green {
-  color: #12B76A;
+  color: #059669;
 }
 
 .act-red {
-  color: #F04438;
+  color: #E11D48;
 }
 
 .act-purple {
@@ -717,8 +834,8 @@ img {
 .daily-mission-card .mission-top {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .daily-mission-card .mission-top .quick-icon-box {
@@ -726,49 +843,56 @@ img {
 }
 
 .mission-card-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1E293B;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.2px;
 }
 
 .mission-rows-wrap {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
   margin-top: auto;
 }
 
 .mission-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .mission-row-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
-  font-weight: 600;
-  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1E293B;
+  gap: 6px;
 }
 
 .mission-name {
   flex: 1;
-  margin-left: 4px;
+  margin-left: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mission-pct {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: #475467;
+  font-size: 11px;
+  font-weight: 800;
+  color: #2563EB;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .mission-check.done {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #12B76A;
+  background: #10B981;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -777,19 +901,32 @@ img {
 }
 
 .mission-check.empty {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 1.5px solid #CBD5E1;
+  border: 1.5px solid #94A3B8;
   flex-shrink: 0;
 }
 
 .mission-mini-track {
   width: 100%;
-  height: 3.5px;
-  background: #E2E8F0;
+  height: 5px;
+  background: #CBD5E1;
   border-radius: 99px;
   overflow: hidden;
+}
+
+.mission-mini-fill.fill-green {
+  height: 100%;
+  background: linear-gradient(90deg, #10B981, #059669);
+  border-radius: 99px;
+  transition: width 0.6s ease;
+}
+
+.mission-mini-fill.fill-gray {
+  height: 100%;
+  background: #94A3B8;
+  border-radius: 99px;
 }
 
 .mission-mini-fill.fill-green {
