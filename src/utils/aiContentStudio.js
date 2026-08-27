@@ -10,10 +10,10 @@
 
 import { getExamProfile, resolveExamProfile } from '../data/examProfiles.js'
 import { getRelevantPYQs, analyzePYQs } from '../data/pyqRepository.js'
-import { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES } from './bpscPromptRules.js'
+import { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, cleanChapterDescriptionForPrompt } from './bpscPromptRules.js'
 import { validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems } from './bpscValidator.js'
 
-export { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems }
+export { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, cleanChapterDescriptionForPrompt, validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems }
 
 // ── Template Presets ──────────────────────────────────────────────
 export const templatePresets = [
@@ -80,13 +80,14 @@ export function buildMCQPrompt({
   pyqAnalysis = null,
 } = {}) {
   const profile = resolveExamProfile(examProfile || course)
+  const cleanDesc = cleanChapterDescriptionForPrompt(chapterDescription)
 
   if (profile && profile.key === 'BPSC_PRELIMS') {
     return buildBPSCPrompt({
       course: course || profile.label,
       subject,
       chapter,
-      chapterDescription,
+      chapterDescription: cleanDesc,
       difficulty,
       quantity,
       language,
@@ -101,7 +102,7 @@ export function buildMCQPrompt({
     numQuestions: quantity,
     subject,
     chapter,
-    chapterDescription,
+    chapterDescription: cleanDesc,
     topic,
     difficulty,
     language,
@@ -120,8 +121,10 @@ function buildSpecLines(form) {
   if (form.examination) spec.push(`Examination: ${form.examination}`)
   if (form.subject) spec.push(`Subject: ${form.subject}`)
   if (form.chapter) spec.push(`Chapter: ${form.chapter}`)
-  if (form.chapterDescription || form.chapterDesc || form.desc || form.description) {
-    spec.push(`Chapter Description: ${form.chapterDescription || form.chapterDesc || form.desc || form.description}`)
+  const rawDesc = form.chapterDescription || form.chapterDesc || form.desc || form.description
+  const cleanDesc = cleanChapterDescriptionForPrompt(rawDesc)
+  if (cleanDesc) {
+    spec.push(`Chapter Scope: ${cleanDesc}`)
   }
   if (form.topic) spec.push(`Topic / Subtopic: ${form.topic}`)
   if (form.difficulty) spec.push(`Difficulty Level: ${form.difficulty}`)
@@ -258,11 +261,16 @@ export function buildExamPrompt({ examProfile, form, matchedPYQs = [], pyqAnalys
   lines.push(profile.promptTemplate)
   lines.push('')
 
+  const cleanDesc = cleanChapterDescriptionForPrompt(form.chapterDescription)
+
   lines.push('EXAM CONTEXT:')
   lines.push(`- Course: ${form.courseTitle || 'N/A'}`)
   lines.push(`- Exam: ${profile.label}`)
   lines.push(`- Subject: ${form.subjectTitle || 'N/A'}`)
   lines.push(`- Chapter: ${form.chapterTitle || 'N/A'}`)
+  if (cleanDesc) {
+    lines.push(`- Chapter Scope: ${cleanDesc}`)
+  }
   if (profile.examPattern) {
     lines.push(`- Total questions in real exam: ${profile.examPattern.totalQuestions}`)
     lines.push(`- Time: ${profile.examPattern.timeMinutes} minutes`)
@@ -368,15 +376,6 @@ export function buildExamPrompt({ examProfile, form, matchedPYQs = [], pyqAnalys
     lines.push(`- Priority: ${pyqAnalysis.priority}`)
     lines.push('')
   }
-
-  lines.push('SUBJECT / CHAPTER INJECTION:')
-  lines.push(`- Course: ${form.courseTitle || 'N/A'}`)
-  lines.push(`- Subject: ${form.subjectTitle || 'N/A'}`)
-  lines.push(`- Chapter: ${form.chapterTitle || 'N/A'}`)
-  if (form.chapterDescription) {
-    lines.push(`- Chapter Description: ${form.chapterDescription}`)
-  }
-  lines.push('')
 
   lines.push('GENERATION PARAMETERS:')
   lines.push(`- Quantity: ${form.finalQuantity || 10}`)

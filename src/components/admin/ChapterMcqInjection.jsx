@@ -26,7 +26,7 @@ import { mcqService } from '../../services/mcqService'
 import { getExamProfile, getActiveExamKey, setActiveExam, resolveExamProfile } from '../../data/examProfiles'
 import { getRelevantPYQs, analyzePYQs } from '../../data/pyqRepository'
 import { getCourseConfig } from '../../data/courseConfigs'
-import { generateExamPrompt, buildMCQPrompt, validateBPSCBatch, buildTargetedRegenerationPrompt, autoFixBPSCItems } from '../../utils/aiContentStudio'
+import { generateExamPrompt, buildMCQPrompt, validateBPSCBatch, buildTargetedRegenerationPrompt, autoFixBPSCItems, cleanChapterDescriptionForPrompt } from '../../utils/aiContentStudio'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
@@ -158,7 +158,8 @@ export default function ChapterMcqInjection() {
       const found = adminState.allChapters.find(
         (c) => c.id === activeChapter.id
       )
-      setChapterDescription(found?.desc || found?.description || activeChapter?.desc || activeChapter?.description || '')
+      const raw = found?.desc || found?.description || activeChapter?.desc || activeChapter?.description || ''
+      setChapterDescription(cleanChapterDescriptionForPrompt(raw))
     } else {
       setChapterDescription('')
     }

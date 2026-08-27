@@ -174,6 +174,56 @@ export function formatBPSCBatchPlan(plan) {
 }
 
 /**
+ * Sanitizes chapter descriptions for AI Prompt Generation.
+ * Strips raw JSON note payloads, Base64 data URLs, HTML markup, markdown tags, UUIDs,
+ * and collapses formatting into a clean, concise educational summary (max 350 chars).
+ */
+export function cleanChapterDescriptionForPrompt(rawDesc) {
+  if (!rawDesc) return ''
+  let desc = String(rawDesc).trim()
+  if (!desc) return ''
+
+  // 1. If desc is JSON stringified note, parse it
+  if (desc.startsWith('{') && desc.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(desc)
+      if (parsed) {
+        desc = [parsed.title, parsed.content].filter(Boolean).join(' - ')
+      }
+    } catch {
+      // not valid JSON
+    }
+  }
+
+  // 2. Remove base64 data URLs (data:image/...;base64,...)
+  desc = desc.replace(/data:image\/[a-zA-Z0-9+]+;base64,[a-zA-Z0-9+/=]+/g, '')
+
+  // 3. Remove Markdown images ![alt](url) and links [text](url)
+  desc = desc.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+  desc = desc.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+
+  // 4. Remove Markdown formatting characters (#, *, _, `, >, ~)
+  desc = desc.replace(/[#*_`>~|-]/g, ' ')
+
+  // 5. Remove HTML tags
+  desc = desc.replace(/<[^>]*>/g, ' ')
+
+  // 6. Remove UUIDs & internal ID patterns
+  desc = desc.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '')
+  desc = desc.replace(/\bnote-[a-z0-9_-]+\b/gi, '')
+
+  // 7. Collapse multi-space/newlines
+  desc = desc.replace(/\s+/g, ' ').trim()
+
+  // 8. Truncate long description to max 350 characters
+  if (desc.length > 350) {
+    desc = desc.substring(0, 350).trim() + '...'
+  }
+
+  return desc
+}
+
+/**
  * Builds the complete BPSC Prelims MCQ Generation Prompt.
  */
 export function buildBPSCPrompt({
@@ -189,6 +239,7 @@ export function buildBPSCPrompt({
   pyqAnalysis = null,
 } = {}) {
   const plan = createBPSCBatchPlan({ quantity, difficulty })
+  const cleanDesc = cleanChapterDescriptionForPrompt(chapterDescription)
   const lines = []
 
   lines.push(BPSC_PRELIMS_PROMPT_RULES)
@@ -199,8 +250,8 @@ export function buildBPSCPrompt({
   lines.push(`- Course: ${course || 'BPSC Prelims'}`)
   lines.push(`- Subject: ${subject || 'General Studies'}`)
   lines.push(`- Chapter: ${chapter || 'Prescribed Chapter'}`)
-  if (chapterDescription) {
-    lines.push(`- Chapter Scope & Core Subtopics: ${chapterDescription}`)
+  if (cleanDesc) {
+    lines.push(`- Chapter Scope & Core Subtopics: ${cleanDesc}`)
   }
   lines.push(`- Medium / Language: ${language || 'English'}`)
   lines.push(`- Prompt Version: ${plan.promptVersion}`)

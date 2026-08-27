@@ -15,6 +15,20 @@ import AppIcon from '../ui/AppIcon'
 import RichContentRenderer from '../ui/RichContentRenderer'
 import { noteService } from '../../services/noteService'
 
+/**
+ * Clean raw file strings (e.g. file_00000000858c81f4958802eff325e58c.png) from titles.
+ */
+function cleanDisplayTitle(title, fallback = 'Study Notes') {
+  if (!title) return fallback
+  let clean = String(title).trim()
+  clean = clean.replace(/:\s*file_[a-zA-Z0-9_-]+(\.[a-zA-Z0-9]+)?/gi, '')
+  clean = clean.replace(/\bfile_[a-zA-Z0-9_-]+(\.[a-zA-Z0-9]+)?\b/gi, '')
+  clean = clean.replace(/\.(png|jpg|jpeg|webp|gif|pdf|docx?|txt)$/gi, '')
+  clean = clean.trim()
+  if (!clean || clean === ':') return fallback
+  return clean
+}
+
 export default function ChapterNotesView({
   courseId = '',
   subject = null,
@@ -424,7 +438,11 @@ export default function ChapterNotesView({
                   </span>
                 )}
               </div>
-              <h1 className="cnv-note-title">{notesList[0]?.title || selectedChapter?.title}</h1>
+              <h1 className="cnv-note-title">
+                {cleanDisplayTitle(notesList[0]?.title) !== 'Study Notes'
+                  ? cleanDisplayTitle(notesList[0]?.title)
+                  : (selectedChapter?.title || 'Study Notes')}
+              </h1>
             </header>
 
             <div className="cnv-note-body">
@@ -443,7 +461,7 @@ export default function ChapterNotesView({
                             <span className="cnv-spdf-badge-tag">PDF</span>
                           </div>
                           <div className="cnv-spdf-info">
-                            <h3 className="cnv-spdf-title">{item.fileName || item.title || 'Chapter Study Notes (PDF)'}</h3>
+                            <h3 className="cnv-spdf-title">{cleanDisplayTitle(item.fileName || item.title, 'Chapter Study Notes (PDF)')}</h3>
                             <div className="cnv-spdf-meta">
                               <span className="cnv-spdf-size-badge">{noteService?.formatFileSize ? noteService.formatFileSize(item.fileSize) : 'PDF Document'}</span>
                               <span className="cnv-spdf-type-tag">Official Study Notes</span>
@@ -461,19 +479,18 @@ export default function ChapterNotesView({
                       </div>
                     )}
 
-                    {/* Render Image Note Card */}
+                    {/* Render Image Note Card — Only clean image shown, zero redundant titles */}
                     {isImage && item.fileUrl && (
                       <div className="cnv-student-image-card">
-                        {item.title && <h3 className="cnv-img-note-title">{item.title}</h3>}
                         <div
                           className="cnv-img-wrapper"
-                          onClick={() => setZoomedImage({ url: item.fileUrl, caption: item.title || item.fileName })}
+                          onClick={() => setZoomedImage({ url: item.fileUrl, caption: cleanDisplayTitle(item.title) })}
                           title="Click to zoom image"
                         >
-                          <img src={item.fileUrl} alt={item.title || item.fileName || 'Chapter Diagram'} className="cnv-student-img" />
+                          <img src={item.fileUrl} alt={cleanDisplayTitle(item.title) || 'Chapter Visual Note'} className="cnv-student-img" />
                           <span className="cnv-zoom-hint">🔍 Click to Expand</span>
                         </div>
-                        {item.content && item.content !== item.title && (
+                        {item.content && !item.content.includes('file_') && item.content !== item.title && (
                           <div className="cnv-img-caption">
                             <RichContentRenderer content={item.content} />
                           </div>
