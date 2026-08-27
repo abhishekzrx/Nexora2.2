@@ -48,6 +48,8 @@ export const COURSE_CONFIGS = {
       avoidUnrelatedGeneralStudies: true,
     },
     subjectDomains: [
+      'database management systems (dbms) and sql',
+      'dbms and sql',
       'c++ programming and object-oriented programming (oop)',
       'c++ and oops',
       'digital electronics',

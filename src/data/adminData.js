@@ -42,7 +42,18 @@ export const recentActivity = [
   { icon: 'flashcardsTab', strong: 'Electromagnetism', text: 'chapter added', time: '1 day ago' },
 ]
 
-export const adminSubjects = [
+  {
+    id: 's-dbms-sql-1',
+    name: 'Database Management Systems (DBMS) and SQL',
+    icon: 'dbms',
+    desc: 'Three-schema architecture, ER modeling, relational algebra, functional dependencies, 1NF to BCNF normalization, SQL DDL/DML, aggregations, joins, subqueries, transaction management & ACID properties, and concurrency control.',
+    stats: [
+      { value: '12', label: 'Chapters' },
+      { value: '220', label: 'MCQs' },
+      { value: '160', label: 'Flashcards' },
+      { value: 'Active', label: 'Status' },
+    ],
+  },
   {
     id: 's-cpp-oop-1',
     name: 'C++ Programming and Object-Oriented Programming (OOP)',
@@ -106,6 +117,20 @@ export const adminSubjects = [
 ]
 
 export const chaptersData = {
+  's-dbms-sql-1': [
+    { id: 1, chapter_code: 'CHP 2.1', name: 'DBMS Architecture & Data Independence', desc: 'Covers database applications, file systems versus DBMS, three-schema architecture including external, conceptual and internal levels, physical and logical data independence, major data models and responsibilities of a Database Administrator (DBA).' },
+    { id: 2, chapter_code: 'CHP 2.2', name: 'Entity-Relationship (ER) Modeling', desc: 'Covers entities and entity sets, simple, composite, single-valued, multi-valued and derived attributes, primary keys, relationships, cardinality such as 1:1, 1:N and N:M, participation constraints, ER diagrams, weak entities and ER extensions.' },
+    { id: 3, chapter_code: 'CHP 2.3', name: 'Relational Model & Key Constraints', desc: 'Covers relational concepts including relation, tuple, domain, schema and instance; Super Key, Candidate Key, Primary Key, Alternate Key and Foreign Key; domain constraints, referential integrity and entity integrity.' },
+    { id: 4, chapter_code: 'CHP 2.4', name: 'Relational Algebra Operations', desc: 'Covers procedural relational algebra operations including selection, projection, union, set difference, Cartesian product, rename, natural join and division, along with basic relational calculus concepts.' },
+    { id: 5, chapter_code: 'CHP 2.5', name: 'Functional Dependencies & Normalization', desc: 'Covers functional dependencies, attribute and functional-closure concepts, candidate-key determination, lossless-join decomposition, dependency preservation, normalization and anomalies through 1NF, 2NF, 3NF, BCNF and 4NF.' },
+    { id: 6, chapter_code: 'CHP 2.6', name: 'SQL Data Definition Language (DDL)', desc: 'Covers SQL data types and DDL commands including CREATE TABLE, ALTER TABLE, DROP TABLE, TRUNCATE and RENAME, along with NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, CHECK and DEFAULT constraints.' },
+    { id: 7, chapter_code: 'CHP 2.7', name: 'SQL Data Manipulation & Retrieval', desc: 'Covers DML operations INSERT, UPDATE and DELETE; SELECT queries using FROM and WHERE; pattern matching with LIKE, range selection using BETWEEN, list filtering with IN, logical operators AND/OR/NOT and NULL handling.' },
+    { id: 8, chapter_code: 'CHP 2.8', name: 'SQL Aggregations & Grouping', desc: 'Covers aggregate functions COUNT, SUM, AVG, MIN and MAX; GROUP BY for grouping records; HAVING for post-aggregation filtering; WHERE versus HAVING; ORDER BY sorting and basic SQL query-evaluation concepts.' },
+    { id: 9, chapter_code: 'CHP 2.9', name: 'Relational Joins & Set Operations', desc: 'Covers Cartesian products, equi-joins, natural joins, inner joins, left/right/full outer joins, self joins and cross joins, along with UNION, UNION ALL, INTERSECT and MINUS and multi-table query construction.' },
+    { id: 10, chapter_code: 'CHP 2.10', name: 'SQL Subqueries, Views & Security', desc: 'Covers nested, scalar and correlated subqueries; comparison operators IN, ANY and ALL; EXISTS and NOT EXISTS; creation and use of database views; and SQL privilege management through GRANT and REVOKE.' },
+    { id: 11, chapter_code: 'CHP 2.11', name: 'Transaction Management & ACID Properties', desc: 'Covers transaction concepts and state transitions including Active, Partially Committed, Committed, Failed and Aborted states; ACID properties of Atomicity, Consistency, Isolation and Durability; concurrency anomalies and schedule serializability.' },
+    { id: 12, chapter_code: 'CHP 2.12', name: 'Concurrency Control & Recovery', desc: 'Covers lock-based concurrency control using Shared and Exclusive locks, Two-Phase Locking, timestamp ordering, deadlock detection and prevention, log-based recovery, checkpointing and B/B+ tree indexing.' },
+  ],
   's-cpp-oop-1': [
     { id: 1, chapter_code: 'CHP 1.1', name: 'C++ Fundamentals & Token Structure', desc: 'Identifiers, reserved keywords, primitive and user-defined data types, constants, arithmetic, relational, logical, bitwise, assignment and conditional operators, expression evaluation, implicit and explicit type casting, and standard stream I/O using cin, cout and cerr.' },
     { id: 2, chapter_code: 'CHP 1.2', name: 'Decision Branching & Loop Execution', desc: 'Conditional control flow using if, if-else, nested if and switch-case; iterative execution using for, while and do-while loops; break, continue and goto statements; nested-loop mechanics and execution tracing.' },
