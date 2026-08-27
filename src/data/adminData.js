@@ -42,6 +42,7 @@ export const recentActivity = [
   { icon: 'flashcardsTab', strong: 'Electromagnetism', text: 'chapter added', time: '1 day ago' },
 ]
 
+export const adminSubjects = [
   {
     id: 's-dbms-sql-1',
     name: 'Database Management Systems (DBMS) and SQL',
