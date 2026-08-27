@@ -968,7 +968,7 @@ function DashboardPage({
                   <div className="mission-row-header">
                     <span className="mission-check done"><AppIcon name="check" size={8} /></span>
                     <span className="mission-name">MCQs</span>
-                    <span className="mission-pct font-mono">65%</span>
+                    <span className="mission-pct">65%</span>
                   </div>
                   <div className="mission-mini-track">
                     <div className="mission-mini-fill fill-green" style={{ width: '65%' }} />
@@ -979,7 +979,7 @@ function DashboardPage({
                   <div className="mission-row-header">
                     <span className="mission-check done"><AppIcon name="check" size={8} /></span>
                     <span className="mission-name">Flashcards</span>
-                    <span className="mission-pct font-mono">75%</span>
+                    <span className="mission-pct">75%</span>
                   </div>
                   <div className="mission-mini-track">
                     <div className="mission-mini-fill fill-green" style={{ width: '75%' }} />
@@ -990,7 +990,7 @@ function DashboardPage({
                   <div className="mission-row-header">
                     <span className="mission-check empty" />
                     <span className="mission-name">Mock Test</span>
-                    <span className="mission-pct font-mono">0%</span>
+                    <span className="mission-pct">0%</span>
                   </div>
                   <div className="mission-mini-track">
                     <div className="mission-mini-fill fill-gray" style={{ width: '0%' }} />
