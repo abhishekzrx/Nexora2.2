@@ -9,7 +9,6 @@ export default function SubjectOverviewSection({ subjectBreakdown = [], onNaviga
     return (
       <div className="subject-overview-card empty-subjects">
         <h3 className="dashboard-section-title">Subject Performance Overview</h3>
-        <p>No subjects have been created in this course yet.</p>
         <button type="button" className="card-link-btn" onClick={() => onNavigate('subjects')}>
           + Create First Subject
         </button>
@@ -22,7 +21,6 @@ export default function SubjectOverviewSection({ subjectBreakdown = [], onNaviga
       <div className="card-header-row">
         <div>
           <h3 className="dashboard-section-title">Subject Performance Overview</h3>
-          <p className="dashboard-section-sub">Chapters, questions, and content readiness per subject</p>
         </div>
         <button type="button" className="card-link-btn" onClick={() => onNavigate('subjects')}>
           View All Subjects ({subjectBreakdown.length}) &rsaquo;
@@ -52,7 +50,7 @@ export default function SubjectOverviewSection({ subjectBreakdown = [], onNaviga
 
             <div className="sub-row-coverage">
               <div className="coverage-text-wrap">
-                <span className="coverage-lbl">Content Coverage</span>
+                <span className="coverage-lbl">Coverage</span>
                 <span className={`coverage-pct ${sub.coveragePct >= 70 ? 'high' : sub.coveragePct >= 40 ? 'med' : 'low'}`}>
                   {sub.coveragePct}%
                 </span>

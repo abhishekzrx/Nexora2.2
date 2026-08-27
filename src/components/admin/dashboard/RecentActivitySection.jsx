@@ -76,8 +76,7 @@ export default function RecentActivitySection({ subjects = [], chapters = [], mc
     <div className="recent-activity-card">
       <div className="card-header-row">
         <div>
-          <h3 className="dashboard-section-title">Recent Content Activity</h3>
-          <p className="dashboard-section-sub">Latest content changes & updates</p>
+          <h3 className="dashboard-section-title">Recent Activity</h3>
         </div>
       </div>
 

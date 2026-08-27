@@ -12,18 +12,17 @@ export default function DashboardHero({ analytics, activeCourse }) {
       <div className="hero-main-info">
         <div className="hero-course-tag">
           <span className="live-pulse-dot" />
-          <span className="course-status-lbl">Active Course Workspace</span>
+          <span className="course-status-lbl">Active Workspace</span>
         </div>
         <h1 className="hero-course-name">{analytics?.courseName || 'Active Course'}</h1>
-        <p className="hero-course-desc">{analytics?.courseDesc}</p>
 
         <div className="hero-meta-row">
           <span className="hero-meta-item">
-            <AppIcon name="folder" size={14} /> Course Code: <strong>{activeCourse?.id || 'DEFAULT'}</strong>
+            <AppIcon name="folder" size={13} /> Code: <strong>{activeCourse?.id || 'DEFAULT'}</strong>
           </span>
           <span className="hero-meta-divider">•</span>
           <span className="hero-meta-item">
-            <AppIcon name="document" size={14} /> Last Sync: <strong>Just Now</strong>
+            <AppIcon name="document" size={13} /> Status: <strong>{readiness >= 75 ? 'Production Ready' : 'In Development'}</strong>
           </span>
         </div>
       </div>

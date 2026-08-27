@@ -8,21 +8,21 @@ export default function SubjectDistributionSection({ subjectBreakdown = [] }) {
     return null
   }
 
-  // Calculate max MCQs for bar percentage relative scaling
   const maxMcqs = Math.max(...subjectBreakdown.map((s) => s.mcqsCount), 1)
+  const totalMcqs = subjectBreakdown.reduce((sum, s) => sum + s.mcqsCount, 0)
 
   return (
     <div className="content-distribution-card">
       <div className="card-header-row">
         <div>
           <h3 className="dashboard-section-title">Content Concentration</h3>
-          <p className="dashboard-section-sub">Question bank distribution across subjects</p>
         </div>
       </div>
 
       <div className="distribution-bars-list">
         {subjectBreakdown.map((sub) => {
           const barPct = Math.max(8, Math.round((sub.mcqsCount / maxMcqs) * 100))
+          const sharePct = totalMcqs > 0 ? Math.round((sub.mcqsCount / totalMcqs) * 100) : 0
 
           return (
             <div key={sub.id} className="dist-bar-item">
@@ -33,9 +33,7 @@ export default function SubjectDistributionSection({ subjectBreakdown = [] }) {
                 </div>
                 <div className="dist-sub-counts">
                   <strong>{sub.mcqsCount} MCQs</strong>
-                  <span className="dist-sub-meta">
-                    ({sub.chaptersCount} Chs · {sub.flashcardsCount} Flashcards)
-                  </span>
+                  <span className="dist-sub-pct-chip">{sharePct}% Share</span>
                 </div>
               </div>
 
