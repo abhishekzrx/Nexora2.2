@@ -73,6 +73,59 @@ export default function NotesManager({ courseName = '' }) {
     }) || null
   }, [courseNotes])
 
+  // Helper to determine status: 'completed' | 'in_progress' | 'not_started'
+  const getChapterNoteStatus = useCallback((chapter) => {
+    const note = getNoteForChapter(chapter)
+    if (!note) return 'not_started'
+    const status = (note.status || '').toLowerCase()
+    if (status === 'completed' || status === 'published') return 'completed'
+    if (status === 'in_progress' || status === 'draft') return 'in_progress'
+    const len = (note.content || '').trim().length
+    if (len >= 300) return 'completed'
+    if (len > 0) return 'in_progress'
+    return 'not_started'
+  }, [getNoteForChapter])
+
+  // Handle status toggle on click
+  const handleToggleStatus = async (chapter, e) => {
+    if (e) e.stopPropagation()
+    const existingNote = getNoteForChapter(chapter)
+    const currentStatus = getChapterNoteStatus(chapter)
+
+    let nextStatus = 'in_progress'
+    if (currentStatus === 'not_started') nextStatus = 'in_progress'
+    else if (currentStatus === 'in_progress') nextStatus = 'completed'
+    else if (currentStatus === 'completed') nextStatus = 'not_started'
+
+    const chapSubId = String(chapter.subjectId || chapter.subject_id || selectedSubjectId || '').trim()
+
+    if (existingNote) {
+      await noteService.updateNote(existingNote.id, {
+        ...existingNote,
+        status: nextStatus === 'completed' ? 'published' : nextStatus === 'in_progress' ? 'draft' : 'not_started',
+      })
+    } else if (nextStatus !== 'not_started') {
+      await noteService.createNote({
+        courseId: activeWorkspaceId,
+        subjectId: chapSubId,
+        chapterId: String(chapter.id),
+        chapterName: chapter.name || chapter.title || '',
+        title: `${chapter.name || 'Chapter'} Notes`,
+        content: `# ${chapter.name || 'Chapter'} Notes\n\nStudy notes content in progress.`,
+        status: nextStatus === 'completed' ? 'published' : 'draft',
+      })
+    }
+  }
+
+  // Analytics & Status Counts
+  const totalChapters = courseChapters.length
+  const completedCount = useMemo(() => courseChapters.filter((c) => getChapterNoteStatus(c) === 'completed').length, [courseChapters, getChapterNoteStatus])
+  const inProgressCount = useMemo(() => courseChapters.filter((c) => getChapterNoteStatus(c) === 'in_progress').length, [courseChapters, getChapterNoteStatus])
+  const notStartedCount = useMemo(() => courseChapters.filter((c) => getChapterNoteStatus(c) === 'not_started').length, [courseChapters, getChapterNoteStatus])
+  const chaptersWithNotes = completedCount + inProgressCount
+  const chaptersMissingNotes = notStartedCount
+  const noteCoveragePct = totalChapters > 0 ? Math.round((completedCount / totalChapters) * 100) : 0
+
   // Filtered chapters for current selection
   const visibleChapters = useMemo(() => {
     let list = courseChapters
@@ -91,14 +144,16 @@ export default function NotesManager({ courseName = '' }) {
       list = list.filter((c) => (c.name || c.title || '').toLowerCase().includes(q))
     }
 
-    if (statusFilter === 'has_notes') {
-      list = list.filter((c) => getNoteForChapter(c) !== null)
-    } else if (statusFilter === 'no_notes') {
-      list = list.filter((c) => getNoteForChapter(c) === null)
+    if (statusFilter === 'completed') {
+      list = list.filter((c) => getChapterNoteStatus(c) === 'completed')
+    } else if (statusFilter === 'in_progress') {
+      list = list.filter((c) => getChapterNoteStatus(c) === 'in_progress')
+    } else if (statusFilter === 'not_started') {
+      list = list.filter((c) => getChapterNoteStatus(c) === 'not_started')
     }
 
     return list
-  }, [courseChapters, selectedSubjectId, searchQuery, statusFilter, courseSubjects, getNoteForChapter])
+  }, [courseChapters, selectedSubjectId, searchQuery, statusFilter, courseSubjects, getChapterNoteStatus])
 
   // Open Editor for a chapter
   const handleOpenEditor = (chapter) => {
@@ -123,12 +178,6 @@ export default function NotesManager({ courseName = '' }) {
     setIsEditorOpen(true)
   }
 
-  // Analytics stats
-  const totalChapters = courseChapters.length
-  const chaptersWithNotes = courseChapters.filter((c) => getNoteForChapter(c) !== null).length
-  const chaptersMissingNotes = Math.max(0, totalChapters - chaptersWithNotes)
-  const noteCoveragePct = totalChapters > 0 ? Math.round((chaptersWithNotes / totalChapters) * 100) : 0
-
   return (
     <div className="nm-root-container">
       {/* ── 1. Top Header & Course Selector ──────────────────────── */}
@@ -139,9 +188,6 @@ export default function NotesManager({ courseName = '' }) {
             <span>Active Notes Workspace</span>
           </div>
           <h2 className="nm-heading">Chapter Study Notes Studio</h2>
-          <p className="nm-subheading">
-            Create, format, and publish rich textbook notes and visual study guides.
-          </p>
         </div>
 
         <div className="nm-course-switch-badge" title="Select Course to Manage Notes">
@@ -163,38 +209,38 @@ export default function NotesManager({ courseName = '' }) {
       {/* ── 2. Content Health Stats Grid ─────────────────────────── */}
       <div className="nm-stats-grid">
         <div className="nm-stat-card">
-          <div className="nm-stat-icon-wrap" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-            <AppIcon name="notesTab" size={18} />
+          <div className="nm-stat-icon-wrap" style={{ background: '#DCFCE7', color: '#16A34A' }}>
+            <AppIcon name="check" size={18} />
           </div>
           <div>
-            <div className="nm-stat-value">{chaptersWithNotes}</div>
-            <div className="nm-stat-label">Published Notes</div>
-          </div>
-        </div>
-
-        <div className="nm-stat-card">
-          <div className="nm-stat-icon-wrap" style={{ background: '#E0F2FE', color: '#0284C7' }}>
-            <AppIcon name="chapters" size={18} />
-          </div>
-          <div>
-            <div className="nm-stat-value">{totalChapters}</div>
-            <div className="nm-stat-label">Total Chapters</div>
+            <div className="nm-stat-value">{completedCount}</div>
+            <div className="nm-stat-label">Completed Notes</div>
           </div>
         </div>
 
         <div className="nm-stat-card">
           <div className="nm-stat-icon-wrap" style={{ background: '#FEF3C7', color: '#D97706' }}>
-            <AppIcon name="warning" size={18} />
+            <AppIcon name="edit" size={18} />
           </div>
           <div>
-            <div className="nm-stat-value">{chaptersMissingNotes}</div>
-            <div className="nm-stat-label">Missing Notes</div>
+            <div className="nm-stat-value">{inProgressCount}</div>
+            <div className="nm-stat-label">In Progress</div>
           </div>
         </div>
 
         <div className="nm-stat-card">
-          <div className="nm-stat-icon-wrap" style={{ background: '#DCFCE7', color: '#16A34A' }}>
-            <AppIcon name="check" size={18} />
+          <div className="nm-stat-icon-wrap" style={{ background: '#F1F5F9', color: '#64748B' }}>
+            <AppIcon name="warning" size={18} />
+          </div>
+          <div>
+            <div className="nm-stat-value">{notStartedCount}</div>
+            <div className="nm-stat-label">Not Started</div>
+          </div>
+        </div>
+
+        <div className="nm-stat-card">
+          <div className="nm-stat-icon-wrap" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+            <AppIcon name="target" size={18} />
           </div>
           <div>
             <div className="nm-stat-value">{noteCoveragePct}%</div>
@@ -262,13 +308,14 @@ export default function NotesManager({ courseName = '' }) {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All Status ({visibleChapters.length})</option>
-            <option value="has_notes">With Notes ({chaptersWithNotes})</option>
-            <option value="no_notes">Missing Notes ({chaptersMissingNotes})</option>
+            <option value="completed">🟢 Completed ({completedCount})</option>
+            <option value="in_progress">🟡 In Progress ({inProgressCount})</option>
+            <option value="not_started">⚪ Not Started ({notStartedCount})</option>
           </select>
         </div>
       </div>
 
-      {/* ── 4. Chapter Notes List ─────────────────────────────────── */}
+      {/* ── 4. Smart Mini Chapter Cards Grid ─────────────────────── */}
       <div className="nm-chapters-table-container">
         {visibleChapters.length === 0 ? (
           <div className="nm-empty-state">
@@ -280,59 +327,71 @@ export default function NotesManager({ courseName = '' }) {
           <div className="nm-chapters-grid">
             {visibleChapters.map((chapter, idx) => {
               const note = getNoteForChapter(chapter)
-              const hasNote = note !== null
+              const statusKey = getChapterNoteStatus(chapter)
               const subject = courseSubjects.find((s) => s.id === (chapter.subjectId || selectedSubjectId)) || { name: chapter.subject || 'Subject' }
               const wordCount = note?.content ? note.content.trim().split(/\s+/).length : 0
               const readTime = Math.max(1, Math.ceil(wordCount / 200))
+              const chNum = String(chapter.number || idx + 1).padStart(2, '0')
+
+              const statusMeta = {
+                completed: { label: 'Completed', dotClass: 'green', chipClass: 'completed' },
+                in_progress: { label: 'In Progress', dotClass: 'amber', chipClass: 'in-progress' },
+                not_started: { label: 'Not Started', dotClass: 'gray', chipClass: 'not-started' },
+              }[statusKey]
 
               return (
-                <div key={chapter.id || idx} className={`nm-chapter-card${hasNote ? ' has-note' : ' missing-note'}`}>
-                  <div className="nm-card-top">
-                    <span className="nm-ch-badge">Ch. {chapter.number || idx + 1}</span>
-                    <span className={`nm-status-badge ${hasNote ? 'published' : 'missing'}`}>
-                      {hasNote ? '🟢 Published' : '⚪ No Notes'}
-                    </span>
-                  </div>
+                <div
+                  key={chapter.id || idx}
+                  className={`nm-mini-chapter-card ${statusKey}`}
+                  onClick={() => handleOpenEditor(chapter)}
+                >
+                  {/* Top Row: Order Pill, Subject Badge & Status Chip */}
+                  <div className="nm-mini-card-top">
+                    <div className="nm-mini-left-pills">
+                      <span className="nm-mini-order-pill">CH {chNum}</span>
+                      <span className="nm-mini-sub-pill">{subject.name}</span>
+                    </div>
 
-                  <div className="nm-card-main">
-                    <h4 className="nm-card-chapter-title">{chapter.name}</h4>
-                    <span className="nm-card-subject-tag">{subject.name}</span>
-
-                    {hasNote ? (
-                      <div className="nm-note-preview-box">
-                        <div className="nm-note-title-line">
-                          <AppIcon name="notesTab" size={14} />
-                          <strong>{note.title}</strong>
-                        </div>
-                        <div className="nm-note-stats-line">
-                          <span>{wordCount} words</span>
-                          <span>•</span>
-                          <span>~{readTime} min read</span>
-                          {note.updatedAt && (
-                            <>
-                              <span>•</span>
-                              <span>Updated {new Date(note.updatedAt).toLocaleDateString()}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="nm-no-note-prompt">
-                        <AppIcon name="edit" size={14} />
-                        <span>No notes available for this chapter. Click below to author rich notes.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="nm-card-actions">
-                    <Button
-                      variant={hasNote ? 'secondary' : 'primary'}
-                      size="sm"
-                      onClick={() => handleOpenEditor(chapter)}
+                    <button
+                      type="button"
+                      className={`nm-mini-status-chip ${statusMeta.chipClass}`}
+                      onClick={(e) => handleToggleStatus(chapter, e)}
+                      title="Click to toggle status (Completed → In Progress → Not Started)"
                     >
-                      <AppIcon name={hasNote ? 'edit' : 'add'} size={14} />
-                      {hasNote ? 'Edit Notes' : 'Create Notes'}
-                    </Button>
+                      <span className={`sm-dot ${statusMeta.dotClass}`} />
+                      <span>{statusMeta.label}</span>
+                    </button>
+                  </div>
+
+                  {/* Middle Row: Chapter Title */}
+                  <div className="nm-mini-card-body">
+                    <h4 className="nm-mini-chapter-title" title={chapter.name}>
+                      {chapter.name}
+                    </h4>
+                  </div>
+
+                  {/* Bottom Row: Word Count Pill & Micro Action Button */}
+                  <div className="nm-mini-card-footer">
+                    <div className="nm-mini-meta-stats">
+                      <span className="nm-mini-meta-pill">
+                        <AppIcon name="document" size={11} /> {wordCount > 0 ? `${wordCount}w` : '0w'}
+                      </span>
+                      {wordCount > 0 && (
+                        <span className="nm-mini-meta-pill">
+                          <AppIcon name="clock" size={11} /> ~{readTime}m
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="nm-mini-action-btn"
+                      onClick={(e) => { e.stopPropagation(); handleOpenEditor(chapter) }}
+                      title="Edit / Author Notes"
+                    >
+                      <AppIcon name={note ? 'edit' : 'add'} size={12} />
+                      <span>{note ? 'Edit' : 'Notes'}</span>
+                    </button>
                   </div>
                 </div>
               )
