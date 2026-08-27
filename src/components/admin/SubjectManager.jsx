@@ -793,7 +793,7 @@ function DeleteSubjectSecurityModal({
   )
 }
 
-/* ── Subject List Row Item ─────────────────────────────────────── */
+/* ── Subject List Row Item (Mini Chip Design) ───────────────────── */
 function SubjectListRow({
   subject,
   isSelected,
@@ -802,6 +802,7 @@ function SubjectListRow({
   onEdit,
   onDuplicate,
   onToggleLock,
+  onUpdateStatus,
   onOpenDeleteModal,
 }) {
   const [showMenu, setShowMenu] = useState(false)
@@ -834,25 +835,52 @@ function SubjectListRow({
     onOpenDeleteModal(subject)
   }
 
+  const handleStatusClick = (e, newStatus) => {
+    e.stopPropagation()
+    if (onUpdateStatus) {
+      onUpdateStatus(subject.id, newStatus)
+      showToast({
+        type: 'success',
+        title: 'Status Updated',
+        message: `Subject "${subject.name}" set to ${newStatus.toUpperCase()}`,
+      })
+    }
+  }
+
   return (
     <div
       className={`sm-subject-card-item${isSelected ? ' selected' : ''}`}
       onClick={() => onSelect(subject.id)}
+      title={subject.name}
     >
       <div className="sm-subject-card-left">
         <span className="sm-subject-card-icon" style={{ background: subject.color || '#F1621B' }}>
-          <AppIcon name={subject.icon || 'chapters'} size={16} />
+          <AppIcon name={subject.icon || 'chapters'} size={14} />
         </span>
         <div className="sm-subject-card-info">
           <h4 className="sm-subject-card-name" title={subject.name}>{subject.name}</h4>
           <span className="sm-subject-card-meta">
-            {stats.chapters} Chapters • {stats.mcqs} MCQs
+            {stats.chapters} ch • {stats.mcqs} MCQs
           </span>
         </div>
       </div>
 
       <div className="sm-subject-card-right" onClick={(e) => e.stopPropagation()}>
-        <StatusBadge status={subject.status} locked={subject.locked} />
+        <button
+          type="button"
+          className={`sm-mini-status-chip ${subject.locked ? 'locked' : subject.status || 'active'}`}
+          onClick={(e) => {
+            if (subject.locked) {
+              onToggleLock(subject.id)
+            } else {
+              const nextStatus = subject.status === 'active' ? 'draft' : subject.status === 'draft' ? 'disabled' : 'active'
+              handleStatusClick(e, nextStatus)
+            }
+          }}
+          title="Click to toggle status"
+        >
+          <StatusBadge status={subject.status} locked={subject.locked} />
+        </button>
 
         <div className="sm-action-menu-wrap" ref={menuRef}>
           <button
@@ -862,23 +890,47 @@ function SubjectListRow({
             aria-label="Subject Actions"
             title="Subject Actions"
           >
-            <AppIcon name="moreVert" size={15} />
+            <AppIcon name="moreVert" size={14} />
           </button>
 
           {showMenu && (
             <div className="sm-dropdown">
               <button type="button" onClick={() => { onEdit(subject); setShowMenu(false) }}>
-                <AppIcon name="edit" size={14} /> Edit Subject
+                <AppIcon name="edit" size={13} /> Edit Subject
               </button>
               <button type="button" onClick={() => { onDuplicate(subject.id); setShowMenu(false); showToast({ type: 'success', title: 'Duplicated', message: `Copy of "${subject.name}" created` }) }}>
-                <AppIcon name="copy" size={14} /> Duplicate
+                <AppIcon name="copy" size={13} /> Duplicate
+              </button>
+              <div className="sm-dropdown-divider" />
+              <div className="sm-dropdown-label">Set Status:</div>
+              <button
+                type="button"
+                className={subject.status === 'active' && !subject.locked ? 'active-opt' : ''}
+                onClick={(e) => { handleStatusClick(e, 'active'); setShowMenu(false) }}
+              >
+                <span className="sm-dot green" /> Active
+              </button>
+              <button
+                type="button"
+                className={subject.status === 'draft' ? 'active-opt' : ''}
+                onClick={(e) => { handleStatusClick(e, 'draft'); setShowMenu(false) }}
+              >
+                <span className="sm-dot orange" /> Draft
+              </button>
+              <button
+                type="button"
+                className={subject.status === 'disabled' ? 'active-opt' : ''}
+                onClick={(e) => { handleStatusClick(e, 'disabled'); setShowMenu(false) }}
+              >
+                <span className="sm-dot gray" /> Disabled
               </button>
               <button type="button" onClick={() => { onToggleLock(subject.id); setShowMenu(false); showToast({ type: 'success', title: subject.locked ? 'Unlocked' : 'Locked', message: `Subject "${subject.name}" updated` }) }}>
-                <AppIcon name={subject.locked ? 'lockOpen' : 'lock'} size={14} />
-                {subject.locked ? 'Unlock' : 'Lock'}
+                <AppIcon name={subject.locked ? 'lockOpen' : 'lock'} size={13} />
+                {subject.locked ? 'Unlock Subject' : 'Lock Subject'}
               </button>
+              <div className="sm-dropdown-divider" />
               <button type="button" className="danger" onClick={handleDelete}>
-                <AppIcon name="delete" size={14} /> Delete
+                <AppIcon name="delete" size={13} /> Delete Subject
               </button>
             </div>
           )}
@@ -966,6 +1018,8 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
   const [showChapterModal, setShowChapterModal] = useState(false)
   const [editingChapter, setEditingChapter] = useState(null)
   const [notesEditorModal, setNotesEditorModal] = useState({ open: false, chapter: null })
+  const [chapterSearch, setChapterSearch] = useState('')
+  const [chapterPriority, setChapterPriority] = useState('all')
 
   // Chapter Delete Security Modal State
   const [deleteSecurityModal, setDeleteSecurityModal] = useState({
@@ -997,6 +1051,28 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         (c.subjectName && String(c.subjectName).trim().toLowerCase() === String(selectedSubject.name).trim().toLowerCase())
     )
   }, [chapters, selectedSubject])
+
+  // Filtered chapters for right side workspace
+  const filteredSubjectChapters = useMemo(() => {
+    let list = [...subjectChapters]
+    if (chapterSearch.trim()) {
+      const q = chapterSearch.toLowerCase()
+      list = list.filter(
+        (ch) =>
+          (ch.name || '').toLowerCase().includes(q) ||
+          (ch.code || '').toLowerCase().includes(q) ||
+          (ch.desc || ch.description || '').toLowerCase().includes(q)
+      )
+    }
+    if (chapterPriority !== 'all') {
+      list = list.filter((ch) => {
+        const meta = getBpscChapterMeta(ch.name, ch.code)
+        const prio = (ch.priority || (meta ? meta.priority : '') || '').toUpperCase()
+        return prio === chapterPriority.toUpperCase()
+      })
+    }
+    return list
+  }, [subjectChapters, chapterSearch, chapterPriority])
 
   // Helper to compute EXACT chapter content counts
   const getChapterContentCounts = useCallback(
@@ -1324,7 +1400,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
             className={`sm-tab-button${activeTab === 'chapters' ? ' active' : ''}`}
             onClick={() => setActiveTab('chapters')}
           >
-            Chapters
+            Chapters ({subjectChapters.length})
           </button>
           <button
             type="button"
@@ -1368,21 +1444,69 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
       {/* 4. Tab Content Area */}
       {activeTab === 'chapters' && (
         <div className="sm-tab-pane">
-          {subjectChapters.length === 0 ? (
+          {/* Chapter Filter Toolbar */}
+          <div className="sm-chapter-toolbar">
+            <div className="sm-chapter-search-box">
+              <AppIcon name="search" size={13} />
+              <input
+                type="text"
+                placeholder="Search chapters by name or code..."
+                value={chapterSearch}
+                onChange={(e) => setChapterSearch(e.target.value)}
+              />
+              {chapterSearch && (
+                <button
+                  type="button"
+                  className="sm-clear-search-btn"
+                  onClick={() => setChapterSearch('')}
+                >
+                  <AppIcon name="close" size={12} />
+                </button>
+              )}
+            </div>
+
+            <select
+              className="sm-chapter-prio-select"
+              value={chapterPriority}
+              onChange={(e) => setChapterPriority(e.target.value)}
+            >
+              <option value="all">All Priorities</option>
+              <option value="VH">Very High (VH)</option>
+              <option value="H">High (H)</option>
+              <option value="M">Medium (M)</option>
+              <option value="L">Low (L)</option>
+            </select>
+          </div>
+
+          {filteredSubjectChapters.length === 0 ? (
             <div className="sm-empty-chapters">
               <AppIcon name="document" size={28} />
-              <p>No chapters created for {selectedSubject.name} yet.</p>
-              <button
-                type="button"
-                className="sm-primary-action-btn"
-                onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
-              >
-                <AppIcon name="add" size={14} /> Add Chapter
-              </button>
+              <p>
+                {subjectChapters.length === 0
+                  ? `No chapters created for ${selectedSubject.name} yet.`
+                  : 'No chapters match your search or priority filter.'}
+              </p>
+              {subjectChapters.length === 0 ? (
+                <button
+                  type="button"
+                  className="sm-primary-action-btn"
+                  onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
+                >
+                  <AppIcon name="add" size={14} /> Add First Chapter
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="sm-ghost-action-btn"
+                  onClick={() => { setChapterSearch(''); setChapterPriority('all') }}
+                >
+                  Reset Chapter Filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="sm-chapters-scroll-area">
-              {subjectChapters.map((ch, idx) => {
+              {filteredSubjectChapters.map((ch, idx) => {
                 const counts = getChapterContentCounts(ch, idx)
                 const chNum = String(ch.number || idx + 1).padStart(2, '0')
                 const meta = getBpscChapterMeta(ch.name, ch.code)
@@ -1393,25 +1517,42 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
 
                 return (
                   <div key={ch.id || idx} className="sm-chapter-aligned-card">
-                    {/* 1. Orange Chapter Number & Code */}
+                    {/* 1. Chapter Order Number & Monospace Code Pill */}
                     <div className="sm-ch-index-group">
                       <span className="sm-ch-order-num">{chNum}</span>
                       {displayCode && <span className="sm-ch-code-pill">{displayCode}</span>}
                     </div>
 
-                    {/* 2. Full Chapter Name */}
+                    {/* 2. Full Chapter Name & Description */}
                     <div className="sm-ch-main-info">
                       <h5 className="sm-ch-main-title" title={chapterName}>{chapterName}</h5>
+                      {ch.desc && <p className="sm-ch-desc-sub">{ch.desc}</p>}
                     </div>
 
-                    {/* 3. Priority in Mini Chip form */}
+                    {/* 3. Priority Mini Badge */}
                     {displayPriority && (
                       <span className={`sm-ch-prio-mini prio-${displayPriority.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
                         {prioMeta.label || displayPriority}
                       </span>
                     )}
 
-                    {/* 4. Aligned Action Buttons */}
+                    {/* 4. Content Stats Counter Chips */}
+                    <div className="sm-ch-stats-row">
+                      <span className="sm-ch-stat-badge" title="Associated MCQs">
+                        <AppIcon name="help" size={12} /> {counts.mcqs}
+                      </span>
+                      <span className="sm-ch-stat-badge" title="Associated Flashcards">
+                        <AppIcon name="flashcardsTab" size={12} /> {counts.flashcards}
+                      </span>
+                      <span
+                        className={`sm-ch-stat-badge ${counts.notes > 0 ? 'active-note' : 'empty-note'}`}
+                        title="Chapter Notes Status"
+                      >
+                        <AppIcon name="notesTab" size={12} /> {counts.notes > 0 ? 'Notes' : 'No Notes'}
+                      </span>
+                    </div>
+
+                    {/* 5. Aligned Action Buttons */}
                     <div className="sm-ch-action-buttons">
                       <button
                         type="button"
@@ -1788,6 +1929,14 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
     })
   }
 
+  const handleUpdateStatus = async (subjectId, newStatus) => {
+    try {
+      await subjectService.updateSubject(subjectId, { status: newStatus })
+    } catch (err) {
+      console.error('Failed to update subject status:', err)
+    }
+  }
+
   // 1. NO COURSES IN SYSTEM
   if (workspaces.length === 0 || !activeCourse) {
     return (
@@ -1863,6 +2012,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
                   onEdit={handleOpenEdit}
                   onDuplicate={duplicateSubject}
                   onToggleLock={toggleSubjectLock}
+                  onUpdateStatus={handleUpdateStatus}
                   onOpenDeleteModal={handleOpenDeleteSubject}
                 />
               ))}

@@ -20,7 +20,7 @@ function AdminSidebar({ activeSection, onNavigate, courseName }) {
     <nav className="admin-sidebar">
       <div className="admin-sidebar-header">
         <span className="admin-sidebar-logo">
-          <AppIcon name="adminDashboard" size={22} />
+          <AppIcon name="centerBook" size={22} />
         </span>
         <div className="admin-sidebar-title-block">
           <span className="admin-sidebar-title">Admin Panel</span>
@@ -40,6 +40,7 @@ function AdminSidebar({ activeSection, onNavigate, courseName }) {
               className={`admin-sidebar-item${isActive ? ' active' : ''}${isDisabled ? ' disabled' : ''}`}
               onClick={() => !isDisabled && onNavigate?.(item.key)}
               disabled={isDisabled}
+              title={item.label}
             >
               <span className="admin-sidebar-icon">
                 <AppIcon name={item.icon} size={18} />
