@@ -26,12 +26,13 @@ export default function ChapterNotesView({
   const [selectedChapterId, setSelectedChapterId] = useState(
     initialChapterId || (chapters.length > 0 ? (chapters[0].id || chapters[0].num) : '')
   )
-  const [note, setNote] = useState(null)
+  const [notesList, setNotesList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [zoomedImage, setZoomedImage] = useState(null)
 
   const stripRef = useRef(null)
   const searchInputRef = useRef(null)
@@ -79,17 +80,20 @@ export default function ChapterNotesView({
       if (isPickerOpen && e.key === 'Escape') {
         setIsPickerOpen(false)
       }
+      if (zoomedImage && e.key === 'Escape') {
+        setZoomedImage(null)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isPickerOpen])
+  }, [isPickerOpen, zoomedImage])
 
-  // Fetch note whenever selected chapter changes
+  // Fetch published notes whenever selected chapter changes
   useEffect(() => {
     let isCancelled = false
-    async function fetchChapterNote() {
+    async function fetchChapterNotes() {
       if (!selectedChapter) {
-        setNote(null)
+        setNotesList([])
         setLoading(false)
         return
       }
@@ -107,22 +111,23 @@ export default function ChapterNotesView({
 
         if (!isCancelled) {
           if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-            const published = res.data.find((n) => n.status === 'published') || res.data[0]
-            setNote(published)
+            const published = res.data.filter((n) => n.status === 'published')
+            setNotesList(published.length > 0 ? published : res.data)
           } else {
             // Fallback check matching across course notes
             const allRes = await noteService.getNotes({ courseId })
             if (allRes.success && Array.isArray(allRes.data)) {
               const chapNameLower = String(selectedChapter.name || selectedChapter.title || '').trim().toLowerCase()
-              const matched = allRes.data.find(
+              const matched = allRes.data.filter(
                 (n) =>
-                  String(n.chapterId || n.chapter_id) === String(selectedChapter.id || selectedChapter.num) ||
-                  (chapNameLower && n.title && n.title.toLowerCase().includes(chapNameLower)) ||
-                  (chapNameLower && n.chapterName && n.chapterName.toLowerCase() === chapNameLower)
+                  n.status === 'published' &&
+                  (String(n.chapterId || n.chapter_id) === String(selectedChapter.id || selectedChapter.num) ||
+                    (chapNameLower && n.title && n.title.toLowerCase().includes(chapNameLower)) ||
+                    (chapNameLower && n.chapterName && n.chapterName.toLowerCase() === chapNameLower))
               )
-              setNote(matched || null)
+              setNotesList(matched)
             } else {
-              setNote(null)
+              setNotesList([])
             }
           }
           setLoading(false)
@@ -130,20 +135,26 @@ export default function ChapterNotesView({
       } catch (err) {
         if (!isCancelled) {
           setError(err.message || 'Failed to load chapter notes.')
-          setNote(null)
+          setNotesList([])
           setLoading(false)
         }
       }
     }
 
-    fetchChapterNote()
+    fetchChapterNotes()
     return () => {
       isCancelled = true
     }
   }, [courseId, subject?.id, selectedChapter])
 
-  const wordCount = note?.content ? note.content.trim().split(/\s+/).length : 0
-  const readTimeMin = Math.max(1, Math.ceil(wordCount / 200))
+  const totalWordCount = useMemo(() => {
+    return notesList.reduce((acc, note) => {
+      const words = note?.content ? note.content.trim().split(/\s+/).length : 0
+      return acc + words
+    }, 0)
+  }, [notesList])
+
+  const readTimeMin = Math.max(1, Math.ceil(totalWordCount / 200))
 
   // Filtered chapters for the modal picker
   const filteredChapters = useMemo(() => {
@@ -382,12 +393,12 @@ export default function ChapterNotesView({
             <h4>Unable to Load Notes</h4>
             <p>{error}</p>
           </div>
-        ) : !note ? (
+        ) : notesList.length === 0 ? (
           <div className="cnv-empty-state">
             <div className="cnv-empty-icon-wrap">
               <AppIcon name="document" size={32} />
             </div>
-            <h3 className="cnv-empty-title">No notes available for this chapter.</h3>
+            <h3 className="cnv-empty-title">No study notes available yet.</h3>
             <p className="cnv-empty-sub">
               Study notes for <strong>{selectedChapter?.title || 'this chapter'}</strong> are currently being curated by your instructors. Check back soon!
             </p>
@@ -402,15 +413,93 @@ export default function ChapterNotesView({
                 <span className="cnv-crumb-chip chapter-chip">
                   Chapter {selectedChapter?.num || currentChapterIndex + 1}
                 </span>
-                <span className="cnv-crumb-chip reading-time-badge">
-                  <AppIcon name="clock" size={11} /> ~{readTimeMin} min read
-                </span>
+                {notesList.length > 1 && (
+                  <span className="cnv-crumb-chip count-chip">
+                    {notesList.length} Note Items
+                  </span>
+                )}
+                {totalWordCount > 0 && (
+                  <span className="cnv-crumb-chip reading-time-badge">
+                    <AppIcon name="clock" size={11} /> ~{readTimeMin} min read
+                  </span>
+                )}
               </div>
-              <h1 className="cnv-note-title">{note.title || selectedChapter?.title}</h1>
+              <h1 className="cnv-note-title">{notesList[0]?.title || selectedChapter?.title}</h1>
             </header>
 
             <div className="cnv-note-body">
-              <RichContentRenderer content={note.content} />
+              {notesList.map((item, index) => {
+                const isImage = item.type === 'IMAGE'
+                const isPdf = item.type === 'PDF'
+
+                return (
+                  <div key={item.id || index} className={`cnv-note-block type-${(item.type || 'text').toLowerCase()}`}>
+                    {/* Render PDF Note Card */}
+                    {isPdf && item.fileUrl && (
+                      <div className="cnv-student-pdf-card">
+                        <div className="cnv-spdf-left">
+                          <div className="cnv-spdf-icon">
+                            <AppIcon name="pdf" size={26} />
+                            <span className="cnv-spdf-badge-tag">PDF</span>
+                          </div>
+                          <div className="cnv-spdf-info">
+                            <h3 className="cnv-spdf-title">{item.fileName || item.title || 'Chapter Study Notes (PDF)'}</h3>
+                            <div className="cnv-spdf-meta">
+                              <span className="cnv-spdf-size-badge">{noteService?.formatFileSize ? noteService.formatFileSize(item.fileSize) : 'PDF Document'}</span>
+                              <span className="cnv-spdf-type-tag">Official Study Notes</span>
+                            </div>
+                          </div>
+                        </div>
+                        <a
+                          href={item.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="cnv-spdf-open-btn"
+                        >
+                          <AppIcon name="preview" size={15} /> Open PDF
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Render Image Note Card */}
+                    {isImage && item.fileUrl && (
+                      <div className="cnv-student-image-card">
+                        {item.title && <h3 className="cnv-img-note-title">{item.title}</h3>}
+                        <div
+                          className="cnv-img-wrapper"
+                          onClick={() => setZoomedImage({ url: item.fileUrl, caption: item.title || item.fileName })}
+                          title="Click to zoom image"
+                        >
+                          <img src={item.fileUrl} alt={item.title || item.fileName || 'Chapter Diagram'} className="cnv-student-img" />
+                          <span className="cnv-zoom-hint">🔍 Click to Expand</span>
+                        </div>
+                        {item.content && item.content !== item.title && (
+                          <div className="cnv-img-caption">
+                            <RichContentRenderer content={item.content} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Render Text Note */}
+                    {(!isPdf && !isImage) && item.content && (
+                      <div className="cnv-text-note-block">
+                        {notesList.length > 1 && item.title && (
+                          <h2 className="cnv-text-block-title">{item.title}</h2>
+                        )}
+                        <RichContentRenderer content={item.content} />
+                      </div>
+                    )}
+
+                    {/* If PDF or Image has additional commentary text */}
+                    {(isPdf || isImage) && item.content && !isImage && (
+                      <div className="cnv-asset-extra-text">
+                        <RichContentRenderer content={item.content} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             <footer className="cnv-note-footer">
@@ -453,6 +542,23 @@ export default function ChapterNotesView({
           </div>
         )}
       </div>
+
+      {/* ── 5. Fullscreen Image Zoom Lightbox Modal ───────────────── */}
+      {zoomedImage && (
+        <div className="cnv-lightbox-overlay" onClick={() => setZoomedImage(null)}>
+          <div className="cnv-lightbox-container" onClick={(e) => e.stopPropagation()}>
+            <div className="cnv-lightbox-header">
+              <span className="cnv-lightbox-title">{zoomedImage.caption || 'Image View'}</span>
+              <button type="button" className="cnv-lightbox-close" onClick={() => setZoomedImage(null)}>
+                <AppIcon name="close" size={18} />
+              </button>
+            </div>
+            <div className="cnv-lightbox-body">
+              <img src={zoomedImage.url} alt={zoomedImage.caption || 'Zoomed Note'} className="cnv-lightbox-img" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

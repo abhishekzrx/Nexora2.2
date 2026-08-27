@@ -26,11 +26,17 @@ export default function ChapterNotesEditorModal({
   const [noteId, setNoteId] = useState(initialNote?.id || null)
   const [title, setTitle] = useState(initialNote?.title || '')
   const [content, setContent] = useState(initialNote?.content || '')
+  const [noteType, setNoteType] = useState(initialNote?.type || 'TEXT')
+  const [fileUrl, setFileUrl] = useState(initialNote?.fileUrl || '')
+  const [fileName, setFileName] = useState(initialNote?.fileName || '')
+  const [fileSize, setFileSize] = useState(initialNote?.fileSize || 0)
+  const [mimeType, setMimeType] = useState(initialNote?.mimeType || '')
   const [status, setStatus] = useState(initialNote?.status || 'published')
   const [viewMode, setViewMode] = useState('split') // 'edit' | 'split' | 'preview'
   
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [uploadProgressText, setUploadProgressText] = useState('')
   const [feedback, setFeedback] = useState({ type: null, message: '', timestamp: null })
   const [showLinkDialog, setShowLinkDialog] = useState(false)
@@ -40,6 +46,7 @@ export default function ChapterNotesEditorModal({
 
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)
+  const assetFileInputRef = useRef(null)
 
   // Initialize or reload note when modal opens or note changes
   useEffect(() => {
@@ -48,9 +55,13 @@ export default function ChapterNotesEditorModal({
         setNoteId(initialNote.id || null)
         setTitle(initialNote.title || '')
         setContent(initialNote.content || '')
+        setNoteType(initialNote.type || 'TEXT')
+        setFileUrl(initialNote.fileUrl || '')
+        setFileName(initialNote.fileName || '')
+        setFileSize(initialNote.fileSize || 0)
+        setMimeType(initialNote.mimeType || '')
         setStatus(initialNote.status || 'published')
       } else {
-        // Load existing note from Supabase if any
         loadExistingChapterNote()
       }
       setFeedback({ type: null, message: '', timestamp: null })
@@ -67,10 +78,20 @@ export default function ChapterNotesEditorModal({
         setNoteId(existing.id)
         setTitle(existing.title || `${chapterName} Study Notes`)
         setContent(existing.content || '')
+        setNoteType(existing.type || 'TEXT')
+        setFileUrl(existing.fileUrl || '')
+        setFileName(existing.fileName || '')
+        setFileSize(existing.fileSize || 0)
+        setMimeType(existing.mimeType || '')
         setStatus(existing.status || 'published')
       } else {
         setNoteId(null)
         setTitle(`${chapterName} Study Notes`)
+        setNoteType('TEXT')
+        setFileUrl('')
+        setFileName('')
+        setFileSize(0)
+        setMimeType('')
         setContent(
 `# ${chapterName} — Core Study Notes
 
@@ -83,15 +104,6 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
 
 > [!NOTE]
 > Add essential tips, formula reminders, or common exam traps for this topic.
-
-## 2. Detailed Topic Breakdown
-1. **Topic Phase A**: Step-by-step explanation.
-2. **Topic Phase B**: Important milestones or classifications.
-
-| Concept | Description | Exam Relevance |
-|---|---|---|
-| Item A | Primary definition | High |
-| Item B | Supporting detail | Medium |
 `
         )
         setStatus('published')
@@ -99,6 +111,98 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
     } catch (err) {
       console.warn('Error loading chapter note:', err)
     }
+  }
+
+  // Handle Drag & Drop Upload for Image / PDF Notes
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      await processAssetUpload(files[0])
+    }
+  }
+
+  const handleAssetFileSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await processAssetUpload(file)
+    }
+  }
+
+  const processAssetUpload = async (file) => {
+    setIsUploadingImage(true)
+    setUploadProgressText(`Uploading ${file.name}...`)
+    setFeedback({ type: null, message: '', timestamp: null })
+
+    try {
+      const res = await noteService.uploadNoteAsset({
+        file,
+        courseId,
+        subjectId,
+        chapterId,
+      })
+
+      if (res.success && res.url) {
+        setFileUrl(res.url)
+        setFileName(res.fileName || file.name)
+        setFileSize(res.fileSize || file.size)
+        setMimeType(res.mimeType || file.type)
+        if (res.type) setNoteType(res.type)
+        if (!title || title.includes('Study Notes')) {
+          setTitle(`${chapterName}: ${res.fileName || file.name}`)
+        }
+        setFeedback({
+          type: 'success',
+          message: res.isCloud
+            ? `✓ ${res.type || 'Asset'} uploaded to Supabase Storage.`
+            : `✓ ${res.type || 'Asset'} processed and linked to note.`,
+          timestamp: new Date().toLocaleTimeString(),
+        })
+      } else {
+        setFeedback({
+          type: 'error',
+          message: `⚠️ Upload notice: ${res.error || 'Failed to upload asset'}.`,
+          timestamp: new Date().toLocaleTimeString(),
+        })
+      }
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: `⚠️ Upload error: ${err.message}`,
+        timestamp: new Date().toLocaleTimeString(),
+      })
+    } finally {
+      setIsUploadingImage(false)
+      setUploadProgressText('')
+      if (assetFileInputRef.current) assetFileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveAsset = () => {
+    setFileUrl('')
+    setFileName('')
+    setFileSize(0)
+    setMimeType('')
+    setFeedback({
+      type: 'info',
+      message: 'Asset removed from draft. Choose a new file or switch to Text Note.',
+      timestamp: new Date().toLocaleTimeString(),
+    })
   }
 
   // Formatting Helper: Inserts or wraps text around selection
@@ -202,26 +306,37 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
       setFeedback({ type: 'error', message: 'Please enter a note title.', timestamp: new Date().toLocaleTimeString() })
       return
     }
-    if (!content.trim()) {
+    if (noteType === 'TEXT' && !content.trim()) {
       setFeedback({ type: 'error', message: 'Note content cannot be empty.', timestamp: new Date().toLocaleTimeString() })
+      return
+    }
+    if ((noteType === 'IMAGE' || noteType === 'PDF') && !fileUrl) {
+      setFeedback({ type: 'error', message: `Please upload or select a ${noteType === 'PDF' ? 'PDF' : 'Image'} file.`, timestamp: new Date().toLocaleTimeString() })
       return
     }
 
     setIsSaving(true)
     setFeedback({ type: null, message: '', timestamp: null })
 
+    const payloadData = {
+      courseId: effectiveCourseId,
+      subjectId: effectiveSubjectId,
+      chapterId: effectiveChapterId,
+      chapterName: chapterName,
+      title,
+      content,
+      type: noteType,
+      fileUrl,
+      fileName,
+      fileSize,
+      mimeType,
+      status,
+    }
+
     try {
       if (noteId) {
         // Update existing record
-        const res = await noteService.updateNote(noteId, {
-          courseId: effectiveCourseId,
-          subjectId: effectiveSubjectId,
-          chapterId: effectiveChapterId,
-          chapterName: chapterName,
-          title,
-          content,
-          status,
-        })
+        const res = await noteService.updateNote(noteId, payloadData)
         if (res.success && res.data) {
           setFeedback({
             type: 'success',
@@ -238,15 +353,7 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
         }
       } else {
         // Create new record
-        const res = await noteService.createNote({
-          courseId: effectiveCourseId,
-          subjectId: effectiveSubjectId,
-          chapterId: effectiveChapterId,
-          chapterName: chapterName,
-          title,
-          content,
-          status,
-        })
+        const res = await noteService.createNote(payloadData)
         if (res.success && res.data) {
           setNoteId(res.data.id)
           setFeedback({
@@ -372,7 +479,33 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           </div>
         </div>
 
-        {/* ── 2. Note Metadata Row (Title & Status) ───────────────── */}
+        {/* ── 2. Note Type Selector Bar ──────────────────────────── */}
+        <div className="cne-type-selector-bar">
+          <span className="cne-type-label">Format:</span>
+          <button
+            type="button"
+            className={`cne-type-tab-btn ${noteType === 'TEXT' ? 'active' : ''}`}
+            onClick={() => setNoteType('TEXT')}
+          >
+            <AppIcon name="document" size={14} /> Text Note
+          </button>
+          <button
+            type="button"
+            className={`cne-type-tab-btn ${noteType === 'IMAGE' ? 'active' : ''}`}
+            onClick={() => setNoteType('IMAGE')}
+          >
+            <AppIcon name="image" size={14} /> Image Note
+          </button>
+          <button
+            type="button"
+            className={`cne-type-tab-btn ${noteType === 'PDF' ? 'active' : ''}`}
+            onClick={() => setNoteType('PDF')}
+          >
+            <AppIcon name="pdf" size={14} /> PDF Document
+          </button>
+        </div>
+
+        {/* ── 3. Note Metadata Row (Title & Status) ───────────────── */}
         <div className="cne-meta-bar">
           <div className="cne-title-input-wrap">
             <label className="cne-label">Note Title *</label>
@@ -381,7 +514,7 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
               className="cne-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Chapter Summary, Formulas & Core Concepts..."
+              placeholder={noteType === 'PDF' ? 'e.g. Chapter 8 Modern History Notes (PDF)' : noteType === 'IMAGE' ? 'e.g. History Map Illustration Diagram' : 'e.g. Chapter Summary, Formulas & Core Concepts...'}
             />
           </div>
 
@@ -398,7 +531,95 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
           </div>
         </div>
 
-        {/* ── 3. Rich Formatting Toolbar (Visible in Edit/Split mode) ─ */}
+        {/* ── 4. Drag & Drop File Upload Zone for Image & PDF Notes ── */}
+        {(noteType === 'IMAGE' || noteType === 'PDF') && (
+          <div className="cne-file-upload-section">
+            <input
+              type="file"
+              ref={assetFileInputRef}
+              style={{ display: 'none' }}
+              accept={noteType === 'PDF' ? 'application/pdf' : 'image/*'}
+              onChange={handleAssetFileSelect}
+            />
+
+            {!fileUrl ? (
+              <div
+                className={`cne-drag-drop-zone ${isDragging ? 'dragging' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => assetFileInputRef.current?.click()}
+              >
+                <div className="cne-drop-icon-wrap">
+                  <AppIcon name={noteType === 'PDF' ? 'pdf' : 'upload'} size={32} />
+                </div>
+                <h4 className="cne-drop-title">
+                  {isDragging
+                    ? `Drop ${noteType === 'PDF' ? 'PDF Document' : 'Image File'} Here`
+                    : `Drag & Drop your ${noteType === 'PDF' ? 'PDF' : 'Image'} file here`}
+                </h4>
+                <p className="cne-drop-sub">
+                  or <span className="cne-browse-link">click to upload</span> from your device
+                </p>
+                <span className="cne-drop-limit">
+                  {noteType === 'PDF' ? 'Supported: PDF (Up to 25MB)' : 'Supported: PNG, JPG, WEBP, GIF (Up to 12MB)'}
+                </span>
+              </div>
+            ) : (
+              <div className="cne-asset-preview-card">
+                {noteType === 'IMAGE' ? (
+                  <div className="cne-image-asset-container">
+                    <div className="cne-image-thumb-wrap">
+                      <img src={fileUrl} alt={fileName || title} className="cne-image-thumb" />
+                    </div>
+                    <div className="cne-asset-info">
+                      <div className="cne-asset-badge-row">
+                        <span className="cne-asset-type-badge image">🖼️ Image Note</span>
+                        {fileSize > 0 && <span className="cne-asset-size-badge">{noteService?.formatFileSize ? noteService.formatFileSize(fileSize) : `${Math.round(fileSize/1024)} KB`}</span>}
+                      </div>
+                      <h5 className="cne-asset-filename">{fileName || 'Uploaded Image File'}</h5>
+                      <div className="cne-asset-actions">
+                        <button type="button" className="cne-asset-act-btn" onClick={() => assetFileInputRef.current?.click()}>
+                          <AppIcon name="upload" size={13} /> Replace Image
+                        </button>
+                        <button type="button" className="cne-asset-act-btn danger" onClick={handleRemoveAsset}>
+                          <AppIcon name="delete" size={13} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="cne-pdf-asset-container">
+                    <div className="cne-pdf-icon-badge">
+                      <AppIcon name="pdf" size={28} />
+                      <span className="cne-pdf-ext-tag">PDF</span>
+                    </div>
+                    <div className="cne-asset-info">
+                      <div className="cne-asset-badge-row">
+                        <span className="cne-asset-type-badge pdf">📄 PDF Document</span>
+                        {fileSize > 0 && <span className="cne-asset-size-badge">{noteService?.formatFileSize ? noteService.formatFileSize(fileSize) : `${Math.round(fileSize/1024)} KB`}</span>}
+                      </div>
+                      <h5 className="cne-asset-filename">{fileName || 'Document.pdf'}</h5>
+                      <div className="cne-asset-actions">
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="cne-asset-act-btn primary">
+                          <AppIcon name="preview" size={13} /> Open / Preview PDF
+                        </a>
+                        <button type="button" className="cne-asset-act-btn" onClick={() => assetFileInputRef.current?.click()}>
+                          <AppIcon name="upload" size={13} /> Replace PDF
+                        </button>
+                        <button type="button" className="cne-asset-act-btn danger" onClick={handleRemoveAsset}>
+                          <AppIcon name="delete" size={13} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 5. Rich Formatting Toolbar (Visible in Edit/Split mode for Text or optional notes) ─ */}
         {viewMode !== 'preview' && (
           <div className="cne-toolbar">
             <div className="cne-toolbar-group">
@@ -455,14 +676,6 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
               >
                 <AppIcon name="formatUnderline" size={15} />
               </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => insertFormatting('~~', '~~', 'strikethrough')}
-                title="Strikethrough"
-              >
-                <AppIcon name="formatStrikethrough" size={15} />
-              </button>
             </div>
 
             <div className="cne-toolbar-divider" />
@@ -479,55 +692,10 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
               <button
                 type="button"
                 className="cne-tool-btn"
-                onClick={() => insertFormatting('1. ', '\n', 'Numbered item')}
-                title="Numbered List"
-              >
-                <AppIcon name="formatListNumbered" size={15} />
-              </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
                 onClick={() => insertFormatting('> [!NOTE]\n> ', '\n', 'Important note content')}
                 title="Callout Note Box"
               >
                 <AppIcon name="formatQuote" size={15} /> Note Box
-              </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => insertFormatting('> [!IMPORTANT]\n> ', '\n', 'Crucial exam concept')}
-                title="Important Warning Box"
-              >
-                <AppIcon name="warning" size={15} /> Important
-              </button>
-            </div>
-
-            <div className="cne-toolbar-divider" />
-
-            <div className="cne-toolbar-group">
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => insertFormatting('```js\n', '\n```\n', '// code snippet here')}
-                title="Code Block"
-              >
-                <AppIcon name="code" size={15} /> Code
-              </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => insertFormatting('\n| Header 1 | Header 2 |\n|---|---|\n| Item 1 | Value 1 |\n', '')}
-                title="Insert Markdown Table"
-              >
-                <AppIcon name="tableChart" size={15} /> Table
-              </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => setShowLinkDialog(true)}
-                title="Insert Link"
-              >
-                <AppIcon name="link" size={15} /> Link
               </button>
             </div>
 
@@ -547,24 +715,16 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
                 className="cne-tool-btn cne-upload-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                title="Upload image from device / tablet"
+                title="Upload inline image into note body"
               >
                 <AppIcon name="upload" size={15} />
-                {isUploadingImage ? uploadProgressText || 'Processing...' : 'Upload Image'}
-              </button>
-              <button
-                type="button"
-                className="cne-tool-btn"
-                onClick={() => setShowImageDialog(true)}
-                title="Insert Image by URL or browse device"
-              >
-                <AppIcon name="image" size={15} /> Image URL
+                {isUploadingImage ? uploadProgressText || 'Processing...' : 'Inline Image'}
               </button>
             </div>
           </div>
         )}
 
-        {/* ── 4. Main Body (Edit / Split / Preview) ────────────────── */}
+        {/* ── 6. Main Body (Edit / Split / Preview) ────────────────── */}
         <div className={`cne-body-content mode-${viewMode}`}>
           {/* Editor Pane */}
           {viewMode !== 'preview' && (
@@ -574,7 +734,7 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
                 className="cne-textarea"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Start typing rich chapter notes in Markdown or formatted text..."
+                placeholder={noteType === 'TEXT' ? 'Start typing rich chapter notes in Markdown or formatted text...' : 'Optional caption, commentary, or text notes to accompany this asset...'}
                 spellCheck="false"
               />
             </div>
@@ -590,7 +750,33 @@ Write a brief introduction to this chapter here. Highlight the fundamental conce
                 <span className="cne-preview-title-preview">{title || 'Untitled Note'}</span>
               </div>
               <div className="cne-preview-scroll">
-                <RichContentRenderer content={content} />
+                {noteType === 'IMAGE' && fileUrl && (
+                  <div className="cne-student-preview-image-card">
+                    <img src={fileUrl} alt={fileName || title} className="cne-student-preview-img" />
+                    {content && <p className="cne-student-preview-caption">{content}</p>}
+                  </div>
+                )}
+
+                {noteType === 'PDF' && fileUrl && (
+                  <div className="cne-student-preview-pdf-card">
+                    <div className="cne-sp-pdf-left">
+                      <div className="cne-sp-pdf-icon">
+                        <AppIcon name="pdf" size={24} />
+                      </div>
+                      <div>
+                        <h4 className="cne-sp-pdf-title">{fileName || 'Modern History Notes.pdf'}</h4>
+                        <span className="cne-sp-pdf-size">{fileSize > 0 ? (noteService?.formatFileSize ? noteService.formatFileSize(fileSize) : `${Math.round(fileSize/1024)} KB`) : 'PDF Document'}</span>
+                      </div>
+                    </div>
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="cne-sp-pdf-btn">
+                      <AppIcon name="preview" size={14} /> Open PDF
+                    </a>
+                  </div>
+                )}
+
+                {(!fileUrl || noteType === 'TEXT' || content) && (
+                  <RichContentRenderer content={content} />
+                )}
               </div>
             </div>
           )}

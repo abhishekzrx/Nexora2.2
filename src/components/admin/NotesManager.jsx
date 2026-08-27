@@ -345,11 +345,16 @@ export default function NotesManager({ courseName = '' }) {
                   className={`nm-mini-chapter-card ${statusKey}`}
                   onClick={() => handleOpenEditor(chapter)}
                 >
-                  {/* Top Row: Order Pill, Subject Badge & Status Chip */}
+                  {/* Top Row: Order Pill, Subject Badge, Note Type & Status Chip */}
                   <div className="nm-mini-card-top">
                     <div className="nm-mini-left-pills">
                       <span className="nm-mini-order-pill">CH {chNum}</span>
                       <span className="nm-mini-sub-pill">{subject.name}</span>
+                      {note && (
+                        <span className={`nm-mini-type-pill ${(note.type || 'TEXT').toLowerCase()}`}>
+                          {note.type === 'PDF' ? '📄 PDF' : note.type === 'IMAGE' ? '🖼️ Image' : '📝 Text'}
+                        </span>
+                      )}
                     </div>
 
                     <button

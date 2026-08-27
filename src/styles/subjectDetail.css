@@ -1852,3 +1852,204 @@
     box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.04);
   }
 }
+
+/* Student PDF Document Card */
+.cnv-student-pdf-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+.cnv-student-pdf-card:hover {
+  border-color: #BFDBFE;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.08);
+}
+.cnv-spdf-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cnv-spdf-icon {
+  width: 48px;
+  height: 52px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cnv-spdf-badge-tag {
+  font-size: 9px;
+  font-weight: 800;
+  color: #1D4ED8;
+  letter-spacing: 0.5px;
+}
+.cnv-spdf-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cnv-spdf-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+}
+.cnv-spdf-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cnv-spdf-size-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  background: #E2E8F0;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+.cnv-spdf-type-tag {
+  font-size: 11.5px;
+  color: #64748B;
+}
+.cnv-spdf-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: #F1621B;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(241, 98, 27, 0.25);
+  transition: all 0.15s ease;
+}
+.cnv-spdf-open-btn:hover {
+  background: #E0530C;
+  transform: translateY(-1px);
+}
+
+/* Student Image Note Card */
+.cnv-student-image-card {
+  margin: 18px 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.cnv-img-note-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 10px 0;
+}
+.cnv-img-wrapper {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #F1F5F9;
+  background: #F8FAFC;
+  cursor: zoom-in;
+  text-align: center;
+}
+.cnv-student-img {
+  max-width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+.cnv-zoom-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+.cnv-img-caption {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+/* Fullscreen Lightbox Modal */
+.cnv-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.cnv-lightbox-container {
+  background: #FFFFFF;
+  border-radius: 14px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+.cnv-lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+.cnv-lightbox-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+}
+.cnv-lightbox-close {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnv-lightbox-close:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+.cnv-lightbox-body {
+  padding: 16px;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnv-lightbox-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 8px;
+}

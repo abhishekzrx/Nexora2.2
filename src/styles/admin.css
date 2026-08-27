@@ -11635,6 +11635,325 @@
   color: #F1621B;
 }
 
+/* Note Format Type Badge on Mini Cards */
+.nm-mini-type-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+.nm-mini-type-pill.pdf {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+.nm-mini-type-pill.image {
+  background: #F0FDF4;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+}
+.nm-mini-type-pill.text {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+/* Admin Notes Editor Format Selector Bar */
+.cne-type-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+.cne-type-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
+}
+.cne-type-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cne-type-tab-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+.cne-type-tab-btn.active {
+  background: #F1621B;
+  color: #FFFFFF;
+  border-color: #F1621B;
+  box-shadow: 0 1px 3px rgba(241, 98, 27, 0.25);
+}
+
+/* Drag & Drop File Upload Section */
+.cne-file-upload-section {
+  padding: 14px 16px;
+  background: #FAFAFA;
+  border-bottom: 1px solid #E2E8F0;
+}
+.cne-drag-drop-zone {
+  border: 2px dashed #CBD5E1;
+  border-radius: 10px;
+  padding: 24px 16px;
+  text-align: center;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.cne-drag-drop-zone:hover,
+.cne-drag-drop-zone.dragging {
+  border-color: #F1621B;
+  background: #FFF7ED;
+}
+.cne-drop-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #FFF7ED;
+  color: #F1621B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cne-drop-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1E293B;
+  margin: 0;
+}
+.cne-drop-sub {
+  font-size: 12px;
+  color: #64748B;
+  margin: 0;
+}
+.cne-browse-link {
+  color: #F1621B;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.cne-drop-limit {
+  font-size: 11px;
+  color: #94A3B8;
+  margin-top: 2px;
+}
+
+/* Asset Preview Cards (Image / PDF) */
+.cne-asset-preview-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.cne-image-asset-container,
+.cne-pdf-asset-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.cne-image-thumb-wrap {
+  width: 90px;
+  height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  flex-shrink: 0;
+}
+.cne-image-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cne-pdf-icon-badge {
+  width: 64px;
+  height: 72px;
+  border-radius: 8px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.cne-pdf-ext-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #1D4ED8;
+  letter-spacing: 0.5px;
+}
+.cne-asset-info {
+  flex: 1;
+  min-width: 0;
+}
+.cne-asset-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.cne-asset-type-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.cne-asset-type-badge.pdf {
+  background: #EFF6FF;
+  color: #1D4ED8;
+}
+.cne-asset-type-badge.image {
+  background: #F0FDF4;
+  color: #15803D;
+}
+.cne-asset-size-badge {
+  font-size: 11px;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.cne-asset-filename {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 10px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cne-asset-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cne-asset-act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #334155;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.cne-asset-act-btn:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+}
+.cne-asset-act-btn.primary {
+  background: #1E293B;
+  color: #FFFFFF;
+  border-color: #1E293B;
+}
+.cne-asset-act-btn.primary:hover {
+  background: #0F172A;
+}
+.cne-asset-act-btn.danger {
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+.cne-asset-act-btn.danger:hover {
+  background: #FEF2F2;
+}
+
+/* Student Preview Pane Asset Blocks */
+.cne-student-preview-image-card {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.cne-student-preview-img {
+  max-width: 100%;
+  max-height: 280px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  object-fit: contain;
+}
+.cne-student-preview-caption {
+  font-size: 12.5px;
+  color: #475569;
+  margin-top: 6px;
+  font-style: italic;
+}
+.cne-student-preview-pdf-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.cne-sp-pdf-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cne-sp-pdf-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #EFF6FF;
+  color: #1D4ED8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cne-sp-pdf-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 2px 0;
+}
+.cne-sp-pdf-size {
+  font-size: 11.5px;
+  color: #64748B;
+}
+.cne-sp-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: #F1621B;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+
 
 
 

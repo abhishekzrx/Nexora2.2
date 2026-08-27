@@ -37,6 +37,15 @@ export function saveLocalNotes(notesList) {
   }
 }
 
+export function formatFileSize(bytes) {
+  if (!bytes || isNaN(bytes)) return '0 KB'
+  if (typeof bytes === 'string' && (bytes.includes('KB') || bytes.includes('MB') || bytes.includes('B'))) return bytes
+  const num = Number(bytes)
+  if (num < 1024) return `${num} B`
+  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`
+  return `${(num / (1024 * 1024)).toFixed(1)} MB`
+}
+
 function parseNoteFromChapterDescription(chap) {
   if (!chap || !chap.description) return null
   const desc = String(chap.description).trim()
@@ -46,7 +55,7 @@ function parseNoteFromChapterDescription(chap) {
   if (desc.startsWith('{') && desc.endsWith('}')) {
     try {
       const parsed = JSON.parse(desc)
-      if (parsed && (parsed.__nexora_note__ || parsed.content || parsed.title)) {
+      if (parsed && (parsed.__nexora_note__ || parsed.content || parsed.title || parsed.fileUrl)) {
         return {
           id: String(parsed.id || `note-${chap.id}`),
           courseId: String(chap.course_id || chap.courseId || ''),
@@ -55,6 +64,11 @@ function parseNoteFromChapterDescription(chap) {
           chapterName: chap.name || '',
           title: parsed.title || `${chap.name} Study Notes`,
           content: parsed.content || '',
+          type: (parsed.type || 'TEXT').toUpperCase(),
+          fileUrl: parsed.fileUrl || parsed.file_url || '',
+          fileName: parsed.fileName || parsed.file_name || '',
+          fileSize: parsed.fileSize || parsed.file_size || 0,
+          mimeType: parsed.mimeType || parsed.mime_type || '',
           status: parsed.status || 'published',
           createdAt: parsed.createdAt || parsed.created_at || chap.created_at || new Date().toISOString(),
           updatedAt: parsed.updatedAt || parsed.updated_at || chap.updated_at || new Date().toISOString(),
@@ -75,6 +89,11 @@ function parseNoteFromChapterDescription(chap) {
       chapterName: chap.name || '',
       title: `${chap.name} Study Notes`,
       content: desc,
+      type: 'TEXT',
+      fileUrl: '',
+      fileName: '',
+      fileSize: 0,
+      mimeType: '',
       status: 'published',
       createdAt: chap.created_at || new Date().toISOString(),
       updatedAt: chap.updated_at || new Date().toISOString(),
@@ -86,6 +105,7 @@ function parseNoteFromChapterDescription(chap) {
 
 function mapRowToNote(row) {
   if (!row) return null
+  const noteType = String(row.type || row.note_type || 'TEXT').toUpperCase()
   return {
     id: String(row.id || crypto.randomUUID()),
     courseId: String(row.course_id || row.courseId || ''),
@@ -94,6 +114,11 @@ function mapRowToNote(row) {
     chapterName: row.chapter_name || row.chapterName || '',
     title: row.title || 'Untitled Note',
     content: row.content || '',
+    type: noteType === 'IMAGE' ? 'IMAGE' : noteType === 'PDF' ? 'PDF' : 'TEXT',
+    fileUrl: row.file_url || row.fileUrl || '',
+    fileName: row.file_name || row.fileName || '',
+    fileSize: row.file_size || row.fileSize || 0,
+    mimeType: row.mime_type || row.mimeType || '',
     status: row.status || 'published',
     createdAt: row.created_at || row.createdAt || new Date().toISOString(),
     updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
@@ -102,6 +127,7 @@ function mapRowToNote(row) {
 
 function mapNoteToPayload(data, courseId, subjectId, chapterId) {
   const isValidUuid = data.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.id)
+  const noteType = String(data.type || 'TEXT').toUpperCase()
   return {
     id: isValidUuid ? data.id : crypto.randomUUID(),
     course_id: String(courseId || data.courseId || ''),
@@ -109,6 +135,11 @@ function mapNoteToPayload(data, courseId, subjectId, chapterId) {
     chapter_id: String(chapterId || data.chapterId || ''),
     title: String(data.title || '').trim() || 'Untitled Note',
     content: String(data.content || '').trim(),
+    type: noteType === 'IMAGE' ? 'IMAGE' : noteType === 'PDF' ? 'PDF' : 'TEXT',
+    file_url: data.fileUrl || data.file_url || '',
+    file_name: data.fileName || data.file_name || '',
+    file_size: data.fileSize || data.file_size || 0,
+    mime_type: data.mimeType || data.mime_type || '',
     status: data.status || 'published',
     created_at: data.createdAt || data.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -322,15 +353,41 @@ export const noteService = {
 
   /**
    * Create a new note record with authoritative Dual-Layer Supabase Cloud persistence.
+   * Supports TEXT, IMAGE, and PDF note types.
    */
-  async createNote({ courseId, subjectId, chapterId, chapterName = '', title, content, status = 'published' }) {
+  async createNote({
+    courseId,
+    subjectId,
+    chapterId,
+    chapterName = '',
+    title,
+    content = '',
+    type = 'TEXT',
+    fileUrl = '',
+    fileName = '',
+    fileSize = 0,
+    mimeType = '',
+    status = 'published',
+  }) {
     if (!courseId) return { success: false, error: 'Course is required to create a note' }
     if (!subjectId) return { success: false, error: 'Subject is required to create a note' }
     if (!chapterId) return { success: false, error: 'Chapter is required to create a note' }
     if (!title || !String(title).trim()) return { success: false, error: 'Note title cannot be empty' }
-    if (!content || !String(content).trim()) return { success: false, error: 'Note content cannot be empty' }
 
-    const dbPayload = mapNoteToPayload({ title, content, status }, courseId, subjectId, chapterId)
+    const noteType = String(type || 'TEXT').toUpperCase()
+    if (noteType === 'TEXT' && (!content || !String(content).trim())) {
+      return { success: false, error: 'Note content cannot be empty for text notes' }
+    }
+    if ((noteType === 'IMAGE' || noteType === 'PDF') && !fileUrl) {
+      return { success: false, error: `File asset URL is required for ${noteType} note` }
+    }
+
+    const dbPayload = mapNoteToPayload(
+      { title, content, type: noteType, fileUrl, fileName, fileSize, mimeType, status },
+      courseId,
+      subjectId,
+      chapterId
+    )
     const noteObject = {
       ...mapRowToNote(dbPayload),
       chapterName: chapterName || '',
@@ -363,7 +420,6 @@ export const noteService = {
       const isChapterUuid = chapterId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chapterId)
       let targetChapUuid = isChapterUuid ? chapterId : null
 
-      // If chapterId is not a UUID, find the chapter in Supabase by name or subject
       if (!targetChapUuid && (chapterName || chapterId)) {
         const searchRes = await apiService.get(`/chapters?name=eq.${encodeURIComponent(chapterName || chapterId)}&limit=1`)
         if (searchRes.success && Array.isArray(searchRes.data) && searchRes.data.length > 0) {
@@ -377,6 +433,11 @@ export const noteService = {
           id: noteObject.id,
           title: noteObject.title,
           content: noteObject.content,
+          type: noteObject.type,
+          fileUrl: noteObject.fileUrl,
+          fileName: noteObject.fileName,
+          fileSize: noteObject.fileSize,
+          mimeType: noteObject.mimeType,
           status: noteObject.status,
           updatedAt: noteObject.updatedAt,
           createdAt: noteObject.createdAt,
@@ -407,14 +468,35 @@ export const noteService = {
   /**
    * Update an existing note record in Supabase & LocalStorage
    */
-  async updateNote(id, { courseId, subjectId, chapterId, chapterName = '', title, content, status = 'published' }) {
+  async updateNote(
+    id,
+    {
+      courseId,
+      subjectId,
+      chapterId,
+      chapterName = '',
+      title,
+      content = '',
+      type = 'TEXT',
+      fileUrl = '',
+      fileName = '',
+      fileSize = 0,
+      mimeType = '',
+      status = 'published',
+    }
+  ) {
     if (!id) return { success: false, error: 'Note ID is required for update' }
     if (!title || !String(title).trim()) return { success: false, error: 'Note title cannot be empty' }
-    if (!content || !String(content).trim()) return { success: false, error: 'Note content cannot be empty' }
 
+    const noteType = String(type || 'TEXT').toUpperCase()
     const updatePayload = {
       title: String(title).trim(),
-      content: String(content).trim(),
+      content: String(content || '').trim(),
+      type: noteType,
+      file_url: fileUrl || '',
+      file_name: fileName || '',
+      file_size: fileSize || 0,
+      mime_type: mimeType || '',
       status: status || 'published',
       updated_at: new Date().toISOString(),
     }
@@ -474,6 +556,11 @@ export const noteService = {
           id: updatedNote.id,
           title: updatedNote.title,
           content: updatedNote.content,
+          type: updatedNote.type,
+          fileUrl: updatedNote.fileUrl,
+          fileName: updatedNote.fileName,
+          fileSize: updatedNote.fileSize,
+          mimeType: updatedNote.mimeType,
           status: updatedNote.status,
           updatedAt: updatedNote.updatedAt,
           createdAt: updatedNote.createdAt,
@@ -623,6 +710,101 @@ export const noteService = {
     return {
       success: false,
       error: 'Unable to process image file.',
+    }
+  },
+
+  /**
+   * Upload an asset file (Image or PDF) to Supabase Storage bucket `notes-assets`
+   * Path structure: notes-assets/${courseId}/${subjectId}/${chapterId}/${type}s/${fileName}
+   */
+  async uploadNoteAsset({ file, courseId = 'general', subjectId = 'subject', chapterId = 'chapter' } = {}) {
+    if (!file) return { success: false, error: 'No file selected' }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name)
+
+    if (!isPdf && !isImage) {
+      return { success: false, error: 'Unsupported file format. Please upload a PDF or Image (PNG, JPG, WEBP).' }
+    }
+
+    const MAX_SIZE = isPdf ? 25 * 1024 * 1024 : 12 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      return { success: false, error: `File size exceeds limit (${isPdf ? '25MB' : '12MB'}).` }
+    }
+
+    const cleanCourse = String(courseId || 'general').replace(/[^a-zA-Z0-9_-]/g, '')
+    const cleanSubject = String(subjectId || 'subject').replace(/[^a-zA-Z0-9_-]/g, '')
+    const cleanChapter = String(chapterId || 'chapter').replace(/[^a-zA-Z0-9_-]/g, '')
+    const cleanFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const folderType = isPdf ? 'pdfs' : 'images'
+    const storagePath = `${cleanCourse}/${cleanSubject}/${cleanChapter}/${folderType}/${cleanFileName}`
+    const bucket = 'notes-assets'
+
+    let localDataUrl = ''
+    try {
+      if (isImage) {
+        localDataUrl = await fileToOptimizedDataUrl(file)
+      } else {
+        localDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(file)
+        })
+      }
+    } catch {
+      // ignore
+    }
+
+    // Attempt Supabase Storage upload
+    try {
+      const uploadUrl = `${env.supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/${bucket}/${storagePath}`
+      const publicUrl = `${env.supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${storagePath}`
+
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': env.apiKey,
+          'Authorization': `Bearer ${env.apiKey}`,
+          'Content-Type': file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+          'x-upsert': 'true',
+        },
+        body: file,
+      })
+
+      if (res.ok) {
+        return {
+          success: true,
+          url: publicUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+          type: isPdf ? 'PDF' : 'IMAGE',
+          isCloud: true,
+          message: 'Uploaded asset to Supabase Storage successfully.',
+        }
+      }
+    } catch (err) {
+      console.warn('[noteService] Supabase Storage upload notice:', err)
+    }
+
+    // Fallback if bucket is missing/unconfigured: Return data URL
+    if (localDataUrl) {
+      return {
+        success: true,
+        url: localDataUrl,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+        type: isPdf ? 'PDF' : 'IMAGE',
+        isLocalFallback: true,
+        message: 'File processed and embedded into note record.',
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Failed to process file asset.',
     }
   },
 }
