@@ -310,7 +310,7 @@ const stats = {
 
 // ── History filters (mirrors future backend query params) ──────────
 const historyFilters = {
-  subjects: ['All Subjects', 'Computer Networks', 'Operating System', 'DBMS', 'COA', 'Digital Electronics'],
+  subjects: ['All Subjects', 'C++ Programming and OOP', 'Computer Networks', 'Operating System', 'DBMS', 'COA', 'Digital Electronics'],
   types: ['All Types', 'MCQ', 'Flashcards', 'Revision', 'Mock'],
   statuses: ['All Statuses', 'Completed', 'In Progress', 'Paused', 'Failed', 'Mastered', 'Locked'],
   periods: ['All Time', 'Today', 'This Week', 'This Month'],

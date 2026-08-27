@@ -48,6 +48,8 @@ export const COURSE_CONFIGS = {
       avoidUnrelatedGeneralStudies: true,
     },
     subjectDomains: [
+      'c++ programming and object-oriented programming (oop)',
+      'c++ and oops',
       'digital electronics',
       'computer organization & architecture (coa)',
       'operating systems',

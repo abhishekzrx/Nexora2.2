@@ -44,6 +44,18 @@ export const recentActivity = [
 
 export const adminSubjects = [
   {
+    id: 's-cpp-oop-1',
+    name: 'C++ Programming and Object-Oriented Programming (OOP)',
+    icon: 'dataStructures',
+    desc: 'Identifiers, tokens, modular functions, pointers, dynamic memory allocation, OOP principles, constructors, inheritance architectures, polymorphism, virtual functions and C++ file streams.',
+    stats: [
+      { value: '12', label: 'Chapters' },
+      { value: '240', label: 'MCQs' },
+      { value: '180', label: 'Flashcards' },
+      { value: 'Active', label: 'Status' },
+    ],
+  },
+  {
     id: 'cn',
     name: 'Computer Networks',
     icon: 'computerNetworks',
@@ -94,6 +106,20 @@ export const adminSubjects = [
 ]
 
 export const chaptersData = {
+  's-cpp-oop-1': [
+    { id: 1, chapter_code: 'CHP 1.1', name: 'C++ Fundamentals & Token Structure', desc: 'Identifiers, reserved keywords, primitive and user-defined data types, constants, arithmetic, relational, logical, bitwise, assignment and conditional operators, expression evaluation, implicit and explicit type casting, and standard stream I/O using cin, cout and cerr.' },
+    { id: 2, chapter_code: 'CHP 1.2', name: 'Decision Branching & Loop Execution', desc: 'Conditional control flow using if, if-else, nested if and switch-case; iterative execution using for, while and do-while loops; break, continue and goto statements; nested-loop mechanics and execution tracing.' },
+    { id: 3, chapter_code: 'CHP 1.3', name: 'Modular Functions & Parameter Passing', desc: 'Function prototypes, declaration and definition, pass-by-value, pass-by-reference and pass-by-pointer, default and constant arguments, inline functions, call-stack processing, recursion and variable-scope rules.' },
+    { id: 4, chapter_code: 'CHP 1.4', name: 'One-Dimensional Arrays & Vectors', desc: 'Array declaration, initialization, contiguous memory allocation, indexing, traversal, linear and binary searching, array sorting and bounds checking. Includes the basic use and conceptual understanding of vector-like sequence structures.' },
+    { id: 5, chapter_code: 'CHP 1.5', name: 'Multi-Dimensional Arrays & Matrices', desc: 'Two-dimensional array syntax, row-major and column-major address calculation, matrix addition, multiplication and transposition, diagonal processing, and passing multidimensional arrays to functions.' },
+    { id: 6, chapter_code: 'CHP 1.6', name: 'Pointers & Address Arithmetic', desc: 'Pointer variables, reference and dereference operators, pointer arithmetic, array-pointer relationship, pointers to pointers, constant pointers, null pointers, wild pointers and void pointers.' },
+    { id: 7, chapter_code: 'CHP 1.7', name: 'Dynamic Memory Allocation', desc: 'Free-store concepts, heap versus stack memory, dynamic allocation using new and delete, new[] and delete[], memory-leak prevention, dangling-pointer mitigation and dynamic-array handling.' },
+    { id: 8, chapter_code: 'CHP 1.8', name: 'Structures & User-Defined Types', desc: 'Structure definition and declaration, member access using dot and arrow operators, structure pointers, nested structures, arrays of structures, structure parameters, union memory layouts and enum types.' },
+    { id: 9, chapter_code: 'CHP 1.9', name: 'Object-Oriented Principles & Classes', desc: 'Core OOP principles including abstraction, encapsulation, data hiding, inheritance and polymorphism; class syntax, member variables and functions, private/public/protected access specifiers, scope resolution and static members.' },
+    { id: 10, chapter_code: 'CHP 1.10', name: 'Constructors & Object Lifecycle', desc: 'Default, parameterized and copy constructors, shallow versus deep copy, initialization lists, constructor overloading, destructor execution order and dynamic object initialization.' },
+    { id: 11, chapter_code: 'CHP 1.11', name: 'Inheritance Architectures', desc: 'Base and derived classes, public/protected/private inheritance, single, multiple, multilevel, hierarchical and hybrid inheritance, the diamond problem, virtual base classes and base-constructor execution order.' },
+    { id: 12, chapter_code: 'CHP 1.12', name: 'Polymorphism, Virtual Functions & Streams', desc: 'Function and operator overloading, compile-time versus run-time polymorphism, virtual and pure virtual functions, abstract classes, dynamic binding through vtable/vptr, C++ file streams using ifstream, ofstream and fstream, and file-pointer navigation using seekg, seekp, tellg and tellp.' },
+  ],
   cn: [
     { id: 1, name: 'Introduction to Networks', desc: 'Network basics and fundamentals' },
     { id: 2, name: 'OSI Model', desc: 'Seven layer OSI model deep dive' },
