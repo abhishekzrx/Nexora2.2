@@ -227,6 +227,7 @@ function DashboardPage({
   onNavigatePractice = () => {},
   onOpenSubjectDetail = () => {},
   onNavigateAdmin = () => {},
+  onLogout = () => {},
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
@@ -668,6 +669,28 @@ function DashboardPage({
             <AppIcon name="streak" size={14} />
             14 Day Streak
           </div>
+
+          {/* Quick Mode Switcher */}
+          <div className="drawer-mode-switch-card">
+            <div className="mode-switch-left">
+              <span className="mode-role-icon">🎓</span>
+              <div className="mode-role-text">
+                <span className="mode-role-title">Student Mode</span>
+                <span className="mode-role-sub">Learning & Practice</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mode-switch-btn"
+              onClick={() => {
+                setDrawerOpen(false)
+                onNavigateAdmin()
+              }}
+              title="Switch to Admin Mode"
+            >
+              Admin Mode ➔
+            </button>
+          </div>
         </div>
 
         <div className="drawer-menu">
@@ -730,7 +753,10 @@ function DashboardPage({
           <button
             type="button"
             className="drawer-logout"
-            onClick={() => setDrawerOpen(false)}
+            onClick={() => {
+              setDrawerOpen(false)
+              onLogout?.()
+            }}
           >
             <span className="d-icon" aria-hidden="true">
               <AppIcon name="logout" size={18} />

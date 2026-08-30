@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import '../styles/subjectDetail.css'
 import { useCourseRegistry } from '../data/courseRegistry'
 import { useWorkspaceStore } from '../data/workspaceStore'
+import { useAdminStore } from '../data/adminStore'
 import { deriveAnalytics } from '../utils/deriveAnalytics'
 import Header from '../components/layout/Header'
 import MobileLayout from '../components/layout/MobileLayout'
@@ -15,8 +16,6 @@ import Tabs from '../components/subject/Tabs'
 import ChapterCard from '../components/subject/ChapterCard'
 import CoverageLegendCard from '../components/subject/CoverageLegendCard'
 import ChapterMcqAnalytics from '../components/subject/ChapterMcqAnalytics'
-import StatGrid from '../components/subject/StatGrid'
-import BarList from '../components/subject/BarList'
 import WeakTopics from '../components/subject/WeakTopics'
 import StudyStats from '../components/subject/StudyStats'
 import TimeSpent from '../components/subject/TimeSpent'
@@ -25,6 +24,7 @@ import AccuracyChart from '../components/subject/AccuracyChart'
 import AppIcon from '../components/ui/AppIcon'
 import ChapterNotesView from '../components/student/ChapterNotesView'
 import SubjectAnalysisTab from '../components/subject/SubjectAnalysisTab'
+import SubjectFlashcardsTab from '../components/subject/SubjectFlashcardsTab'
 import { subjectTabs } from '../utils/navigation'
 
 const tabItems = [
@@ -46,11 +46,13 @@ function SubjectDetailPage({
 }) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const registry = useCourseRegistry(courseId || activeWorkspaceId)
+  const adminState = useAdminStore()
   const subject = registry.subjectCatalog[subjectKey] || null
   const derived = useMemo(() => subject ? deriveAnalytics(subject) : null, [subject])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
   const [showChapterTrends, setShowChapterTrends] = useState(false)
 
+  const allFlashcards = adminState.allFlashcards || adminState.flashcards || []
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
 
   useEffect(() => {
@@ -157,10 +159,11 @@ function SubjectDetailPage({
 
     if (activeTab === 'flashcards') {
       return (
-        <>
-          <StatGrid metrics={derived.flashMetrics} />
-          <BarList title="Flashcard Decks" items={derived.flashList} />
-        </>
+        <SubjectFlashcardsTab
+          subject={subject}
+          courseId={courseId || activeWorkspaceId}
+          allFlashcards={allFlashcards}
+        />
       )
     }
 

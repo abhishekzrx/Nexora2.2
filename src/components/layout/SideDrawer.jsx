@@ -5,6 +5,7 @@
  * Items may include `disabled: true` to render a muted, non-interactive row.
  */
 import AppIcon from '../ui/AppIcon'
+import { useRoleStore, switchToAdmin, switchToStudent } from '../../data/roleStore'
 
 function SideDrawer({
   open,
@@ -13,10 +14,24 @@ function SideDrawer({
   profile,
   sections,
   onItemClick,
+  onSwitchMode,
 }) {
+  const { isAdmin } = useRoleStore()
+
   const handleItemClick = (item) => {
     if (item.disabled) return
     onItemClick?.(item)
+  }
+
+  const handleToggleMode = () => {
+    onClose?.()
+    if (isAdmin) {
+      switchToStudent()
+      onSwitchMode?.('student')
+    } else {
+      switchToAdmin()
+      onSwitchMode?.('admin')
+    }
   }
 
   return (
@@ -45,6 +60,25 @@ function SideDrawer({
                 {profile.streak}
               </div>
             ) : null}
+
+            {/* Quick Mode Switcher */}
+            <div className="drawer-mode-switch-card">
+              <div className="mode-switch-left">
+                <span className="mode-role-icon">{isAdmin ? '⚡' : '🎓'}</span>
+                <div className="mode-role-text">
+                  <span className="mode-role-title">{isAdmin ? 'Admin Studio' : 'Student Mode'}</span>
+                  <span className="mode-role-sub">{isAdmin ? 'Content & Syllabus CMS' : 'Learning & Practice'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="mode-switch-btn"
+                onClick={handleToggleMode}
+                title={isAdmin ? 'Switch to Student Learning' : 'Switch to Admin Studio'}
+              >
+                {isAdmin ? 'Student Mode ➔' : 'Admin Mode ➔'}
+              </button>
+            </div>
           </div>
         ) : null}
 

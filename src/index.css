@@ -669,3 +669,72 @@ button:disabled {
 .drawer-logout:hover {
   background: var(--red-bg);
 }
+
+.drawer-mode-switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(241, 98, 27, 0.08) 0%, rgba(255, 176, 32, 0.05) 100%);
+  border: 1px solid rgba(241, 98, 27, 0.22);
+  border-radius: 14px;
+}
+
+.mode-switch-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mode-role-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mode-role-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mode-role-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1.2;
+}
+
+.mode-role-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mode-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  background: #F1621B;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(241, 98, 27, 0.25);
+  flex-shrink: 0;
+}
+
+.mode-switch-btn:hover {
+  background: #EA580C;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(241, 98, 27, 0.35);
+}

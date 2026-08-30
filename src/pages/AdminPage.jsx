@@ -6,14 +6,21 @@ import { useState } from 'react'
 import '../styles/admin.css'
 import AdminDashboard from '../components/admin/AdminDashboard'
 
-function AdminPage({ onBackHome }) {
+function AdminPage({ onBackHome, onLogout }) {
   const [activeSection, setActiveSection] = useState('dashboard')
 
   const handleNavigate = (section) => {
     setActiveSection(section)
   }
 
-  return <AdminDashboard activeSection={activeSection} onNavigate={handleNavigate} onBackHome={onBackHome} />
+  return (
+    <AdminDashboard
+      activeSection={activeSection}
+      onNavigate={handleNavigate}
+      onBackHome={onBackHome}
+      onLogout={onLogout}
+    />
+  )
 }
 
 export default AdminPage

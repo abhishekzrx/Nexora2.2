@@ -6,11 +6,14 @@ import MCQPracticePage from './pages/MCQPracticePage'
 import TestResultsPage from './pages/TestResultsPage'
 import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
+import AuthPage from './pages/AuthPage'
 import { navigate, parseHash, testSession } from './utils/navigation'
 import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
 import { useWorkspaceStore } from './data/workspaceStore'
 import { hydrateWorkspacesFromSupabase } from './data/workspaceStore'
 import { hydrateAdminStoreFromSupabase } from './data/adminStore'
+
+const AUTH_ROUTES = new Set(['login', 'signup'])
 
 /**
  * Resolve the current hash into a route descriptor.
@@ -20,6 +23,10 @@ function resolveRoute() {
   const parts = parseHash()
 
   if (parts.length === 0) return { name: 'dashboard' }
+
+  if (parts[0] === 'login') return { name: 'login' }
+
+  if (parts[0] === 'signup') return { name: 'signup' }
 
   if (parts[0] === 'subjects') return { name: 'subjects' }
 
@@ -52,8 +59,36 @@ function resolveRoute() {
 
 function App() {
   const [route, setRoute] = useState(resolveRoute)
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      return localStorage.getItem('nexora_is_authenticated') === 'true'
+    } catch {
+      return false
+    }
+  })
   const { activeWorkspaceId } = useWorkspaceStore()
   const { activeRole } = useRoleStore()
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('nexora_is_authenticated')
+    } catch {
+      // ignore
+    }
+    setIsAuthenticated(false)
+    switchToStudent()
+    navigate('login')
+  }
+
+  const handleSwitchToAdmin = () => {
+    switchToAdmin()
+    navigate('admin')
+  }
+
+  const handleSwitchToStudent = () => {
+    switchToStudent()
+    navigate('')
+  }
 
   useEffect(() => {
     const onHashChange = () => setRoute(resolveRoute())
@@ -63,13 +98,30 @@ function App() {
 
   useEffect(() => {
     if (!route) return
+
+    const isAuthRoute = AUTH_ROUTES.has(route.name)
+
+    if (!isAuthenticated && !isAuthRoute) {
+      navigate('login')
+      return
+    }
+
+    if (isAuthenticated && isAuthRoute) {
+      navigate('')
+    }
+  }, [route, isAuthenticated])
+
+  useEffect(() => {
+    if (!route) return
+    if (!isAuthenticated) return
+
     if (route.name === 'admin' && activeRole !== 'admin') {
       switchToAdmin()
     }
     if (route.name !== 'admin' && activeRole === 'admin') {
       switchToStudent()
     }
-  }, [route, activeRole])
+  }, [route, activeRole, isAuthenticated])
 
   useEffect(() => {
     async function bootstrap() {
@@ -89,16 +141,45 @@ function App() {
     return () => {}
   }, [])
 
-  // Unknown / malformed route → fall back to dashboard.
+  const renderAuthPage = () => (
+    <AuthPage
+      mode={route?.name === 'signup' ? 'signup' : 'login'}
+      onGoLogin={() => navigate('login')}
+      onGoSignup={() => navigate('signup')}
+      onLoginSuccess={() => {
+        try {
+          localStorage.setItem('nexora_is_authenticated', 'true')
+        } catch {
+          // ignore
+        }
+        setIsAuthenticated(true)
+        switchToStudent()
+        navigate('')
+      }}
+      onSignupSuccess={() => navigate('login')}
+    />
+  )
+
+  // Unknown / malformed route -> fall back to dashboard.
   if (!route) {
-    navigate('')
+    navigate(isAuthenticated ? '' : 'login')
     return null
+  }
+
+  if (!isAuthenticated) {
+    return renderAuthPage()
   }
 
   const { name, subjectKey, chapterId } = route
 
   if (name === 'admin') {
-    return <AdminPage onBackHome={() => { switchToStudent(); navigate('') }} />
+    return (
+      <AdminPage
+        onBackHome={handleSwitchToStudent}
+        onLogout={handleLogout}
+        onSwitchToStudent={handleSwitchToStudent}
+      />
+    )
   }
 
   if (name === 'subjects') {
@@ -108,7 +189,8 @@ function App() {
         onNavigateHome={() => navigate('')}
         onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
         onNavigatePractice={() => navigate('practice')}
-        onNavigateAdmin={() => navigate('admin')}
+        onNavigateAdmin={handleSwitchToAdmin}
+        onLogout={handleLogout}
       />
     )
   }
@@ -235,7 +317,8 @@ function App() {
       onNavigateSubjects={() => navigate('subjects')}
       onNavigatePractice={() => navigate('practice')}
       onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
-      onNavigateAdmin={() => navigate('admin')}
+      onNavigateAdmin={handleSwitchToAdmin}
+      onLogout={handleLogout}
     />
   )
 }

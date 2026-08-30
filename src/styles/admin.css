@@ -456,6 +456,64 @@
 
 /* ── Reference Dashboard Layout Rules ────────────────── */
 
+.admin-sidebar-footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin: auto 10px 10px;
+  border-top: 1px solid #EAECF0;
+  border-bottom: 1px solid #EAECF0;
+}
+
+.admin-switch-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(241, 98, 27, 0.08);
+  border: 1px solid rgba(241, 98, 27, 0.28);
+  border-radius: 10px;
+  color: #EA580C;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-switch-mode-btn:hover {
+  background: #F1621B;
+  color: #FFFFFF;
+  border-color: #F1621B;
+  transform: translateY(-1px);
+}
+
+.admin-switch-mode-btn .mode-btn-icon {
+  font-size: 15px;
+}
+
+.admin-sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #FEE2E2;
+  border-radius: 10px;
+  color: #EF4444;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-sidebar-logout-btn:hover {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+}
+
 .admin-sidebar-user {
   display: flex;
   align-items: center;

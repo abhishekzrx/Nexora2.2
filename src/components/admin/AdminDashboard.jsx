@@ -50,7 +50,7 @@ const MOBILE_SECTION_MAP = {
   settings: 'Settings',
 }
 
-function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
+function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
   const [isMobile, setIsMobile] = useState(getIsMobile)
   const { subjects, chapters, mcqs, flashcards, allSubjects, allChapters, allMcqs, allFlashcards } = useAdminStore()
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
@@ -201,6 +201,7 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
         onNavigate={(key) => onNavigate?.(key)}
         courseName={activeCourse?.name}
         onBackHome={onBackHome}
+        onLogout={onLogout}
       >
         <div className="admin-mobile-section">
           {activeSection === 'dashboard' ? (
@@ -233,6 +234,8 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
         activeSection={activeSection}
         onNavigate={onNavigate}
         courseName={activeCourse?.name}
+        onBackHome={onBackHome}
+        onLogout={onLogout}
       />
 
       <div className="admin-dashboard-main">

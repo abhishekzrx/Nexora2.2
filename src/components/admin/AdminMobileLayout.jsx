@@ -16,7 +16,7 @@ const ADMIN_NAV_ITEMS = [
   { icon: 'moreVert', label: 'More' },
 ]
 
-function AdminMobileLayout({ children, activeTab, onNavigate, courseName, onBackHome }) {
+function AdminMobileLayout({ children, activeTab, onNavigate, courseName, onBackHome, onLogout }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const items = ADMIN_NAV_ITEMS.map((item) => ({
@@ -75,6 +75,8 @@ function AdminMobileLayout({ children, activeTab, onNavigate, courseName, onBack
         }}
         sections={drawerSections}
         onItemClick={handleDrawerItemClick}
+        onLogout={onLogout}
+        onSwitchMode={() => onBackHome?.()}
       />
 
       <header className="admin-mobile-header">

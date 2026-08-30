@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { key: 'settings', label: 'SETTINGS', icon: 'settings' },
 ]
 
-function AdminSidebar({ activeSection, onNavigate, courseName }) {
+function AdminSidebar({ activeSection, onNavigate, courseName, onBackHome, onLogout }) {
   return (
     <nav className="admin-sidebar">
       <div className="admin-sidebar-header">
@@ -52,6 +52,29 @@ function AdminSidebar({ activeSection, onNavigate, courseName }) {
         })}
       </div>
 
+      {/* Quick Mode Switcher & Logout Controls */}
+      <div className="admin-sidebar-footer-actions">
+        <button
+          type="button"
+          className="admin-switch-mode-btn"
+          onClick={onBackHome}
+          title="Switch to Student Learning Mode"
+        >
+          <span className="mode-btn-icon">🎓</span>
+          <span>Switch to Student</span>
+        </button>
+
+        <button
+          type="button"
+          className="admin-sidebar-logout-btn"
+          onClick={onLogout}
+          title="Log Out"
+        >
+          <AppIcon name="logout" size={16} />
+          <span>Log Out</span>
+        </button>
+      </div>
+
       <div className="admin-sidebar-user">
         <div className="admin-user-avatar">
           <AppIcon name="profile" size={20} />
@@ -60,11 +83,9 @@ function AdminSidebar({ activeSection, onNavigate, courseName }) {
           <div className="admin-user-name">Abhi</div>
           <div className="admin-user-role">Administrator</div>
         </div>
-        <AppIcon name="chevronDown" size={14} className="admin-user-chevron" />
       </div>
     </nav>
   )
 }
-
 
 export default AdminSidebar
