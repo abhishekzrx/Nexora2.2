@@ -24,6 +24,7 @@ import Achievements from '../components/subject/Achievements'
 import AccuracyChart from '../components/subject/AccuracyChart'
 import AppIcon from '../components/ui/AppIcon'
 import ChapterNotesView from '../components/student/ChapterNotesView'
+import SubjectAnalysisTab from '../components/subject/SubjectAnalysisTab'
 import { subjectTabs } from '../utils/navigation'
 
 const tabItems = [
@@ -146,9 +147,11 @@ function SubjectDetailPage({
 
     if (activeTab === 'mcqs') {
       return (
-        <>
-          <ChapterMcqAnalytics subject={subject} />
-        </>
+        <ChapterMcqAnalytics
+          subject={subject}
+          onChapterClick={onChapterClick}
+          onStartPractice={() => onStartMCQPractice(subjectKey)}
+        />
       )
     }
 
@@ -170,15 +173,22 @@ function SubjectDetailPage({
       )
     }
 
+    if (activeTab === 'analytics') {
+      return (
+        <SubjectAnalysisTab
+          subject={subject}
+          onChapterClick={onChapterClick}
+          onStartPractice={() => onStartMCQPractice(subjectKey)}
+        />
+      )
+    }
+
     return (
-      <>
-        <ChapterMcqAnalytics subject={subject} />
-        <StatGrid metrics={derived.metrics} streakIndex={2} />
-        <AccuracyChart values={derived.trend} />
-        <WeakTopics items={derived.focus} />
-        <StudyStats items={derived.study} />
-        <Achievements items={derived.achievements} />
-      </>
+      <SubjectAnalysisTab
+        subject={subject}
+        onChapterClick={onChapterClick}
+        onStartPractice={() => onStartMCQPractice(subjectKey)}
+      />
     )
   }
 

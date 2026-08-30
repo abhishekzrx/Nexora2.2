@@ -22,6 +22,7 @@ import { getCurrentUserId, getUserId } from '../services/userService'
 import { calculateAccuracy, calculateChapterMetrics } from '../services/mcqAnalyticsService'
 import { useWorkspaceStore } from '../data/workspaceStore'
 import { updateUserProgressStore } from '../data/progressStore'
+import { onPracticeSessionCompleted } from '../services/performanceEngine'
 import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
 
@@ -883,6 +884,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
 
     try {
       localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(updatedHistory))
+    } catch {
+      // ignore
+    }
+
+    // Record historical chapter and subject performance intelligence snapshots
+    try {
+      onPracticeSessionCompleted({
+        chapterId: chapter?.id,
+        subjectId: subjectKey,
+        totalPool,
+        updatedProgressRecords: progressUpdates,
+        chapterPriority: chapter?.priority || 'M',
+      })
     } catch {
       // ignore
     }

@@ -21,8 +21,8 @@ function mapRowToChapter(row, courseId) {
   if (!row) return null
   const bpscMeta = getBpscChapterMeta(row.name, row.slug)
   const code = row.chapter_code || row.code || (bpscMeta ? bpscMeta.code : '')
-  const priority = row.priority || (bpscMeta ? bpscMeta.priority : 'M')
-  const priorityMeta = formatPriority(priority)
+  const rawPriority = row.priority || (bpscMeta ? bpscMeta.priority : 'M')
+  const priorityMeta = formatPriority(rawPriority)
 
   return {
     id: row.id,
@@ -33,8 +33,10 @@ function mapRowToChapter(row, courseId) {
     desc: row.description || row.desc || '',
     number: Number(row.number) || 1,
     code,
-    priority,
-    priorityLabel: bpscMeta ? bpscMeta.priorityLabel : priorityMeta.label,
+    priority: priorityMeta.code,
+    priorityLabel: priorityMeta.label,
+    priorityTone: priorityMeta.tone,
+    priorityClass: priorityMeta.className,
     slug: row.slug || '',
     status: row.status || 'active',
     mcqs: row.mcqs_count || row.mcqs || 0,
@@ -150,9 +152,54 @@ export const chapterService = {
     }
 
     if (payload.subjectName) mapped.subject = payload.subjectName
+    if (payload.priority || payload.code) {
+      saveChapterOverride(mapped.id, {
+        priority: mapped.priority,
+        code: mapped.code,
+        name: mapped.name,
+        desc: mapped.desc,
+      })
+    }
     addChapter(mapped)
 
     return { success: true, data: mapped, isCloud }
+  },
+
+  async createChaptersBulk(courseId, subjectId, chaptersList = [], onProgress) {
+    if (!courseId || !subjectId) return { success: false, error: 'Course ID and Subject ID are required' }
+    if (!Array.isArray(chaptersList) || chaptersList.length === 0) {
+      return { success: false, error: 'Chapters list is empty' }
+    }
+
+    const results = []
+    let addedCount = 0
+    let cloudCount = 0
+
+    for (let i = 0; i < chaptersList.length; i++) {
+      const item = chaptersList[i]
+      if (onProgress) {
+        onProgress({ current: i + 1, total: chaptersList.length, chapterName: item.name })
+      }
+
+      try {
+        const res = await this.createChapter(courseId, subjectId, item)
+        if (res.success && res.data) {
+          results.push(res.data)
+          addedCount += 1
+          if (res.isCloud) cloudCount += 1
+        }
+      } catch (err) {
+        console.warn(`[chapterService] Error inserting chapter #${item.number || i + 1} (${item.name}):`, err)
+      }
+    }
+
+    return {
+      success: addedCount > 0,
+      totalRequested: chaptersList.length,
+      addedCount,
+      cloudCount,
+      data: results,
+    }
   },
 
   async updateChapter(chapterId, patch) {

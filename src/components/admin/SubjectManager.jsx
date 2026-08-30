@@ -27,6 +27,7 @@ import { chapterService } from '../../services/chapterService'
 import { mcqService } from '../../services/mcqService'
 import IconPicker from './IconPicker'
 import ChapterNotesEditorModal from './ChapterNotesEditorModal'
+import QuickAddChapterModal from './QuickAddChapterModal'
 import RichContentRenderer from '../ui/RichContentRenderer'
 import { formatPriority, BPSC_PRIORITY_MAP, getBpscChapterMeta } from '../../data/bpscPrelimsChapters'
 
@@ -111,13 +112,48 @@ const STATUS_MAP = {
 function StatusBadge({ status, locked }) {
   if (locked) {
     return (
-      <span className="sm-badge sm-badge-locked">
-        <AppIcon name="lock" size={11} /> Locked
+      <span className="sm-live-chip locked">
+        <AppIcon name="lock" size={11} />
+        <span>LOCKED</span>
       </span>
     )
   }
-  const cfg = STATUS_MAP[status] || STATUS_MAP.active
-  return <span className={`sm-badge sm-badge-${cfg.tone}`}>{cfg.label}</span>
+
+  const s = String(status || 'active').toLowerCase()
+
+  if (s === 'active') {
+    return (
+      <span className="sm-live-chip active">
+        <span className="sm-live-dot" />
+        <span>ACTIVE</span>
+      </span>
+    )
+  }
+
+  if (s === 'draft') {
+    return (
+      <span className="sm-live-chip draft">
+        <span className="sm-draft-dot" />
+        <span>DRAFT</span>
+      </span>
+    )
+  }
+
+  if (s === 'disabled') {
+    return (
+      <span className="sm-live-chip disabled">
+        <span className="sm-disabled-dot" />
+        <span>DISABLED</span>
+      </span>
+    )
+  }
+
+  return (
+    <span className="sm-live-chip active">
+      <span className="sm-live-dot" />
+      <span>{s.toUpperCase()}</span>
+    </span>
+  )
 }
 
 /* ── Course Dashboard Banner (Ultra-Compact Orange Header) ── */
@@ -126,6 +162,7 @@ function CourseDashboardBanner({
   workspaces,
   onSelectCourse,
   onAddSubject,
+  onQuickAiChapters,
   summaryKpis,
   search,
   onSearchChange,
@@ -296,6 +333,16 @@ function CourseDashboardBanner({
             <option value="name-desc">⇅ Sort: Z-A</option>
             <option value="newest">⇅ Sort: Newest</option>
           </select>
+
+          <button
+            type="button"
+            className="sm-banner-quick-ai-btn"
+            onClick={onQuickAiChapters}
+            title="Quick Add Chapters with AI Decomposer"
+          >
+            <AppIcon name="aiCoach" size={13} />
+            <span>⚡ Quick AI Chapters</span>
+          </button>
 
           <button
             type="button"
@@ -546,6 +593,7 @@ function ChapterStudioModal({
   allNotes = [],
   onSave,
   onOpenNotesEditor,
+  onOpenQuickAiChapters,
   onResetChapterState,
   onDeleteChapter,
   onNavigate,
@@ -1047,6 +1095,49 @@ function ChapterStudioModal({
           {activeTab === 'edit' && (
             <div className="sm-studio-pane sm-pane-edit">
               <form onSubmit={handleSubmit} className="sm-studio-form">
+                {!isEditing && (
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)',
+                      border: '1px solid #FDBA74',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AppIcon name="aiCoach" size={16} style={{ color: '#EA580C', flexShrink: 0 }} />
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#9A3412' }}>
+                        Need to generate the full syllabus chapter breakdown with AI?
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        onOpenQuickAiChapters?.()
+                      }}
+                      style={{
+                        background: '#EA580C',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ⚡ Launch Quick AI Generator
+                    </button>
+                  </div>
+                )}
+
                 {!isEditing && lastAddedChapter && (
                   <div className="sm-last-added-info-box">
                     <AppIcon name="clock" size={15} style={{ color: '#2E5CE6', flexShrink: 0 }} />
@@ -1466,20 +1557,17 @@ function SubjectListRow({
     >
       <div className="sm-subject-card-left">
         <span className="sm-subject-card-icon" style={{ background: subject.color || '#F1621B' }}>
-          <AppIcon name={subject.icon || 'chapters'} size={14} />
+          <AppIcon name={subject.icon || 'chapters'} size={15} />
         </span>
         <div className="sm-subject-card-info">
           <h4 className="sm-subject-card-name" title={subject.name}>{subject.name}</h4>
-          <span className="sm-subject-card-meta">
-            {stats.chapters} ch • {stats.mcqs} MCQs
-          </span>
         </div>
       </div>
 
       <div className="sm-subject-card-right" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className={`sm-mini-status-chip ${subject.locked ? 'locked' : subject.status || 'active'}`}
+          className="sm-mini-status-chip-btn"
           onClick={(e) => {
             if (subject.locked) {
               onToggleLock(subject.id)
@@ -1632,6 +1720,7 @@ function SelectedSubjectPanel({
   notes = [],
   onEditSubject,
   onToggleLock,
+  onQuickAiChapters,
   activeCourseId,
   courseName,
   onNavigate,
@@ -2083,6 +2172,15 @@ function SelectedSubjectPanel({
           </button>
           <button
             type="button"
+            className="sm-quick-ai-action-btn"
+            onClick={() => onQuickAiChapters?.(selectedSubject?.id)}
+            title="Quick Add Chapters with AI Decomposer"
+          >
+            <AppIcon name="aiCoach" size={14} />
+            <span>⚡ Quick AI Chapters</span>
+          </button>
+          <button
+            type="button"
             className="sm-primary-action-btn"
             onClick={() => setChapterStudioModal({ open: true, chapter: null, tab: 'edit' })}
             title="Add Chapter to Subject"
@@ -2139,13 +2237,23 @@ function SelectedSubjectPanel({
                   : 'No chapters match your search or priority filter.'}
               </p>
               {subjectChapters.length === 0 ? (
-                <button
-                  type="button"
-                  className="sm-primary-action-btn"
-                  onClick={() => setChapterStudioModal({ open: true, chapter: null, tab: 'edit' })}
-                >
-                  <AppIcon name="add" size={14} /> Add First Chapter
-                </button>
+                <div className="sm-empty-chapter-btns" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className="sm-quick-ai-action-btn"
+                    style={{ padding: '8px 14px', fontSize: '13px' }}
+                    onClick={() => onQuickAiChapters?.(selectedSubject?.id)}
+                  >
+                    <AppIcon name="aiCoach" size={14} /> ⚡ Quick Add with AI
+                  </button>
+                  <button
+                    type="button"
+                    className="sm-primary-action-btn"
+                    onClick={() => setChapterStudioModal({ open: true, chapter: null, tab: 'edit' })}
+                  >
+                    <AppIcon name="add" size={14} /> Add First Chapter
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
@@ -2363,6 +2471,7 @@ function SelectedSubjectPanel({
           allNotes={notes}
           onSave={handleSaveChapter}
           onOpenNotesEditor={(ch) => setNotesEditorModal({ open: true, chapter: ch })}
+          onOpenQuickAiChapters={() => onQuickAiChapters?.(selectedSubject?.id)}
           onResetChapterState={handleResetChapterState}
           onDeleteChapter={handleDeleteChapter}
           onNavigate={onNavigate}
@@ -2418,6 +2527,12 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState(null)
   const [selectedSubjectId, setSelectedSubjectId] = useState(null)
+
+  // Quick Add Chapter AI Modal State
+  const [quickChapterModal, setQuickChapterModal] = useState({
+    open: false,
+    subjectId: '',
+  })
 
   // Subject Delete Security Modal State
   const [deleteSubjectModal, setDeleteSubjectModal] = useState({
@@ -2653,6 +2768,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
         workspaces={workspaces}
         onSelectCourse={handleSelectCourse}
         onAddSubject={handleOpenCreate}
+        onQuickAiChapters={() => setQuickChapterModal({ open: true, subjectId: selectedSubjectId || courseSubjects[0]?.id || '' })}
         summaryKpis={summaryKpis}
         search={search}
         onSearchChange={setSearch}
@@ -2734,6 +2850,9 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
               notes={notes}
               onEditSubject={handleOpenEdit}
               onToggleLock={toggleSubjectLock}
+              onQuickAiChapters={(subjId) =>
+                setQuickChapterModal({ open: true, subjectId: subjId || selectedSubjectId || courseSubjects[0]?.id || '' })
+              }
               activeCourseId={activeCourse?.id}
               courseName={activeCourse?.name}
               onNavigate={onNavigate}
@@ -2753,6 +2872,21 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
           onClose={() => setShowSubjectModal(false)}
         />
       )}
+
+      {/* Quick Add Chapter AI Modal */}
+      <QuickAddChapterModal
+        isOpen={quickChapterModal.open}
+        onClose={() => setQuickChapterModal({ open: false, subjectId: '' })}
+        activeCourseId={activeCourse?.id}
+        courseName={activeCourse?.name}
+        subjects={courseSubjects}
+        chapters={chapters}
+        preselectedSubjectId={quickChapterModal.subjectId || selectedSubjectId || courseSubjects[0]?.id || ''}
+        onChaptersAdded={(newChapters) => {
+          hydrateAdminStoreFromSupabase()
+        }}
+        onNavigate={onNavigate}
+      />
 
       {/* Delete Subject Security Code Modal */}
       <DeleteSubjectSecurityModal

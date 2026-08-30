@@ -16,15 +16,28 @@ export const BPSC_PRIORITY_MAP = {
 }
 
 export function formatPriority(code) {
-  if (!code) return { code: 'M', label: 'Medium', tone: 'blue' }
-  const upper = String(code).toUpperCase().trim()
-  if (upper === 'VERY HIGH' || upper === 'VERY_HIGH' || upper === 'VERYHIGH') return BPSC_PRIORITY_MAP['VH']
-  if (upper === 'HIGH') return BPSC_PRIORITY_MAP['H']
-  if (upper === 'HIGH / MEDIUM' || upper === 'HIGH/MEDIUM' || upper === 'HIGH_MEDIUM') return BPSC_PRIORITY_MAP['H/M']
-  if (upper === 'MEDIUM' || upper === 'MED') return BPSC_PRIORITY_MAP['M']
-  if (upper === 'LOW / MEDIUM' || upper === 'LOW/MEDIUM' || upper === 'LOW_MEDIUM') return BPSC_PRIORITY_MAP['L/M']
-  if (upper === 'LOW') return BPSC_PRIORITY_MAP['L']
-  return BPSC_PRIORITY_MAP[upper] || { code: upper, label: upper, tone: 'gray' }
+  if (!code) return { code: 'M', label: 'Medium', tone: 'blue', className: 'prio-m' }
+  const clean = String(code).trim()
+  const upper = clean.toUpperCase().replace(/_/g, ' ')
+  if (upper === 'VH' || upper === 'VERY HIGH' || upper === 'VERYHIGH' || upper === 'VERY-HIGH') {
+    return { ...BPSC_PRIORITY_MAP['VH'], className: 'prio-vh' }
+  }
+  if (upper === 'H' || upper === 'HIGH') {
+    return { ...BPSC_PRIORITY_MAP['H'], className: 'prio-h' }
+  }
+  if (upper === 'H/M' || upper === 'H M' || upper === 'HIGH/MEDIUM' || upper === 'HIGH / MEDIUM' || upper === 'HIGH MEDIUM' || upper === 'HIGH-MEDIUM') {
+    return { ...BPSC_PRIORITY_MAP['H/M'], className: 'prio-h-m' }
+  }
+  if (upper === 'M' || upper === 'MED' || upper === 'MEDIUM') {
+    return { ...BPSC_PRIORITY_MAP['M'], className: 'prio-m' }
+  }
+  if (upper === 'L/M' || upper === 'L M' || upper === 'LOW/MEDIUM' || upper === 'LOW / MEDIUM' || upper === 'LOW MEDIUM' || upper === 'LOW-MEDIUM') {
+    return { ...BPSC_PRIORITY_MAP['L/M'], className: 'prio-l-m' }
+  }
+  if (upper === 'L' || upper === 'LOW') {
+    return { ...BPSC_PRIORITY_MAP['L'], className: 'prio-l' }
+  }
+  return BPSC_PRIORITY_MAP[upper] || { code: upper, label: clean, tone: 'gray', className: 'prio-m' }
 }
 
 export const BPSC_PRELIMS_CHAPTERS = [

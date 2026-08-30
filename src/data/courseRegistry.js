@@ -6,6 +6,8 @@ import {
   calculateSubjectMetrics,
   getAttemptCoverageLevel,
 } from '../services/mcqAnalyticsService.js'
+import { calculateDeepChapterPerformance } from '../services/chapterAnalyticsService.js'
+import { calculateSubjectIntelligence } from '../services/subjectAnalyticsService.js'
 import { formatPriority, getBpscChapterMeta } from './bpscPrelimsChapters.js'
 
 const ACCENT_PALETTE = [
@@ -62,16 +64,16 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
         return false
       })
 
-      const metrics = calculateChapterMetrics(totalMcqs, chProgressRecords)
-
       const bpscMeta = getBpscChapterMeta(ch.name || ch.title, ch.code || ch.slug)
       const code = ch.code || (bpscMeta ? bpscMeta.code : '')
       const rawPriority = ch.priority || (bpscMeta ? bpscMeta.priority : 'M')
       const prioInfo = formatPriority(rawPriority)
 
-      const subText = metrics.attemptedMcqs > 0
-        ? `${metrics.attemptedMcqs} / ${metrics.totalMcqs} MCQs`
-        : `${metrics.totalMcqs} MCQs`
+      const deepMetrics = calculateDeepChapterPerformance(totalMcqs, chProgressRecords, prioInfo.code, ch.id)
+
+      const subText = deepMetrics.attemptedMcqs > 0
+        ? `${deepMetrics.attemptedMcqs} / ${deepMetrics.totalMcqs} MCQs`
+        : `${deepMetrics.totalMcqs} MCQs`
 
       return {
         id: ch.id,
@@ -81,29 +83,43 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
         priority: prioInfo.code,
         priorityLabel: prioInfo.label,
         priorityTone: prioInfo.tone,
+        priorityClass: prioInfo.className || `prio-${prioInfo.code.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
         desc: ch.desc || ch.description || (bpscMeta ? bpscMeta.description : ''),
         title: ch.name || ch.title || 'Chapter',
         sub: subText,
-        totalMcqs: metrics.totalMcqs,
-        attemptedMcqs: metrics.attemptedMcqs,
-        masteredMcqs: metrics.masteredMcqs,
-        remainingQuestions: metrics.remainingQuestions,
-        coveragePercent: metrics.coveragePercent,
-        masteryPercent: metrics.masteryPercentage,
-        accuracyPercent: metrics.accuracyPercentage,
-        coverageLevel: metrics.coverageLevel,
-        totalCorrectResponses: metrics.totalCorrectResponses,
-        totalResponses: metrics.totalResponses,
-        progress: metrics.coveragePercent, // Circular coverage %
-        pct: `${metrics.masteryPercentage}%`, // Numeric mastery %
-        complete: metrics.coveragePercent === 100 && metrics.masteryPercentage === 100,
-        meta: `${metrics.totalMcqs} MCQs • ${totalFlashcards} Flashcards`,
+        totalMcqs: deepMetrics.totalMcqs,
+        attemptedMcqs: deepMetrics.attemptedMcqs,
+        masteredMcqs: deepMetrics.masteredMcqs,
+        incorrectMcqs: deepMetrics.incorrectMcqs,
+        unseenMcqs: deepMetrics.unseenMcqs,
+        remainingQuestions: deepMetrics.remainingQuestions,
+        remainingUnmastered: deepMetrics.remainingUnmastered,
+        coveragePercent: deepMetrics.coveragePercent,
+        masteryPercent: deepMetrics.masteryPercentage,
+        accuracyPercent: deepMetrics.accuracyPercentage,
+        consistencyScore: deepMetrics.consistencyScore,
+        revisionScore: deepMetrics.revisionScore,
+        revisionRequirement: deepMetrics.revisionRequirement,
+        readinessScore: deepMetrics.readinessScore,
+        confidenceLevel: deepMetrics.confidenceLevel,
+        coverageLevel: deepMetrics.coverageLevel,
+        totalCorrectResponses: deepMetrics.totalCorrectResponses,
+        totalResponses: deepMetrics.totalResponses,
+        trendDirection: deepMetrics.trendDirection,
+        trendSymbol: deepMetrics.trendSymbol,
+        trendDelta: deepMetrics.trendDelta,
+        trendLabel: deepMetrics.trendLabel,
+        hasTrendHistory: deepMetrics.hasTrendHistory,
+        progress: deepMetrics.readinessScore, // Primary readiness
+        pct: `${deepMetrics.readinessScore}%`,
+        complete: deepMetrics.coveragePercent === 100 && deepMetrics.masteryPercentage === 100,
+        meta: `${deepMetrics.totalMcqs} MCQs • ${totalFlashcards} Flashcards`,
         locked: Boolean(ch.locked),
         status: ch.locked ? 'locked' : ch.status || 'draft',
       }
     })
 
-  const subjectMetrics = calculateSubjectMetrics(chapters)
+  const subjectIntelligence = calculateSubjectIntelligence(subject, chapters, subject.id || key)
   const palette = ACCENT_PALETTE[index % ACCENT_PALETTE.length]
   const icon = subject.icon || ICON_LIBRARY[index % ICON_LIBRARY.length]
   const locked = Boolean(subject.locked)
@@ -124,21 +140,30 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
     shortCode: subject.shortCode,
     icon,
     badge,
-    progress: subjectMetrics.subjectCoveragePercent,
-    accuracy: subjectMetrics.subjectMasteryPercentage,
-    coveragePercent: subjectMetrics.subjectCoveragePercent,
-    masteryPercent: subjectMetrics.subjectMasteryPercentage,
-    accuracyPercent: subjectMetrics.subjectAccuracyPercentage,
-    remainingQuestions: subjectMetrics.subjectRemainingQuestions,
-    coverageLevel: subjectMetrics.subjectCoverageLevel,
-    totalMcqs: subjectMetrics.subjectTotalMcqs,
-    attemptedMcqs: subjectMetrics.subjectAttemptedMcqs,
-    masteredMcqs: subjectMetrics.subjectMasteredMcqs,
-    hasAttempts: subjectMetrics.subjectAttemptedMcqs > 0,
+    readinessScore: subjectIntelligence.subjectReadinessScore,
+    progress: subjectIntelligence.subjectReadinessScore,
+    accuracy: subjectIntelligence.subjectAccuracyPercentage,
+    coveragePercent: subjectIntelligence.subjectCoveragePercent,
+    masteryPercent: subjectIntelligence.subjectMasteryPercentage,
+    accuracyPercent: subjectIntelligence.subjectAccuracyPercentage,
+    readinessPercent: subjectIntelligence.subjectReadinessScore,
+    remainingQuestions: subjectIntelligence.subjectRemainingQuestions,
+    coverageLevel: subjectIntelligence.subjectCoverageLevel,
+    totalMcqs: subjectIntelligence.subjectTotalMcqs,
+    attemptedMcqs: subjectIntelligence.subjectAttemptedMcqs,
+    masteredMcqs: subjectIntelligence.subjectMasteredMcqs,
+    hasAttempts: subjectIntelligence.subjectAttemptedMcqs > 0,
+    hasPracticed: subjectIntelligence.hasPracticed,
+    strongChapters: subjectIntelligence.strongChapters,
+    weakChapters: subjectIntelligence.weakChapters,
+    immediateFocusChapters: subjectIntelligence.immediateFocusChapters,
+    rankedChapters: subjectIntelligence.rankedChapters,
+    trends: subjectIntelligence.trends,
+    snapshots: subjectIntelligence.snapshots,
     desc: subject.desc || '',
     counts: {
       chapters: chapters.length,
-      mcqs: subjectMetrics.subjectTotalMcqs,
+      mcqs: subjectIntelligence.subjectTotalMcqs,
       flashcards: subject.flashcards || 0,
       notes: subject.notes || 0,
     },

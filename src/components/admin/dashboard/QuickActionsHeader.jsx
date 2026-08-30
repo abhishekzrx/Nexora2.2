@@ -6,7 +6,8 @@ import AppIcon from '../../ui/AppIcon'
 
 export default function QuickActionsHeader({ onNavigate }) {
   const actions = [
-    { id: 'add-subject', label: 'Add Subject', section: 'subjects', icon: 'add', variant: 'primary' },
+    { id: 'quick-ai-chapters', label: '⚡ Quick AI Chapters', section: 'subjects', icon: 'aiCoach', variant: 'primary' },
+    { id: 'add-subject', label: 'Add Subject', section: 'subjects', icon: 'add', variant: 'secondary' },
     { id: 'add-chapter', label: 'Add Chapter', section: 'subjects', icon: 'document', variant: 'secondary' },
     { id: 'inject-mcqs', label: 'Inject Content', section: 'mcq-injection', icon: 'help', variant: 'secondary' },
     { id: 'manage-mcqs', label: 'MCQ Studio', section: 'mcq-manager', icon: 'mcqs', variant: 'secondary' },
