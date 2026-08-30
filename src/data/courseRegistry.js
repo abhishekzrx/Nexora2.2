@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useAdminStore, matchContentToChapter } from './adminStore.js'
+import { useAdminStore, matchContentToChapter, applyChapterOverrides } from './adminStore.js'
 import { useUserProgressStore } from './progressStore.js'
 import {
   calculateChapterMetrics,
@@ -162,7 +162,8 @@ export function useCourseRegistry(courseId) {
   const userProgressState = useUserProgressStore()
 
   const subjects = adminState.allSubjects || adminState.subjects || []
-  const chapters = adminState.allChapters || adminState.chapters || []
+  const rawChapters = adminState.allChapters || adminState.chapters || []
+  const chapters = useMemo(() => applyChapterOverrides(rawChapters), [rawChapters])
   const mcqs = adminState.allMcqs || adminState.mcqs || []
   const flashcards = adminState.allFlashcards || adminState.flashcards || []
   const progressList = userProgressState.progressList || []

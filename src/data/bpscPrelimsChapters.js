@@ -7,17 +7,23 @@
 import { apiService } from '../services/apiService.js'
 
 export const BPSC_PRIORITY_MAP = {
-  VH: { code: 'VH', label: 'Very High', tone: 'red', bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' },
-  H: { code: 'H', label: 'High', tone: 'orange', bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316' },
-  'H/M': { code: 'H/M', label: 'High / Medium', tone: 'yellow', bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308' },
-  M: { code: 'M', label: 'Medium', tone: 'blue', bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' },
-  'L/M': { code: 'L/M', label: 'Low / Medium', tone: 'teal', bg: 'rgba(20, 184, 166, 0.1)', color: '#14b8a6' },
-  L: { code: 'L', label: 'Low', tone: 'gray', bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280' },
+  VH: { code: 'VH', label: 'Very High', tone: 'red', bg: '#DC2626', gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)', color: '#FFFFFF' },
+  H: { code: 'H', label: 'High', tone: 'orange', bg: '#EA580C', gradient: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)', color: '#FFFFFF' },
+  'H/M': { code: 'H/M', label: 'High / Medium', tone: 'yellow', bg: '#D97706', gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#FFFFFF' },
+  M: { code: 'M', label: 'Medium', tone: 'blue', bg: '#2563EB', gradient: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)', color: '#FFFFFF' },
+  'L/M': { code: 'L/M', label: 'Low / Medium', tone: 'teal', bg: '#0D9488', gradient: 'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)', color: '#FFFFFF' },
+  L: { code: 'L', label: 'Low', tone: 'gray', bg: '#475569', gradient: 'linear-gradient(135deg, #64748B 0%, #475569 100%)', color: '#FFFFFF' },
 }
 
 export function formatPriority(code) {
   if (!code) return { code: 'M', label: 'Medium', tone: 'blue' }
   const upper = String(code).toUpperCase().trim()
+  if (upper === 'VERY HIGH' || upper === 'VERY_HIGH' || upper === 'VERYHIGH') return BPSC_PRIORITY_MAP['VH']
+  if (upper === 'HIGH') return BPSC_PRIORITY_MAP['H']
+  if (upper === 'HIGH / MEDIUM' || upper === 'HIGH/MEDIUM' || upper === 'HIGH_MEDIUM') return BPSC_PRIORITY_MAP['H/M']
+  if (upper === 'MEDIUM' || upper === 'MED') return BPSC_PRIORITY_MAP['M']
+  if (upper === 'LOW / MEDIUM' || upper === 'LOW/MEDIUM' || upper === 'LOW_MEDIUM') return BPSC_PRIORITY_MAP['L/M']
+  if (upper === 'LOW') return BPSC_PRIORITY_MAP['L']
   return BPSC_PRIORITY_MAP[upper] || { code: upper, label: upper, tone: 'gray' }
 }
 

@@ -3,6 +3,8 @@ import {
   addChapter,
   updateChapter as updateChapterInStore,
   deleteChapter as deleteChapterFromStore,
+  applyChapterOverrides,
+  saveChapterOverride,
 } from '../data/adminStore.js'
 import { getBpscChapterMeta, formatPriority } from '../data/bpscPrelimsChapters.js'
 
@@ -62,8 +64,9 @@ export const chapterService = {
       const res = await apiService.get(`/chapters?subject_id=eq.${encodeURIComponent(subjectId)}`)
       if (res.success && Array.isArray(res.data)) {
         const mapped = res.data.map((r) => mapRowToChapter(r, courseId))
-        mapped.sort((a, b) => (a.number || 0) - (b.number || 0))
-        return { success: true, data: mapped }
+        const withOverrides = applyChapterOverrides(mapped)
+        withOverrides.sort((a, b) => (a.number || 0) - (b.number || 0))
+        return { success: true, data: withOverrides }
       }
       return { success: false, error: res.error || 'Failed to fetch chapters from database' }
     }
@@ -79,8 +82,9 @@ export const chapterService = {
     const res = await apiService.get(`/chapters?subject_id=in.(${subjectIds.map((id) => encodeURIComponent(id)).join(',')})`)
     if (res.success && Array.isArray(res.data)) {
       const mapped = res.data.map((r) => mapRowToChapter(r, courseId))
-      mapped.sort((a, b) => (a.number || 0) - (b.number || 0))
-      return { success: true, data: mapped }
+      const withOverrides = applyChapterOverrides(mapped)
+      withOverrides.sort((a, b) => (a.number || 0) - (b.number || 0))
+      return { success: true, data: withOverrides }
     }
     return { success: false, error: res.error || 'Failed to fetch chapters from database' }
   },
@@ -109,12 +113,14 @@ export const chapterService = {
     const dbPayload = mapChapterToPayload(payload, isValidSubjectUuid ? targetSubjectUuid : null)
 
     let mapped = null
+    let isCloud = false
     if (isValidSubjectUuid) {
       try {
         const res = await apiService.post('/chapters', dbPayload)
         if (res.success && res.data) {
           const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
           mapped = mapRowToChapter(rawRecord, courseId)
+          isCloud = true
         }
       } catch (err) {
         console.warn('Supabase post /chapters warning:', err)
@@ -128,6 +134,8 @@ export const chapterService = {
         subjectId: targetSubjectUuid || subjectId,
         subject: payload.subjectName || subjectId,
         name: payload.name,
+        code: payload.code || '',
+        priority: payload.priority || 'M',
         desc: payload.desc || payload.description || '',
         number: Number(payload.number) || 1,
         status: payload.status || 'active',
@@ -136,12 +144,15 @@ export const chapterService = {
         notes: 0,
         createdAt: new Date().toISOString(),
       }
+    } else {
+      if (payload.code) mapped.code = payload.code
+      if (payload.priority) mapped.priority = payload.priority
     }
 
     if (payload.subjectName) mapped.subject = payload.subjectName
     addChapter(mapped)
 
-    return { success: true, data: mapped }
+    return { success: true, data: mapped, isCloud }
   },
 
   async updateChapter(chapterId, patch) {
@@ -153,18 +164,92 @@ export const chapterService = {
       ...(patch.desc !== undefined || patch.description !== undefined ? { description: patch.desc || patch.description || '' } : {}),
     }
 
-    const res = await apiService.patch(`/chapters?id=eq.${chapterId}`, dbPatch)
+    let isCloud = false
+    let rawRecord = null
+    const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chapterId)
 
-    if (!res.success) {
-      return { success: false, error: res.error || 'Failed to update chapter in database' }
+    if (isValidUuid) {
+      try {
+        const res = await apiService.patch(`/chapters?id=eq.${encodeURIComponent(chapterId)}`, dbPatch)
+        if (res.success) {
+          isCloud = true
+          rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
+        }
+      } catch (err) {
+        console.warn('Supabase chapter update warning:', err)
+      }
+    } else {
+      // For seed chapters or custom non-UUID IDs, search or insert into Supabase
+      try {
+        let subjectUuid = patch.subjectId
+        const isSubjectUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectUuid)
+        if (!isSubjectUuid && patch.subject) {
+          const subSearch = await apiService.get(`/subjects?name=eq.${encodeURIComponent(patch.subject)}`)
+          if (subSearch.success && Array.isArray(subSearch.data) && subSearch.data.length > 0) {
+            subjectUuid = subSearch.data[0].id
+          }
+        }
+
+        if (subjectUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectUuid)) {
+          // Check if chapter already exists in Supabase by name or number
+          const chapSearch = await apiService.get(
+            `/chapters?subject_id=eq.${encodeURIComponent(subjectUuid)}&name=eq.${encodeURIComponent(patch.name || '')}`
+          )
+          if (chapSearch.success && Array.isArray(chapSearch.data) && chapSearch.data.length > 0) {
+            const cloudChapId = chapSearch.data[0].id
+            const patchRes = await apiService.patch(`/chapters?id=eq.${encodeURIComponent(cloudChapId)}`, dbPatch)
+            if (patchRes.success) {
+              isCloud = true
+              rawRecord = Array.isArray(patchRes.data) ? patchRes.data[0] : patchRes.data
+            }
+          } else {
+            // Insert chapter into Supabase
+            const insertPayload = mapChapterToPayload(
+              {
+                ...patch,
+                id: crypto.randomUUID(),
+                number: patch.number || 1,
+                name: patch.name,
+                description: patch.desc || patch.description || '',
+                status: patch.status || 'active',
+              },
+              subjectUuid
+            )
+            const postRes = await apiService.post('/chapters', insertPayload)
+            if (postRes.success && postRes.data) {
+              isCloud = true
+              rawRecord = Array.isArray(postRes.data) ? postRes.data[0] : postRes.data
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase cloud chapter resolution warning:', err)
+      }
     }
 
-    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
-    const mapped = mapRowToChapter(rawRecord, patch.courseId)
+    const mapped = rawRecord ? mapRowToChapter(rawRecord, patch.courseId) : null
+    const mergedData = {
+      ...(mapped || {}),
+      ...patch,
+      id: chapterId,
+      name: patch.name || mapped?.name,
+      title: patch.name || mapped?.name,
+      number: patch.number !== undefined ? Number(patch.number) : mapped?.number,
+      code: patch.code || mapped?.code,
+      priority: patch.priority || mapped?.priority,
+      desc: patch.desc !== undefined ? patch.desc : (patch.description !== undefined ? patch.description : mapped?.desc),
+      description: patch.desc !== undefined ? patch.desc : (patch.description !== undefined ? patch.description : mapped?.desc),
+      status: patch.status || mapped?.status || 'active',
+      locked: patch.locked !== undefined ? Boolean(patch.locked) : false,
+      subject: patch.subject || patch.subjectName || mapped?.subject,
+      subjectName: patch.subjectName || patch.subject || mapped?.subject,
+      subjectId: patch.subjectId || mapped?.subjectId,
+    }
 
-    updateChapterInStore(chapterId, mapped)
+    saveChapterOverride(chapterId, mergedData)
+    updateChapterInStore(chapterId, mergedData)
 
-    return { success: true, data: mapped }
+    return { success: true, data: mergedData, isCloud }
   },
 
   async deleteChapter(chapterId) {

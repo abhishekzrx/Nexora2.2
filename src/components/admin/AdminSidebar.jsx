@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { key: 'mcq-injection', label: 'CHAPTER MCQS INJECTION', icon: 'document' },
   { key: 'mcq-manager', label: 'MCQ MANAGER', icon: 'mcqs' },
   { key: 'analytics', label: 'ANALYTICS', icon: 'analyticsTab', disabled: true },
-  { key: 'settings', label: 'SETTINGS', icon: 'settings', disabled: true },
+  { key: 'settings', label: 'SETTINGS', icon: 'settings' },
 ]
 
 function AdminSidebar({ activeSection, onNavigate, courseName }) {

@@ -47,7 +47,7 @@
   --dark-card-2: linear-gradient(120deg, #0B0F1A 0%, #14181F 55%, #4A2410 100%);
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* Radii */
   --radius-sm: 8px;

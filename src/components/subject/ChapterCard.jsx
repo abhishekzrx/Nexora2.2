@@ -9,6 +9,7 @@
  */
 import AppIcon from '../ui/AppIcon'
 import { getAttemptCoverageLevel } from '../../services/mcqAnalyticsService'
+import { formatPriority } from '../../data/bpscPrelimsChapters.js'
 
 export function CircularCoverageRing({ percent = 0, color = '#12B76A', size = 20, strokeWidth = 2.5 }) {
   const p = Math.max(0, Math.min(100, Number(percent) || 0))
@@ -72,8 +73,9 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
   const remainingQuestions = chapter.remainingQuestions ?? Math.max(0, totalMcqs - attemptedMcqs)
   const remainingPercent = totalMcqs > 0 ? Math.round((remainingQuestions / totalMcqs) * 100) : 0
 
-  const priorityCode = (chapter.priority || 'M').toUpperCase().trim()
-  const priorityLabel = chapter.priorityLabel || priorityCode
+  const prioMeta = formatPriority(chapter.priority || 'M')
+  const priorityCode = prioMeta.code
+  const priorityLabel = prioMeta.label
 
   return (
     <button
@@ -86,14 +88,6 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
         <div className="chapter-body">
           <div className="chapter-title-row">
             <span className="chapter-title">{chapter.title}</span>
-            {priorityCode && (
-              <span
-                className={`chapter-priority-chip prio-${priorityCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
-                title={`Priority: ${priorityLabel}`}
-              >
-                {priorityLabel}
-              </span>
-            )}
             {showTrends && (
               <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
             )}
@@ -128,6 +122,17 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
         </div>
 
         <div className="chapter-right">
+          {priorityCode && (
+            <div className="chapter-prio-col">
+              <span
+                className={`chapter-priority-chip prio-${priorityCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                title={`Priority: ${priorityLabel}`}
+              >
+                {priorityLabel}
+              </span>
+            </div>
+          )}
+
           <div className="chapter-status">
             <span className="chapter-pct" style={{ color: levelColor }} title="Overall Progress">
               {Math.round(coveragePercent)}%

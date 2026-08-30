@@ -27,6 +27,7 @@ import { chapterService } from '../../services/chapterService'
 import { mcqService } from '../../services/mcqService'
 import IconPicker from './IconPicker'
 import ChapterNotesEditorModal from './ChapterNotesEditorModal'
+import RichContentRenderer from '../ui/RichContentRenderer'
 import { formatPriority, BPSC_PRIORITY_MAP, getBpscChapterMeta } from '../../data/bpscPrelimsChapters'
 
 const COLOR_PRESETS = [
@@ -532,9 +533,34 @@ function formatChapterDate(dateVal) {
   }
 }
 
-/* ── Chapter Create & Edit Modal ────────────────────────────── */
-function ChapterModal({ subjectName, initialData, existingChapters = [], onSave, onClose }) {
+/* ── Chapter Studio & Details Modal (Universal Supabase-Synced Control Center) ─ */
+function ChapterStudioModal({
+  subject,
+  courseName = '',
+  activeCourseId = '',
+  initialData = null,
+  initialTab = 'overview',
+  existingChapters = [],
+  allMcqs = [],
+  allFlashcards = [],
+  allNotes = [],
+  onSave,
+  onOpenNotesEditor,
+  onResetChapterState,
+  onDeleteChapter,
+  onNavigate,
+  onClose,
+}) {
   const isEditing = Boolean(initialData && initialData.id)
+  const [activeTab, setActiveTab] = useState(() => (isEditing ? initialTab : 'edit'))
+
+  // Default auto-incremented chapter number
+  const defaultNextNumber = useMemo(() => {
+    if (isEditing && initialData?.number) return initialData.number
+    if (!existingChapters || existingChapters.length === 0) return 1
+    const maxNum = Math.max(...existingChapters.map((c) => Number(c.number) || 0), 0)
+    return maxNum + 1
+  }, [existingChapters, isEditing, initialData])
 
   // Last added chapter for this subject
   const lastAddedChapter = useMemo(() => {
@@ -548,19 +574,17 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
     return sorted[0]
   }, [existingChapters])
 
-  // Default auto-incremented chapter number
-  const defaultNextNumber = useMemo(() => {
-    if (isEditing && initialData?.number) return initialData.number
-    if (!existingChapters || existingChapters.length === 0) return 1
-    const maxNum = Math.max(...existingChapters.map((c) => Number(c.number) || 0), 0)
-    return maxNum + 1
-  }, [existingChapters, isEditing, initialData])
-
-  const [name, setName] = useState(initialData?.name || '')
+  // Editable Form States
+  const [name, setName] = useState(initialData?.name || initialData?.title || '')
   const [code, setCode] = useState(initialData?.code || '')
   const [priority, setPriority] = useState(initialData?.priority || 'M')
   const [desc, setDesc] = useState(initialData?.desc || initialData?.description || '')
   const [number, setNumber] = useState(initialData?.number ?? defaultNextNumber)
+  const [status, setStatus] = useState(initialData?.status || 'active')
+  const [locked, setLocked] = useState(initialData?.locked || false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [mcqSearch, setMcqSearch] = useState('')
 
   useEffect(() => {
     if (!isEditing) {
@@ -568,154 +592,741 @@ function ChapterModal({ subjectName, initialData, existingChapters = [], onSave,
     }
   }, [defaultNextNumber, isEditing])
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    onSave({
-      id: initialData?.id,
-      subject: subjectName,
-      name: name.trim(),
-      code: code.trim().toUpperCase(),
-      priority: priority || 'M',
-      desc: desc.trim(),
-      number: Number(number) || defaultNextNumber,
+  // Current chapter representation for matching
+  const currentChapterObj = useMemo(() => {
+    if (initialData) return initialData
+    return {
+      id: 'temp',
+      name,
+      code,
+      number,
+      subject: subject?.name,
+      subjectId: subject?.id,
+    }
+  }, [initialData, name, code, number, subject])
+
+  // Matching Chapter MCQs
+  const chapterMcqs = useMemo(() => {
+    if (!isEditing || !initialData) return []
+    return allMcqs.filter((m) => {
+      const matchesSubject =
+        !subject ||
+        m.subjectId === subject.id ||
+        m.subject_id === subject.id ||
+        (m.subject && String(m.subject).trim().toLowerCase() === String(subject.name).trim().toLowerCase())
+
+      const matchesChapter =
+        m.chapterId === initialData.id ||
+        m.chapter_id === initialData.id ||
+        (m.chapter && String(m.chapter).trim().toLowerCase() === String(initialData.name).trim().toLowerCase())
+
+      return matchesSubject && matchesChapter
     })
+  }, [allMcqs, initialData, subject, isEditing])
+
+  // Filtered MCQs inside modal
+  const filteredMcqs = useMemo(() => {
+    if (!mcqSearch.trim()) return chapterMcqs
+    const q = mcqSearch.toLowerCase()
+    return chapterMcqs.filter(
+      (m) =>
+        (m.question || m.text || '').toLowerCase().includes(q) ||
+        (m.explanation || '').toLowerCase().includes(q)
+    )
+  }, [chapterMcqs, mcqSearch])
+
+  // Matching Chapter Flashcards
+  const chapterFlashcards = useMemo(() => {
+    if (!isEditing || !initialData) return []
+    return allFlashcards.filter((f) => {
+      const matchesSubject =
+        !subject ||
+        f.subjectId === subject.id ||
+        f.subject_id === subject.id ||
+        (f.subject && String(f.subject).trim().toLowerCase() === String(subject.name).trim().toLowerCase())
+
+      const matchesChapter =
+        f.chapterId === initialData.id ||
+        f.chapter_id === initialData.id ||
+        (f.chapter && String(f.chapter).trim().toLowerCase() === String(initialData.name).trim().toLowerCase())
+
+      return matchesSubject && matchesChapter
+    })
+  }, [allFlashcards, initialData, subject, isEditing])
+
+  // Matching Chapter Note
+  const chapterNote = useMemo(() => {
+    if (!isEditing || !initialData) return null
+    return (
+      allNotes.find(
+        (n) =>
+          String(n.chapterId || n.chapter_id) === String(initialData.id) ||
+          (n.title && initialData.name && n.title.toLowerCase().includes(initialData.name.toLowerCase()))
+      ) || null
+    )
+  }, [allNotes, initialData, isEditing])
+
+  // Computed Readiness Score %
+  const mcqCount = chapterMcqs.length > 0 ? chapterMcqs.length : (typeof initialData?.mcqs === 'number' ? initialData.mcqs : 0)
+  const flashcardCount = chapterFlashcards.length > 0 ? chapterFlashcards.length : (typeof initialData?.flashcards === 'number' ? initialData.flashcards : 0)
+  const hasNotes = Boolean(chapterNote || (initialData?.notes && initialData.notes > 0))
+
+  const readinessScore = Math.min(
+    100,
+    Math.round(
+      (Math.min(100, (mcqCount / 20) * 100) * 0.5) +
+      (Math.min(100, (flashcardCount / 15) * 100) * 0.3) +
+      (hasNotes ? 20 : 0)
+    )
+  )
+
+  const bpscMeta = getBpscChapterMeta(name, code)
+  const displayCode = code || (bpscMeta ? bpscMeta.code : '')
+  const displayPriority = priority || (bpscMeta ? bpscMeta.priority : 'M')
+  const prioMeta = formatPriority(displayPriority)
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault()
+    if (!name.trim()) {
+      setErrorMsg('Chapter Title is required.')
+      return
+    }
+    setIsSaving(true)
+    setErrorMsg('')
+    try {
+      const res = await onSave({
+        id: initialData?.id,
+        subject: subject?.name,
+        subjectId: subject?.id,
+        courseId: activeCourseId,
+        name: name.trim(),
+        code: (code || displayCode).trim().toUpperCase(),
+        priority: priority || 'M',
+        desc: desc.trim(),
+        description: desc.trim(),
+        number: Number(number) || defaultNextNumber,
+        status,
+        locked,
+      })
+      if (res?.success) {
+        if (res.data) {
+          setName(res.data.name || name)
+          setCode(res.data.code || code)
+          setPriority(res.data.priority || priority)
+          setDesc(res.data.desc || res.data.description || desc)
+          setNumber(res.data.number !== undefined ? res.data.number : number)
+          setStatus(res.data.status || status)
+          setLocked(Boolean(res.data.locked))
+        }
+        if (!isEditing) {
+          onClose()
+        } else {
+          setActiveTab('overview')
+        }
+      } else if (res?.error) {
+        setErrorMsg(res.error)
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to save chapter.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
     <div className="sm-modal-overlay" onClick={onClose}>
-      <div className="sm-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="sm-modal-header">
-          <div className="sm-modal-title-wrap">
-            <AppIcon name={isEditing ? 'edit' : 'add'} size={18} />
-            <h3 className="sm-modal-title">{isEditing ? 'Edit Chapter' : 'Add New Chapter'}</h3>
+      <div className="sm-chapter-studio-modal" onClick={(e) => e.stopPropagation()}>
+        {/* ── Studio Modal Top Hero Header ── */}
+        <div className="sm-studio-hero">
+          <div className="sm-studio-hero-top">
+            <div className="sm-studio-breadcrumbs">
+              <span className="sm-crumb-course">{courseName || 'Course'}</span>
+              <span className="sm-crumb-sep">›</span>
+              <span className="sm-crumb-subj" style={{ color: subject?.color || '#F1621B' }}>
+                {subject?.name || 'Subject'}
+              </span>
+              <span className="sm-crumb-sep">›</span>
+              <span className="sm-crumb-ch">
+                {isEditing ? `Chapter ${String(number).padStart(2, '0')}` : 'New Chapter'}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="sm-studio-close-btn"
+              onClick={onClose}
+              title="Close Chapter Studio (Esc)"
+              aria-label="Close Chapter Studio"
+            >
+              <AppIcon name="close" size={16} />
+            </button>
           </div>
-          <button type="button" className="sm-close-btn" onClick={onClose}>
-            <AppIcon name="close" size={16} />
-          </button>
-        </div>
 
-        <div className="sm-course-context-box">
-          <AppIcon name="chapters" size={14} />
-          <span>Subject: <strong>{subjectName}</strong></span>
-        </div>
+          <div className="sm-studio-title-row">
+            <div className="sm-studio-ch-badge" style={{ background: subject?.color || '#F1621B' }}>
+              <span>Ch. {String(number).padStart(2, '0')}</span>
+            </div>
 
-        {!isEditing && (
-          <div
-            className="sm-last-added-info-box"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              backgroundColor: 'rgba(46, 92, 230, 0.05)',
-              border: '1px solid rgba(46, 92, 230, 0.15)',
-              borderRadius: '8px',
-              padding: '10px 14px',
-              marginTop: '12px',
-              fontSize: '12px',
-              color: '#334155',
-            }}
-          >
-            <AppIcon name="clock" size={15} style={{ color: '#2E5CE6', flexShrink: 0 }} />
-            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span style={{ fontWeight: 600, color: '#475569' }}>Last Added Chapter: </span>
-              {lastAddedChapter ? (
-                <span style={{ fontWeight: 700, color: '#0F172A' }}>
-                  Chapter {lastAddedChapter.number}: {lastAddedChapter.name}{' '}
-                  <span style={{ fontWeight: 500, color: '#64748B', fontSize: '11px', marginLeft: '4px' }}>
-                    ({formatChapterDate(lastAddedChapter.createdAt || lastAddedChapter.created_at)})
-                  </span>
+            <div className="sm-studio-title-info">
+              <h2 className="sm-studio-title">{name || 'Untitled Chapter'}</h2>
+              <div className="sm-studio-badges-line">
+                {displayCode && <span className="sm-ch-code-pill">{displayCode}</span>}
+                <span className={`sm-ch-prio-mini prio-${displayPriority.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                  {prioMeta.label || displayPriority} Priority
                 </span>
-              ) : (
-                <span style={{ fontStyle: 'italic', color: '#64748B' }}>No chapters added yet (Next will be Chapter 1)</span>
+                <StatusBadge status={status} locked={locked} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Studio Navigation Tab Bar ── */}
+          <div className="sm-studio-tab-bar">
+            <div className="sm-studio-tabs-left">
+              {isEditing && (
+                <button
+                  type="button"
+                  className={`sm-studio-tab-btn${activeTab === 'overview' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('overview')}
+                >
+                  <AppIcon name="analyticsTab" size={14} />
+                  <span>Overview & Health</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className={`sm-studio-tab-btn${activeTab === 'edit' ? ' active' : ''}`}
+                onClick={() => setActiveTab('edit')}
+              >
+                <AppIcon name="edit" size={14} />
+                <span>{isEditing ? 'Edit & Sync Database' : 'Chapter Configuration'}</span>
+              </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  className={`sm-studio-tab-btn${activeTab === 'mcqs' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('mcqs')}
+                >
+                  <AppIcon name="help" size={14} />
+                  <span>MCQ Bank ({chapterMcqs.length})</span>
+                </button>
+              )}
+              {isEditing && (
+                <button
+                  type="button"
+                  className={`sm-studio-tab-btn${activeTab === 'notes' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('notes')}
+                >
+                  <AppIcon name="notesTab" size={14} />
+                  <span>Study Notes {chapterNote ? '✓' : ''}</span>
+                </button>
               )}
             </div>
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="sm-modal-form">
-          <div className="sm-form-row-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '12px' }}>
-            <div className="sm-field">
-              <label className="sm-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Chapter #</span>
-                {!isEditing && (
-                  <span style={{ fontSize: '10px', color: '#12B76A', fontWeight: 600, backgroundColor: 'rgba(18, 183, 106, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>
-                    Auto
-                  </span>
+            {isEditing && (
+              <div className="sm-studio-tabs-right">
+                <button
+                  type="button"
+                  className="sm-studio-quick-action-btn"
+                  onClick={() => {
+                    onClose()
+                    onOpenNotesEditor?.(initialData)
+                  }}
+                  title="Open Rich Notes Authoring Studio"
+                >
+                  <AppIcon name="notesTab" size={13} />
+                  <span>Notes Editor</span>
+                </button>
+                <button
+                  type="button"
+                  className="sm-studio-quick-action-btn danger"
+                  onClick={() => {
+                    onClose()
+                    onDeleteChapter?.(initialData)
+                  }}
+                  title="Delete Chapter"
+                >
+                  <AppIcon name="delete" size={13} />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Studio Body Content ── */}
+        <div className="sm-studio-body">
+          {/* ════ TAB 1: OVERVIEW & CONTENT HEALTH ════ */}
+          {activeTab === 'overview' && isEditing && (
+            <div className="sm-studio-pane sm-pane-overview">
+              {/* 4 Rich Metric Cards Grid */}
+              <div className="sm-studio-kpi-grid">
+                {/* 1. MCQ Health Card */}
+                <div className="sm-studio-kpi-card">
+                  <div className="sm-kpi-card-header">
+                    <span className="sm-kpi-card-icon" style={{ background: '#E6F7F7', color: '#0E9494' }}>
+                      <AppIcon name="help" size={16} />
+                    </span>
+                    <span className="sm-kpi-tag">Question Bank</span>
+                  </div>
+                  <div className="sm-kpi-main-val">{mcqCount} <span className="sm-kpi-unit">MCQs</span></div>
+                  <div className="sm-kpi-sub-breakdown">
+                    <span className="sm-sub-badge easy">Easy: {chapterMcqs.filter(m => (m.difficulty || '').toLowerCase() === 'easy').length}</span>
+                    <span className="sm-sub-badge med">Med: {chapterMcqs.filter(m => !m.difficulty || (m.difficulty || '').toLowerCase() === 'medium').length}</span>
+                    <span className="sm-sub-badge hard">Hard: {chapterMcqs.filter(m => (m.difficulty || '').toLowerCase() === 'hard').length}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="sm-kpi-cta-btn"
+                    onClick={() => setActiveTab('mcqs')}
+                  >
+                    <span>View Chapter Questions →</span>
+                  </button>
+                </div>
+
+                {/* 2. Flashcards Health Card */}
+                <div className="sm-studio-kpi-card">
+                  <div className="sm-kpi-card-header">
+                    <span className="sm-kpi-card-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
+                      <AppIcon name="flashcardsTab" size={16} />
+                    </span>
+                    <span className="sm-kpi-tag">Flashcards</span>
+                  </div>
+                  <div className="sm-kpi-main-val">{flashcardCount} <span className="sm-kpi-unit">Cards</span></div>
+                  <p className="sm-kpi-sub-text">
+                    {flashcardCount > 0 ? 'Active flashcards ready for spaced repetition review.' : 'No flashcards generated yet.'}
+                  </p>
+                  <button
+                    type="button"
+                    className="sm-kpi-cta-btn"
+                    onClick={() => {
+                      onClose()
+                      onNavigate?.('flashcards')
+                    }}
+                  >
+                    <span>Manage Flashcards →</span>
+                  </button>
+                </div>
+
+                {/* 3. Study Notes Card */}
+                <div className="sm-studio-kpi-card">
+                  <div className="sm-kpi-card-header">
+                    <span className="sm-kpi-card-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
+                      <AppIcon name="notesTab" size={16} />
+                    </span>
+                    <span className="sm-kpi-tag">Curated Notes</span>
+                  </div>
+                  <div className="sm-kpi-main-val">
+                    {hasNotes ? <span style={{ color: '#12B76A' }}>Available</span> : <span style={{ color: '#F59E0B' }}>Missing</span>}
+                  </div>
+                  <p className="sm-kpi-sub-text">
+                    {chapterNote
+                      ? `${chapterNote.title || 'Rich study notes'} (${chapterNote.type || 'TEXT'})`
+                      : 'Author chapter notes to help students grasp high-yield concepts.'}
+                  </p>
+                  <button
+                    type="button"
+                    className="sm-kpi-cta-btn"
+                    onClick={() => {
+                      onClose()
+                      onOpenNotesEditor?.(initialData)
+                    }}
+                  >
+                    <span>{hasNotes ? 'Edit Study Notes →' : 'Write Study Notes →'}</span>
+                  </button>
+                </div>
+
+                {/* 4. Readiness & Mastery Card */}
+                <div className="sm-studio-kpi-card sm-readiness-hero-card">
+                  <div className="sm-kpi-card-header">
+                    <span className="sm-kpi-card-icon" style={{ background: '#FFF1E6', color: '#F1621B' }}>
+                      <AppIcon name="target" size={16} />
+                    </span>
+                    <span className="sm-kpi-tag">Content Health</span>
+                  </div>
+                  <div className="sm-readiness-row">
+                    <div className="sm-readiness-left">
+                      <div className="sm-kpi-main-val" style={{ color: '#F1621B' }}>{readinessScore}%</div>
+                      <span className="sm-readiness-status">
+                        {readinessScore >= 80 ? '🌟 Exam Ready' : readinessScore >= 40 ? '⚡ In Progress' : '⚠️ Gaps Detected'}
+                      </span>
+                    </div>
+                    <svg width="48" height="48" viewBox="0 0 36 36" className="sm-readiness-gauge">
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#F1F5F9"
+                        strokeWidth="3.5"
+                      />
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#F1621B"
+                        strokeWidth="3.5"
+                        strokeDasharray={`${readinessScore}, 100`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                  <button
+                    type="button"
+                    className="sm-kpi-cta-btn"
+                    onClick={() => onResetChapterState?.(initialData)}
+                    title="Reset student progress metrics for this chapter"
+                  >
+                    <span>Reset Student Progress</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Syllabus & Topics Scope Box */}
+              <div className="sm-studio-syllabus-card">
+                <div className="sm-syllabus-card-header">
+                  <div className="sm-syllabus-title-wrap">
+                    <AppIcon name="document" size={16} />
+                    <h4>Chapter Syllabus & Topics Scope</h4>
+                  </div>
+                  <button
+                    type="button"
+                    className="sm-syllabus-edit-link"
+                    onClick={() => setActiveTab('edit')}
+                  >
+                    <AppIcon name="edit" size={12} /> Edit Syllabus
+                  </button>
+                </div>
+                <div className="sm-syllabus-content">
+                  {desc ? (
+                    <p className="sm-syllabus-desc-text">{desc}</p>
+                  ) : (
+                    <div className="sm-syllabus-empty-hint">
+                      <p>No detailed syllabus topics added yet. Adding syllabus topics helps generate targeted MCQs and structured notes for students.</p>
+                      <button
+                        type="button"
+                        className="sm-ghost-action-btn"
+                        onClick={() => setActiveTab('edit')}
+                      >
+                        + Add Syllabus Topics
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Action Dock */}
+              <div className="sm-studio-action-dock">
+                <div className="sm-dock-label">Quick Management Shortcuts:</div>
+                <div className="sm-dock-buttons">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      onClose()
+                      onNavigate?.('mcq-injection')
+                    }}
+                  >
+                    <AppIcon name="help" size={14} /> Inject / Author MCQs
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      onClose()
+                      onOpenNotesEditor?.(initialData)
+                    }}
+                  >
+                    <AppIcon name="notesTab" size={14} /> Open Rich Notes Studio
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => setActiveTab('edit')}
+                  >
+                    <AppIcon name="edit" size={14} /> Edit Chapter Details
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ════ TAB 2: EDIT & CONFIGURE (SUPABASE SYNC) ════ */}
+          {activeTab === 'edit' && (
+            <div className="sm-studio-pane sm-pane-edit">
+              <form onSubmit={handleSubmit} className="sm-studio-form">
+                {!isEditing && lastAddedChapter && (
+                  <div className="sm-last-added-info-box">
+                    <AppIcon name="clock" size={15} style={{ color: '#2E5CE6', flexShrink: 0 }} />
+                    <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Last Added Chapter: </span>
+                      <span style={{ fontWeight: 700, color: '#0F172A' }}>
+                        Chapter {lastAddedChapter.number}: {lastAddedChapter.name}{' '}
+                        <span style={{ fontWeight: 500, color: '#64748B', fontSize: '11px', marginLeft: '4px' }}>
+                          ({formatChapterDate(lastAddedChapter.createdAt || lastAddedChapter.created_at)})
+                        </span>
+                      </span>
+                    </div>
+                  </div>
                 )}
-              </label>
-              <input
-                type="number"
-                className="sm-input"
-                min="1"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-              />
+
+                <div className="sm-form-grid-3">
+                  <div className="sm-field">
+                    <label className="sm-label">
+                      <span>Chapter Order # *</span>
+                      {!isEditing && <span className="sm-auto-tag">Auto</span>}
+                    </label>
+                    <input
+                      type="number"
+                      className="sm-input"
+                      min="1"
+                      value={number}
+                      onChange={(e) => setNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">Chapter Code</label>
+                    <input
+                      type="text"
+                      className="sm-input"
+                      placeholder="e.g. HIST-01"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      style={{ textTransform: 'uppercase', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div className="sm-field">
+                    <label className="sm-label">Exam Priority</label>
+                    <select
+                      className="sm-select"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      <option value="VH">Very High (VH)</option>
+                      <option value="H">High (H)</option>
+                      <option value="H/M">High / Medium (H/M)</option>
+                      <option value="M">Medium (M)</option>
+                      <option value="L/M">Low / Medium (L/M)</option>
+                      <option value="L">Low (L)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="sm-field">
+                  <label className="sm-label">Chapter Title *</label>
+                  <input
+                    type="text"
+                    className="sm-input sm-input-lg"
+                    placeholder="e.g., Gandhian Era & Freedom Movements (1917–1947)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    autoFocus={!isEditing}
+                  />
+                </div>
+
+                <div className="sm-form-grid-2">
+                  <div className="sm-field">
+                    <label className="sm-label">Publish Status</label>
+                    <select className="sm-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                      <option value="active">Active (Visible to Students)</option>
+                      <option value="draft">Draft (Admin Only)</option>
+                      <option value="disabled">Disabled (Hidden)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm-field sm-checkbox-field" style={{ alignSelf: 'flex-end', height: '40px' }}>
+                    <label className="sm-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={locked}
+                        onChange={(e) => setLocked(e.target.checked)}
+                      />
+                      <span>Lock Chapter (Require unlock key)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="sm-field">
+                  <label className="sm-label">Detailed Syllabus Topics & Summary</label>
+                  <textarea
+                    className="sm-input sm-textarea"
+                    rows={4}
+                    placeholder="Enter detailed topics, key eras, learning goals, and subtopics for this chapter..."
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                  />
+                  <span className="sm-input-hint">
+                    Topics listed here power the automated MCQ generator and help students understand what this chapter covers.
+                  </span>
+                </div>
+
+                {errorMsg && (
+                  <div className="sm-modal-error">
+                    <AppIcon name="error" size={14} />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                <div className="sm-studio-form-actions">
+                  <Button variant="secondary" type="button" onClick={onClose} disabled={isSaving}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={isSaving}>
+                    <AppIcon name="check" size={14} />
+                    <span>
+                      {isSaving
+                        ? (isEditing ? 'Saving & Syncing...' : 'Creating Chapter...')
+                        : (isEditing ? 'Save & Sync to Supabase' : 'Create Chapter')}
+                    </span>
+                  </Button>
+                </div>
+              </form>
             </div>
+          )}
 
-            <div className="sm-field">
-              <label className="sm-label">Chapter Code</label>
-              <input
-                type="text"
-                className="sm-input"
-                placeholder="e.g. HIST-01"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                style={{ textTransform: 'uppercase', fontFamily: 'monospace' }}
-              />
+          {/* ════ TAB 3: MCQ BANK QUICK PREVIEW ════ */}
+          {activeTab === 'mcqs' && isEditing && (
+            <div className="sm-studio-pane sm-pane-mcqs">
+              <div className="sm-mcq-tab-toolbar">
+                <div className="sm-chapter-search-box" style={{ maxWidth: '320px' }}>
+                  <AppIcon name="search" size={13} />
+                  <input
+                    type="text"
+                    placeholder="Search chapter questions..."
+                    value={mcqSearch}
+                    onChange={(e) => setMcqSearch(e.target.value)}
+                  />
+                  {mcqSearch && (
+                    <button type="button" className="sm-clear-search-btn" onClick={() => setMcqSearch('')}>
+                      <AppIcon name="close" size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    onClose()
+                    onNavigate?.('mcq-injection')
+                  }}
+                >
+                  <AppIcon name="add" size={13} /> Inject More MCQs
+                </Button>
+              </div>
+
+              {filteredMcqs.length === 0 ? (
+                <div className="sm-empty-chapters" style={{ minHeight: '220px' }}>
+                  <AppIcon name="help" size={28} />
+                  <p>
+                    {chapterMcqs.length === 0
+                      ? `No MCQs created for "${name}" yet.`
+                      : 'No MCQs match your search filter.'}
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      onClose()
+                      onNavigate?.('mcq-injection')
+                    }}
+                  >
+                    <AppIcon name="add" size={13} /> Add First MCQ to Chapter
+                  </Button>
+                </div>
+              ) : (
+                <div className="sm-studio-mcq-scroll-list">
+                  {filteredMcqs.map((mcq, idx) => {
+                    const options = mcq.options || []
+                    const correctIdx = typeof mcq.correctOption === 'number' ? mcq.correctOption : (typeof mcq.correct === 'number' ? mcq.correct : 0)
+                    const diff = mcq.difficulty || 'Medium'
+
+                    return (
+                      <div key={mcq.id || idx} className="sm-studio-mcq-item">
+                        <div className="sm-mcq-item-header">
+                          <span className="sm-mcq-num-pill">Q{idx + 1}</span>
+                          <span className={`sm-sub-badge ${diff.toLowerCase()}`}>{diff}</span>
+                          {mcq.year && <span className="sm-mcq-year-tag">PYQ {mcq.year}</span>}
+                        </div>
+
+                        <div className="sm-mcq-question-text">{mcq.question || mcq.text || 'Question text'}</div>
+
+                        <div className="sm-mcq-options-grid">
+                          {options.map((opt, optIdx) => {
+                            const isCorrect = optIdx === correctIdx
+                            return (
+                              <div
+                                key={optIdx}
+                                className={`sm-mcq-option-row${isCorrect ? ' correct' : ''}`}
+                              >
+                                <span className="sm-opt-letter">{String.fromCharCode(65 + optIdx)}</span>
+                                <span className="sm-opt-text">{typeof opt === 'string' ? opt : opt.text}</span>
+                                {isCorrect && <span className="sm-correct-check">✓ Correct</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {mcq.explanation && (
+                          <div className="sm-mcq-explanation-box">
+                            <strong>Explanation:</strong> {mcq.explanation}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="sm-field">
-              <label className="sm-label">Priority</label>
-              <select
-                className="sm-input"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="VH">Very High (VH)</option>
-                <option value="H">High (H)</option>
-                <option value="H/M">High / Medium (H/M)</option>
-                <option value="M">Medium (M)</option>
-                <option value="L/M">Low / Medium (L/M)</option>
-                <option value="L">Low (L)</option>
-              </select>
+          {/* ════ TAB 4: STUDY NOTES PREVIEW ════ */}
+          {activeTab === 'notes' && isEditing && (
+            <div className="sm-studio-pane sm-pane-notes">
+              <div className="sm-notes-tab-header">
+                <div>
+                  <h4 className="sm-notes-heading">
+                    {chapterNote?.title || `${name} Study Notes`}
+                  </h4>
+                  <span className="sm-notes-meta">
+                    Type: {chapterNote?.type || 'RICH TEXT'} • Status: {chapterNote?.status || 'Published'} •{' '}
+                    {chapterNote?.fileUrl ? 'Has File Asset' : 'Text Content'}
+                  </span>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    onClose()
+                    onOpenNotesEditor?.(initialData)
+                  }}
+                >
+                  <AppIcon name="edit" size={13} /> Open Full Notes Editor
+                </Button>
+              </div>
+
+              <div className="sm-notes-preview-scroll">
+                {chapterNote?.content ? (
+                  <div className="sm-notes-markdown-wrap">
+                    <RichContentRenderer content={chapterNote.content} />
+                  </div>
+                ) : (
+                  <div className="sm-empty-chapters" style={{ minHeight: '220px' }}>
+                    <AppIcon name="notesTab" size={28} />
+                    <p>No formatted notes available for this chapter yet.</p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        onClose()
+                        onOpenNotesEditor?.(initialData)
+                      }}
+                    >
+                      <AppIcon name="add" size={13} /> Author Chapter Notes
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="sm-field" style={{ marginTop: '10px' }}>
-            <label className="sm-label">Chapter Title *</label>
-            <input
-              type="text"
-              className="sm-input"
-              placeholder="e.g., Gandhian Era & Freedom Movements (1917–1947)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="sm-field" style={{ marginTop: '10px' }}>
-            <label className="sm-label">Description / Summary (Detailed Topics for Item Generation)</label>
-            <textarea
-              className="sm-input"
-              rows={3}
-              placeholder="Detailed content description from syllabus..."
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              style={{ resize: 'vertical' }}
-            />
-          </div>
-
-          <div className="sm-modal-actions" style={{ marginTop: '16px' }}>
-            <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              {isEditing ? 'Save Chapter' : 'Add Chapter'}
-            </Button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -1013,10 +1624,20 @@ function DeleteChapterSecurityModal({
 }
 
 /* ── Right Selected Subject Workspace Panel (Mockup Aligned) ──── */
-function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, notes = [], onEditSubject, onToggleLock, activeCourseId }) {
+function SelectedSubjectPanel({
+  selectedSubject,
+  chapters,
+  mcqs,
+  flashcards,
+  notes = [],
+  onEditSubject,
+  onToggleLock,
+  activeCourseId,
+  courseName,
+  onNavigate,
+}) {
   const [activeTab, setActiveTab] = useState('chapters')
-  const [showChapterModal, setShowChapterModal] = useState(false)
-  const [editingChapter, setEditingChapter] = useState(null)
+  const [chapterStudioModal, setChapterStudioModal] = useState({ open: false, chapter: null, tab: 'overview' })
   const [notesEditorModal, setNotesEditorModal] = useState({ open: false, chapter: null })
   const [chapterSearch, setChapterSearch] = useState('')
   const [chapterPriority, setChapterPriority] = useState('all')
@@ -1169,51 +1790,82 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
 
   const handleSaveChapter = async (data) => {
     const targetSubject = selectedSubject || subjects.find((s) => s.id === data.subjectId) || subjects[0]
-    if (!targetSubject) return
+    if (!targetSubject) return { success: false, error: 'Target subject not found' }
 
     if (!activeCourseId) {
       showToast({ type: 'error', title: 'Error', message: 'Please select a course.' })
-      return
+      return { success: false, error: 'No active course' }
     }
     if (!targetSubject?.id) {
       showToast({ type: 'error', title: 'Error', message: 'Please select a subject.' })
-      return
+      return { success: false, error: 'No active subject' }
     }
 
     try {
       if (data.id) {
         const res = await chapterService.updateChapter(data.id, {
           name: data.name,
+          title: data.name,
           number: data.number,
           code: data.code,
           priority: data.priority,
           desc: data.desc,
+          description: data.desc,
+          status: data.status,
+          locked: Boolean(data.locked),
           courseId: activeCourseId,
+          subjectId: targetSubject.id,
+          subject: targetSubject.name,
+          subjectName: targetSubject.name,
         })
         if (res.success) {
-          showToast({ type: 'success', title: 'Chapter Updated', message: `"${data.name}" updated.` })
+          setChapterStudioModal((prev) => ({
+            ...prev,
+            chapter: res.data || prev.chapter,
+          }))
+          showToast({
+            type: 'success',
+            title: 'Chapter Synced',
+            message: res.isCloud
+              ? `"${data.name}" updated in Supabase and locally.`
+              : `"${data.name}" updated successfully.`,
+          })
+          return { success: true, data: res.data }
         } else {
           showToast({ type: 'error', title: 'Update Failed', message: res.error || 'Unable to update chapter.' })
+          return { success: false, error: res.error }
         }
       } else {
         const res = await chapterService.createChapter(activeCourseId, targetSubject.id, {
           name: data.name,
+          title: data.name,
           code: data.code,
           priority: data.priority,
           desc: data.desc,
+          description: data.desc,
+          subject: targetSubject.name,
           subjectName: targetSubject.name,
           number: data.number,
           status: data.status || 'active',
+          locked: Boolean(data.locked),
         })
         if (res.success && res.data) {
-          showToast({ type: 'success', title: 'Chapter Added', message: `"${data.name}" added to ${targetSubject.name}.` })
+          showToast({
+            type: 'success',
+            title: 'Chapter Created',
+            message: res.isCloud
+              ? `"${data.name}" added to ${targetSubject.name} & saved to Supabase.`
+              : `"${data.name}" added to ${targetSubject.name}.`,
+          })
+          return { success: true, data: res.data }
         } else {
           showToast({ type: 'error', title: 'Creation Failed', message: res.error || 'Unable to create chapter.' })
+          return { success: false, error: res.error }
         }
       }
-      setShowChapterModal(false)
     } catch (err) {
       showToast({ type: 'error', title: 'Error', message: err.message || 'An unexpected error occurred.' })
+      return { success: false, error: err.message }
     }
   }
 
@@ -1432,7 +2084,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
           <button
             type="button"
             className="sm-primary-action-btn"
-            onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
+            onClick={() => setChapterStudioModal({ open: true, chapter: null, tab: 'edit' })}
             title="Add Chapter to Subject"
           >
             <AppIcon name="add" size={15} />
@@ -1490,7 +2142,7 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
                 <button
                   type="button"
                   className="sm-primary-action-btn"
-                  onClick={() => { setEditingChapter(null); setShowChapterModal(true) }}
+                  onClick={() => setChapterStudioModal({ open: true, chapter: null, tab: 'edit' })}
                 >
                   <AppIcon name="add" size={14} /> Add First Chapter
                 </button>
@@ -1516,7 +2168,20 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
                 const chapterName = ch.name || ch.title || 'Untitled Chapter'
 
                 return (
-                  <div key={ch.id || idx} className="sm-chapter-aligned-card">
+                  <div
+                    key={ch.id || idx}
+                    className="sm-chapter-aligned-card sm-clickable-chapter-card"
+                    onClick={() => setChapterStudioModal({ open: true, chapter: ch, tab: 'overview' })}
+                    title={`Click to open ${chapterName} Studio & Overview`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setChapterStudioModal({ open: true, chapter: ch, tab: 'overview' })
+                      }
+                    }}
+                  >
                     {/* 1. Chapter Order Number & Monospace Code Pill */}
                     <div className="sm-ch-index-group">
                       <span className="sm-ch-order-num">{chNum}</span>
@@ -1525,7 +2190,10 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
 
                     {/* 2. Full Chapter Name & Description */}
                     <div className="sm-ch-main-info">
-                      <h5 className="sm-ch-main-title" title={chapterName}>{chapterName}</h5>
+                      <div className="sm-ch-title-inline">
+                        <h5 className="sm-ch-main-title" title={chapterName}>{chapterName}</h5>
+                        <span className="sm-ch-inspect-hint">Click to inspect</span>
+                      </div>
                       {ch.desc && <p className="sm-ch-desc-sub">{ch.desc}</p>}
                     </div>
 
@@ -1537,23 +2205,35 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
                     )}
 
                     {/* 4. Content Stats Counter Chips */}
-                    <div className="sm-ch-stats-row">
-                      <span className="sm-ch-stat-badge" title="Associated MCQs">
+                    <div className="sm-ch-stats-row" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="sm-ch-stat-badge-btn"
+                        onClick={() => setChapterStudioModal({ open: true, chapter: ch, tab: 'mcqs' })}
+                        title={`${counts.mcqs} MCQs - Click to inspect`}
+                      >
                         <AppIcon name="help" size={12} /> {counts.mcqs}
-                      </span>
-                      <span className="sm-ch-stat-badge" title="Associated Flashcards">
+                      </button>
+                      <button
+                        type="button"
+                        className="sm-ch-stat-badge-btn"
+                        onClick={() => setChapterStudioModal({ open: true, chapter: ch, tab: 'overview' })}
+                        title={`${counts.flashcards} Flashcards`}
+                      >
                         <AppIcon name="flashcardsTab" size={12} /> {counts.flashcards}
-                      </span>
-                      <span
-                        className={`sm-ch-stat-badge ${counts.notes > 0 ? 'active-note' : 'empty-note'}`}
-                        title="Chapter Notes Status"
+                      </button>
+                      <button
+                        type="button"
+                        className={`sm-ch-stat-badge-btn ${counts.notes > 0 ? 'active-note' : 'empty-note'}`}
+                        onClick={() => setNotesEditorModal({ open: true, chapter: ch })}
+                        title={counts.notes > 0 ? 'Notes available - Click to edit' : 'No notes - Click to create'}
                       >
                         <AppIcon name="notesTab" size={12} /> {counts.notes > 0 ? 'Notes' : 'No Notes'}
-                      </span>
+                      </button>
                     </div>
 
                     {/* 5. Aligned Action Buttons */}
-                    <div className="sm-ch-action-buttons">
+                    <div className="sm-ch-action-buttons" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         className="sm-ch-act-btn"
@@ -1575,9 +2255,9 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
                       <button
                         type="button"
                         className="sm-ch-act-btn"
-                        onClick={() => { setEditingChapter(ch); setShowChapterModal(true) }}
-                        title="Edit Chapter Details"
-                        aria-label="Edit Chapter Details"
+                        onClick={() => setChapterStudioModal({ open: true, chapter: ch, tab: 'edit' })}
+                        title="Edit Chapter Details & Sync"
+                        aria-label="Edit Chapter Details & Sync"
                       >
                         <AppIcon name="edit" size={13} />
                       </button>
@@ -1669,14 +2349,24 @@ function SelectedSubjectPanel({ selectedSubject, chapters, mcqs, flashcards, not
         </div>
       )}
 
-      {/* Chapter Modal */}
-      {showChapterModal && (
-        <ChapterModal
-          subjectName={selectedSubject.name}
-          initialData={editingChapter}
+      {/* Chapter Studio Modal (Details / Inspector / Editor) */}
+      {chapterStudioModal.open && (
+        <ChapterStudioModal
+          subject={selectedSubject}
+          courseName={courseName}
+          activeCourseId={activeCourseId}
+          initialData={chapterStudioModal.chapter}
+          initialTab={chapterStudioModal.tab}
           existingChapters={subjectChapters}
+          allMcqs={mcqs}
+          allFlashcards={flashcards}
+          allNotes={notes}
           onSave={handleSaveChapter}
-          onClose={() => setShowChapterModal(false)}
+          onOpenNotesEditor={(ch) => setNotesEditorModal({ open: true, chapter: ch })}
+          onResetChapterState={handleResetChapterState}
+          onDeleteChapter={handleDeleteChapter}
+          onNavigate={onNavigate}
+          onClose={() => setChapterStudioModal({ open: false, chapter: null, tab: 'overview' })}
         />
       )}
 
@@ -1993,7 +2683,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
         </div>
       ) : (
         <div className="sm-workspace-grid">
-          {/* Left Column: Subjects Panel (~32% width) */}
+          {/* Left Column: Subjects Panel (~28% width) */}
           <div className="sm-subjects-column">
             <div className="sm-subjects-header">
               <h3 className="sm-subjects-title">
@@ -2034,7 +2724,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
             </div>
           </div>
 
-          {/* Right Column: Selected Subject + Chapters Workspace (~68% width) */}
+          {/* Right Column: Selected Subject + Chapters Workspace (~72% width) */}
           <div className="sm-chapters-column">
             <SelectedSubjectPanel
               selectedSubject={selectedSubject}
@@ -2045,6 +2735,8 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
               onEditSubject={handleOpenEdit}
               onToggleLock={toggleSubjectLock}
               activeCourseId={activeCourse?.id}
+              courseName={activeCourse?.name}
+              onNavigate={onNavigate}
             />
           </div>
         </div>

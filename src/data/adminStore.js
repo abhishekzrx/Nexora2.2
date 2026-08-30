@@ -149,17 +149,17 @@ function getSeedFlashcards() {
 }
 
 // ── State ──────────────────────────────────────────────────────
-let subjects = []
-let chapters = []
-let mcqs = []
-let flashcards = []
+let subjects = getSeedSubjects()
+let chapters = getSeedChapters()
+let mcqs = getSeedMcqs()
+let flashcards = getSeedFlashcards()
 let notes = typeof getLocalNotes === 'function' ? getLocalNotes() : []
 
 let snapshot = {
-  allSubjects: [],
-  allChapters: [],
-  allMcqs: [],
-  allFlashcards: [],
+  allSubjects: subjects,
+  allChapters: chapters,
+  allMcqs: mcqs,
+  allFlashcards: flashcards,
   allNotes: notes,
   subjects: [],
   chapters: [],
@@ -573,6 +573,77 @@ export function getDeleteSubjectImpact(id) {
   }
 }
 
+// ── Chapter Overrides Persistence ──────────────────────────────────
+const CHAPTER_OVERRIDES_KEY = 'nexora_chapter_overrides_v2'
+
+export function getChapterOverrides() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CHAPTER_OVERRIDES_KEY) : null
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveChapterOverride(id, patch) {
+  try {
+    if (typeof localStorage === 'undefined') return
+    const current = getChapterOverrides()
+    const cleanId = String(id || patch?.id || '').trim().toLowerCase()
+    const cleanCode = String(patch?.code || '').trim().toUpperCase()
+    const cleanName = String(patch?.name || patch?.title || '').trim().toLowerCase()
+
+    const overridePayload = {
+      ...(patch.priority ? { priority: patch.priority } : {}),
+      ...(patch.name ? { name: patch.name, title: patch.name } : {}),
+      ...(patch.code ? { code: patch.code } : {}),
+      ...(patch.desc !== undefined || patch.description !== undefined ? { desc: patch.desc || patch.description, description: patch.desc || patch.description } : {}),
+      ...(patch.number !== undefined ? { number: Number(patch.number) } : {}),
+      ...(patch.status ? { status: patch.status } : {}),
+      ...(patch.locked !== undefined ? { locked: Boolean(patch.locked) } : {}),
+    }
+
+    const updated = {
+      ...current,
+      ...(cleanId ? { [cleanId]: { ...current[cleanId], ...overridePayload } } : {}),
+      ...(cleanCode ? { [`code_${cleanCode}`]: { ...current[`code_${cleanCode}`], ...overridePayload } } : {}),
+      ...(cleanName ? { [`name_${cleanName}`]: { ...current[`name_${cleanName}`], ...overridePayload } } : {}),
+    }
+    localStorage.setItem(CHAPTER_OVERRIDES_KEY, JSON.stringify(updated))
+  } catch (err) {
+    console.warn('Failed to save chapter override to localStorage:', err)
+  }
+}
+
+export function applyChapterOverrides(chList) {
+  if (!Array.isArray(chList)) return chList
+  const overrides = getChapterOverrides()
+  if (Object.keys(overrides).length === 0) return chList
+
+  return chList.map((ch) => {
+    if (!ch) return ch
+    const chId = String(ch.id || '').trim().toLowerCase()
+    const chCode = String(ch.code || '').trim().toUpperCase()
+    const chName = String(ch.name || ch.title || '').trim().toLowerCase()
+
+    const ov = overrides[chId] || (chCode ? overrides[`code_${chCode}`] : null) || (chName ? overrides[`name_${chName}`] : null)
+    if (!ov) return ch
+
+    return {
+      ...ch,
+      ...ov,
+      priority: ov.priority || ch.priority,
+      code: ov.code || ch.code,
+      name: ov.name || ch.name,
+      title: ov.name || ch.title || ch.name,
+      desc: ov.desc || ov.description || ch.desc || ch.description,
+      description: ov.desc || ov.description || ch.desc || ch.description,
+      status: ov.status || ch.status,
+      locked: ov.locked !== undefined ? Boolean(ov.locked) : ch.locked,
+    }
+  })
+}
+
 // ── Chapter CRUD ──────────────────────────────────────────────────
 export function addChapter(data) {
   const targetCourseId = data.courseId || currentCourseId()
@@ -600,16 +671,51 @@ export function addChapter(data) {
 }
 
 export function updateChapter(id, patch) {
+  const cleanId = String(id || patch?.id || '').trim().toLowerCase()
+  const patchName = String(patch?.name || patch?.title || '').trim().toLowerCase()
+  const patchCode = String(patch?.code || '').trim().toUpperCase()
+  const patchNumber = patch?.number !== undefined ? Number(patch?.number) : null
+
+  // Save to persistent overrides
+  saveChapterOverride(id, patch)
+
   chapters = chapters.map((chapter) => {
-    if (chapter.id !== id) return chapter
+    const chId = String(chapter.id || '').trim().toLowerCase()
+    const chName = String(chapter.name || chapter.title || '').trim().toLowerCase()
+    const chCode = String(chapter.code || '').trim().toUpperCase()
+    const chNumber = Number(chapter.number)
+
+    const isIdMatch = cleanId && (chId === cleanId || chId.includes(cleanId) || cleanId.includes(chId))
+    const isCodeMatch = patchCode && chCode && patchCode === chCode
+    const isNameSubjectMatch = patchName && chName && patchName === chName && (
+      !patch.subject || !chapter.subject || String(patch.subject).trim().toLowerCase() === String(chapter.subject).trim().toLowerCase()
+    )
+    const isNumberSubjectMatch = patchNumber && chNumber === patchNumber && (
+      !patch.subject || !chapter.subject || String(patch.subject).trim().toLowerCase() === String(chapter.subject).trim().toLowerCase()
+    )
+
+    if (!isIdMatch && !isCodeMatch && !isNameSubjectMatch && !isNumberSubjectMatch) {
+      return chapter
+    }
+
     return {
       ...chapter,
       ...patch,
-      ...(patch.name ? { name: patch.name } : {}),
-      ...(patch.subject ? { subject: patch.subject, subjectId: patch.subject } : {}),
-      ...(patch.number ? { number: Number(patch.number) } : {}),
+      name: patch.name || chapter.name,
+      title: patch.name || chapter.title || chapter.name,
+      number: patch.number !== undefined ? Number(patch.number) : chapter.number,
+      code: patch.code !== undefined ? patch.code : chapter.code,
+      priority: patch.priority !== undefined ? patch.priority : chapter.priority,
+      desc: patch.desc !== undefined ? patch.desc : (patch.description !== undefined ? patch.description : chapter.desc),
+      description: patch.desc !== undefined ? patch.desc : (patch.description !== undefined ? patch.description : chapter.description),
+      status: patch.status || chapter.status || 'active',
+      locked: patch.locked !== undefined ? Boolean(patch.locked) : Boolean(chapter.locked),
+      subject: patch.subject || patch.subjectName || chapter.subject,
+      subjectName: patch.subjectName || patch.subject || chapter.subjectName,
+      subjectId: patch.subjectId || chapter.subjectId,
     }
   })
+
   recomputeAllSubjectStats()
   emit()
 }

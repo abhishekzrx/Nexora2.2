@@ -15,6 +15,7 @@ import SubjectManager from './SubjectManager'
 import ChapterMcqInjection from './ChapterMcqInjection'
 import McqManager from './McqManager'
 import NotesManager from './NotesManager'
+import SettingsManager from './SettingsManager'
 import FeedbackUI from './FeedbackUI'
 
 import DashboardHero from './dashboard/DashboardHero'
@@ -46,6 +47,7 @@ const MOBILE_SECTION_MAP = {
   'mcq-injection': 'Chapter MCQs Injection',
   'mcq-manager': 'MCQ Manager',
   analytics: 'Analytics',
+  settings: 'Settings',
 }
 
 function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
@@ -183,6 +185,8 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome }) {
         return <ChapterMcqInjection key={activeWorkspaceId} />
       case 'courses':
         return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'settings':
+        return <SettingsManager />
       default:
         return renderDashboardMainContent()
     }
