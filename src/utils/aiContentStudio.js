@@ -12,8 +12,37 @@ import { getExamProfile, resolveExamProfile } from '../data/examProfiles.js'
 import { getRelevantPYQs, analyzePYQs } from '../data/pyqRepository.js'
 import { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, cleanChapterDescriptionForPrompt } from './bpscPromptRules.js'
 import { validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems } from './bpscValidator.js'
+import {
+  parseContext,
+  synthesizePrompt,
+  createBatchedExecutionPlan,
+  auditMcqItem,
+  auditMcqBatch,
+  sanitizeRawJsonText,
+  enforceMcqSchema,
+  enforceFlashcardSchema,
+  parseAndEnforceBatchOutput,
+} from './masterContentEngine.js'
 
-export { buildBPSCPrompt, createBPSCBatchPlan, BPSC_PRELIMS_PROMPT_RULES, cleanChapterDescriptionForPrompt, validateBPSCBatch, validateBPSCMcq, buildTargetedRegenerationPrompt, autoFixBPSCItems }
+export {
+  buildBPSCPrompt,
+  createBPSCBatchPlan,
+  BPSC_PRELIMS_PROMPT_RULES,
+  cleanChapterDescriptionForPrompt,
+  validateBPSCBatch,
+  validateBPSCMcq,
+  buildTargetedRegenerationPrompt,
+  autoFixBPSCItems,
+  parseContext,
+  synthesizePrompt,
+  createBatchedExecutionPlan,
+  auditMcqItem,
+  auditMcqBatch,
+  sanitizeRawJsonText,
+  enforceMcqSchema,
+  enforceFlashcardSchema,
+  parseAndEnforceBatchOutput,
+}
 
 // ── Template Presets ──────────────────────────────────────────────
 export const templatePresets = [
@@ -147,7 +176,8 @@ export function generateMcqPrompt(form) {
   lines.push('')
   lines.push('Quality requirements:')
   lines.push('- Each question must be factually accurate, unambiguous, and self-contained.')
-  lines.push('- All four options (A-D) must be plausible; exactly one must be correct.')
+  lines.push('- Options A, B, C, D must be distinct and plausible; exactly one among A-D must be correct.')
+  lines.push('- Option E must strictly be "Not Attempted".')
   lines.push('- Distractors should reflect common misconceptions, not obvious errors.')
   lines.push('')
   lines.push('Return the output STRICTLY as a valid JSON array - no markdown, no code fences, no extra text.')
@@ -160,6 +190,7 @@ export function generateMcqPrompt(form) {
   lines.push('    "optionB": "Option B text",')
   lines.push('    "optionC": "Option C text",')
   lines.push('    "optionD": "Option D text",')
+  lines.push('    "optionE": "Not Attempted",')
   lines.push('    "correctAnswer": "A",')
   lines.push('    "explanation": "A concise explanation of why this answer is correct.",')
   lines.push(`    "subject": "${form.subject || 'Subject name'}",`)

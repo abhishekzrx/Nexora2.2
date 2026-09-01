@@ -27,6 +27,12 @@ import { getExamProfile, getActiveExamKey, setActiveExam, resolveExamProfile } f
 import { getRelevantPYQs, analyzePYQs } from '../../data/pyqRepository'
 import { getCourseConfig } from '../../data/courseConfigs'
 import { generateExamPrompt, buildMCQPrompt, validateBPSCBatch, buildTargetedRegenerationPrompt, autoFixBPSCItems, cleanChapterDescriptionForPrompt } from '../../utils/aiContentStudio'
+import {
+  parseContext,
+  createBatchedExecutionPlan,
+  parseAndEnforceBatchOutput,
+  auditMcqBatch,
+} from '../../utils/masterContentEngine'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
@@ -233,8 +239,12 @@ export default function ChapterMcqInjection() {
   }, [adminState.allSubjects, adminState.allChapters, setActiveWorkspace, applyCourseConfig])
 
   // ── 5. Generator Parameters ─────────────────────────────────────
-  const [mcqCount, setMcqCount] = useState(20)
-  const [flashCount, setFlashCount] = useState(15)
+  const [promptEngineMode, setPromptEngineMode] = useState('master_unified') // 'master_unified' | 'exam_profile'
+  const [selectedBatchIdx, setSelectedBatchIdx] = useState(0)
+  const [qualityAuditResult, setQualityAuditResult] = useState(null)
+
+  const [mcqCount, setMcqCount] = useState(30)
+  const [flashCount, setFlashCount] = useState(20)
   const [mcqDifficulty, setMcqDifficulty] = useState('Medium')
   const [flashDifficulty, setFlashDifficulty] = useState('Medium')
   const [mcqLanguage, setMcqLanguage] = useState('English')
@@ -288,6 +298,46 @@ export default function ChapterMcqInjection() {
   const subjectTitle = activeSubject?.name || 'Selected Subject'
   const chapterTitle = activeChapter?.name || 'Selected Chapter'
 
+  // Master Unified Task Workflow: Context & Batched Bulk Plan
+  const masterContext = useMemo(() => {
+    return parseContext({
+      courseLevel: activeExamProfile?.label || selectedCourse?.name || 'Graduation / Higher Secondary',
+      subject: subjectTitle,
+      chapter: chapterTitle,
+      chapterDescription,
+      resourceType: contentMode,
+      quantity: finalQuantity,
+      difficulty: contentMode === 'mcqs' ? mcqDifficulty : flashDifficulty,
+      language: contentMode === 'mcqs' ? mcqLanguage : flashLanguage,
+      specialInstructions: conceptFocus || specialInstructions,
+    })
+  }, [
+    activeExamProfile,
+    selectedCourse,
+    subjectTitle,
+    chapterTitle,
+    chapterDescription,
+    contentMode,
+    finalQuantity,
+    mcqDifficulty,
+    flashDifficulty,
+    mcqLanguage,
+    flashLanguage,
+    conceptFocus,
+    specialInstructions,
+  ])
+
+  const batchedPlan = useMemo(() => {
+    return createBatchedExecutionPlan(masterContext, 25)
+  }, [masterContext])
+
+  // Reset batch index if total batches changes
+  useEffect(() => {
+    if (selectedBatchIdx >= batchedPlan.totalBatches) {
+      setSelectedBatchIdx(0)
+    }
+  }, [batchedPlan.totalBatches, selectedBatchIdx])
+
   const matchedPYQs = useMemo(() => {
     if (contentMode !== 'mcqs' || !activeExamProfile || !activeSubject || !activeChapter) return []
     return getRelevantPYQs({
@@ -303,6 +353,11 @@ export default function ChapterMcqInjection() {
 
   const generatedPromptText = useMemo(() => {
     try {
+      if (promptEngineMode === 'master_unified') {
+        const batch = batchedPlan.batches[selectedBatchIdx] || batchedPlan.batches[0]
+        return batch?.prompt || ''
+      }
+
       if (contentMode === 'mcqs') {
         return generateExamPrompt('mcqs', {
           courseTitle,
@@ -369,6 +424,9 @@ export default function ChapterMcqInjection() {
       return `Prompt generation failed: ${err?.message || 'Unknown error'}`
     }
   }, [
+    promptEngineMode,
+    batchedPlan,
+    selectedBatchIdx,
     contentMode,
     courseTitle,
     subjectTitle,
@@ -395,6 +453,8 @@ export default function ChapterMcqInjection() {
     biharIntegration,
     pyqInfluence,
     pyqInclusion,
+    matchedPYQs,
+    pyqAnalysis,
   ])
 
   // ── 5. Injection State Lifecycle & Request Isolation ──────────────────────
@@ -411,6 +471,7 @@ export default function ChapterMcqInjection() {
     setInjectionError(null)
     setInjectionResult(null)
     setCurrentPayload(null)
+    setQualityAuditResult(null)
   }, [selectedCourseId, selectedSubjectId, selectedChapterId, contentMode])
 
   // ── 6. JSON State & Handlers ─────────────────────────────────
@@ -423,71 +484,48 @@ export default function ChapterMcqInjection() {
 
   const validateAndParse = useCallback(
     (raw) => {
-      try {
-        const parsed = JSON.parse(raw)
-        let mcqItems = []
-        let flashItems = []
+      // 1. Run Master Content Engine Parser & Quality/Distractor Audit
+      const masterRes = parseAndEnforceBatchOutput(raw, contentMode, activeSubject?.name, activeChapter?.name)
 
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item) => {
-            if (item.front && item.back) flashItems.push(item)
-            else if (item.question) mcqItems.push(item)
-          })
-        } else if (typeof parsed === 'object' && parsed !== null) {
-          if (Array.isArray(parsed.mcqs)) mcqItems = [...parsed.mcqs]
-          if (Array.isArray(parsed.flashcards)) flashItems = [...parsed.flashcards]
-        }
+      if (masterRes.success && masterRes.items && masterRes.items.length > 0) {
+        setQualityAuditResult(masterRes.audit)
 
-        const activeItems = contentMode === 'mcqs' ? mcqItems : flashItems
-        if (activeItems.length > 0) {
-          if (contentMode === 'mcqs' && activeExamProfile?.key === 'BPSC_PRELIMS') {
-            const bpscVal = validateBPSCBatch(activeItems)
-            setBpscValidationResult(bpscVal)
-            if (bpscVal.invalidCount > 0) {
-              setJsonStatus('warning')
-              setJsonError(`${bpscVal.validCount} of ${bpscVal.total} passed BPSC 15-check validation (${bpscVal.invalidCount} failed).`)
-              setJsonItemCount(bpscVal.validCount)
-              setCurrentPayload(bpscVal.passedItems)
-              setInjectionStatus(bpscVal.validCount > 0 ? 'ready' : 'idle')
-              setInjectionResult(null)
-              return true
-            } else {
-              setJsonStatus('valid')
-              setJsonError(null)
-              setJsonItemCount(bpscVal.validCount)
-              setCurrentPayload(bpscVal.passedItems)
-              setInjectionStatus('ready')
-              setInjectionResult(null)
-              return true
-            }
+        // If BPSC exam profile is explicitly active for MCQs, also run BPSC 15-check validator
+        if (contentMode === 'mcqs' && activeExamProfile?.key === 'BPSC_PRELIMS') {
+          const bpscVal = validateBPSCBatch(masterRes.items)
+          setBpscValidationResult(bpscVal)
+          if (bpscVal.invalidCount > 0) {
+            setJsonStatus('warning')
+            setJsonError(`${bpscVal.validCount} of ${bpscVal.total} passed BPSC 15-check validation (${bpscVal.invalidCount} failed).`)
+            setJsonItemCount(bpscVal.validCount)
+            setCurrentPayload(bpscVal.passedItems)
+            setInjectionStatus(bpscVal.validCount > 0 ? 'ready' : 'idle')
+            setInjectionResult(null)
+            return true
           }
-
+        } else {
           setBpscValidationResult(null)
-          setJsonStatus('valid')
-          setJsonError(null)
-          setJsonItemCount(activeItems.length)
-          setCurrentPayload(activeItems)
-          setInjectionStatus('ready')
-          setInjectionResult(null)
-          return true
         }
 
-        setBpscValidationResult(null)
-        setJsonStatus('invalid')
-        setJsonError(`JSON does not contain ${contentMode} payload.`)
-        setJsonItemCount(0)
-        setCurrentPayload(null)
-        return false
-      } catch (err) {
-        setBpscValidationResult(null)
-        setJsonStatus('invalid')
-        setJsonError(err.message)
-        setJsonItemCount(0)
-        setCurrentPayload(null)
-        return false
+        const isFullyValid = masterRes.audit?.ok !== false
+        setJsonStatus(isFullyValid ? 'valid' : 'warning')
+        setJsonError(isFullyValid ? null : masterRes.audit?.summary)
+        setJsonItemCount(masterRes.totalCount)
+        setCurrentPayload(masterRes.items)
+        setInjectionStatus('ready')
+        setInjectionResult(null)
+        return true
       }
+
+      setQualityAuditResult(null)
+      setBpscValidationResult(null)
+      setJsonStatus('invalid')
+      setJsonError(masterRes.error || `JSON does not contain valid ${contentMode} items.`)
+      setJsonItemCount(0)
+      setCurrentPayload(null)
+      return false
     },
-    [contentMode, activeExamProfile],
+    [contentMode, activeSubject, activeChapter, activeExamProfile],
   )
 
   const handleJsonChange = useCallback(
@@ -498,6 +536,7 @@ export default function ChapterMcqInjection() {
         setJsonError(null)
         setJsonItemCount(0)
         setCurrentPayload(null)
+        setQualityAuditResult(null)
         setInjectionStatus('idle')
         return
       }
@@ -512,6 +551,7 @@ export default function ChapterMcqInjection() {
       setJsonError(null)
       setJsonItemCount(0)
       setCurrentPayload(null)
+      setQualityAuditResult(null)
       setInjectionStatus('idle')
       return
     }
@@ -521,13 +561,14 @@ export default function ChapterMcqInjection() {
   const handleCopyPrompt = useCallback(() => {
     navigator.clipboard.writeText(generatedPromptText)
     setCopied(true)
+    const batchInfo = batchedPlan.totalBatches > 1 ? ` (Batch ${selectedBatchIdx + 1}/${batchedPlan.totalBatches})` : ''
     showToast({
       type: 'success',
       title: '✓ Prompt Copied',
-      message: `Prompt for ${contentMode.toUpperCase()} copied to clipboard.`,
+      message: `Prompt for ${contentMode.toUpperCase()}${batchInfo} copied to clipboard.`,
     })
     setTimeout(() => setCopied(false), 2000)
-  }, [generatedPromptText, contentMode])
+  }, [generatedPromptText, contentMode, batchedPlan.totalBatches, selectedBatchIdx])
 
   const handleClearJson = useCallback(() => {
     setJsonText('')
@@ -535,20 +576,9 @@ export default function ChapterMcqInjection() {
     setJsonError(null)
     setJsonItemCount(0)
     setCurrentPayload(null)
+    setQualityAuditResult(null)
     setInjectionStatus('idle')
   }, [])
-
-  useEffect(() => {
-    if (!jsonText.trim()) {
-      setJsonStatus('empty')
-      setJsonError(null)
-      setJsonItemCount(0)
-      setCurrentPayload(null)
-      setInjectionStatus('idle')
-      return
-    }
-    validateAndParse(jsonText)
-  }, [jsonText, validateAndParse])
 
   // Backend Injection Handler
   const handlePerformInjection = async () => {
@@ -806,12 +836,94 @@ export default function ChapterMcqInjection() {
               title="Copy prompt for external generation"
             >
               <AppIcon name={copied ? "check" : "copy"} size={14} />
-              {copied ? 'Copied!' : 'Copy Prompt'}
+              {copied ? 'Copied!' : batchedPlan.totalBatches > 1 ? `Copy Batch ${selectedBatchIdx + 1}/${batchedPlan.totalBatches}` : 'Copy Prompt'}
             </Button>
           </div>
 
           {/* Form Scroll Area */}
           <div className="studio-form-scrollable">
+            {/* Engine Mode Banner & Sub-batch Switcher */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Workflow Engine:
+                </span>
+                <div style={{ display: 'inline-flex', background: '#F1F5F9', borderRadius: '8px', padding: '2px' }}>
+                  <button
+                    type="button"
+                    style={{
+                      border: 'none',
+                      background: promptEngineMode === 'master_unified' ? '#FFFFFF' : 'transparent',
+                      color: promptEngineMode === 'master_unified' ? '#0F172A' : '#64748B',
+                      fontWeight: 700,
+                      fontSize: '11.5px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      boxShadow: promptEngineMode === 'master_unified' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                    onClick={() => setPromptEngineMode('master_unified')}
+                  >
+                    ⭐ Master Unified (NCERT/Grad)
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      border: 'none',
+                      background: promptEngineMode === 'exam_profile' ? '#FFFFFF' : 'transparent',
+                      color: promptEngineMode === 'exam_profile' ? '#0F172A' : '#64748B',
+                      fontWeight: 700,
+                      fontSize: '11.5px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      boxShadow: promptEngineMode === 'exam_profile' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                    onClick={() => setPromptEngineMode('exam_profile')}
+                  >
+                    🎯 Exam Profile
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-Batches Strip if requested count > 25 */}
+              {batchedPlan.totalBatches > 1 && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#EEF2FF',
+                  padding: '6px 10px',
+                  borderRadius: '10px',
+                  border: '1px solid #C7D2FE',
+                  flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#3730A3' }}>
+                    📦 Bulk Batches ({batchedPlan.totalBatches} x ~25):
+                  </span>
+                  {batchedPlan.batches.map((b, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      style={{
+                        border: selectedBatchIdx === idx ? '1.5px solid #4F46E5' : '1px solid #CBD5E1',
+                        background: selectedBatchIdx === idx ? '#4F46E5' : '#FFFFFF',
+                        color: selectedBatchIdx === idx ? '#FFFFFF' : '#334155',
+                        fontWeight: 700,
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setSelectedBatchIdx(idx)}
+                    >
+                      B{b.batchNumber} ({b.startIndex}-{b.endIndex})
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Primary Parameters Row */}
             <div className="compact-params-grid">
               <div className="compact-field">
@@ -825,7 +937,7 @@ export default function ChapterMcqInjection() {
                     else setFlashCount(val)
                   }}
                 >
-                  {[10, 15, 20, 30, 50, 100].map((c) => (
+                  {[10, 15, 20, 25, 30, 50, 75, 100, 150, 200].map((c) => (
                     <option key={c} value={c}>
                       {c} {contentMode === 'mcqs' ? 'MCQs' : 'Cards'}
                     </option>
@@ -1094,6 +1206,7 @@ export default function ChapterMcqInjection() {
             onClearJson={handleClearJson}
             showPyqSection={contentMode === 'mcqs' && activeExamProfile && activeExamProfile.key !== 'GENERIC'}
             matchedPYQs={matchedPYQs}
+            qualityAuditResult={qualityAuditResult}
             bpscValidationResult={contentMode === 'mcqs' && activeExamProfile?.key === 'BPSC_PRELIMS' ? bpscValidationResult : null}
             onAutoFix={() => {
               if (!currentPayload || !Array.isArray(currentPayload) || currentPayload.length === 0) return

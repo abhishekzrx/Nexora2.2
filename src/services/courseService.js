@@ -44,7 +44,7 @@ function mapCourseToPayload(payload) {
 
 export const courseService = {
   async getCourses() {
-    const res = await apiService.get('/courses')
+    const res = await apiService.get('/courses?order=created_at.asc')
     if (res.success && Array.isArray(res.data)) {
       const mapped = res.data.map(mapRowToCourse)
       return { success: true, data: mapped }
@@ -54,7 +54,7 @@ export const courseService = {
 
   async getCourse(courseId) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
-    const res = await apiService.get(`/courses?id=eq.${courseId}`)
+    const res = await apiService.get(`/courses?id=eq.${encodeURIComponent(courseId)}`)
     if (res.success && Array.isArray(res.data) && res.data.length > 0) {
       return { success: true, data: mapRowToCourse(res.data[0]) }
     }
@@ -71,8 +71,8 @@ export const courseService = {
       return { success: false, error: res.error || 'Failed to create course in database' }
     }
 
-    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
-    const mapped = mapRowToCourse(rawRecord)
+    const rawRecord = Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : res.data
+    const mapped = mapRowToCourse(rawRecord) || mapRowToCourse(dbPayload)
 
     createWorkspace(mapped)
 
@@ -82,32 +82,75 @@ export const courseService = {
   async updateCourse(courseId, patch) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
     const dbPatch = {
-      ...(patch.name ? { name: patch.name } : {}),
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
-      ...(patch.status ? { status: patch.status } : {}),
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
       ...(patch.published !== undefined ? { published: Boolean(patch.published) } : {}),
-      ...(patch.themeColor ? { theme_color: patch.themeColor } : {}),
+      ...(patch.themeColor !== undefined ? { theme_color: patch.themeColor } : {}),
+      ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
+      ...(patch.version !== undefined ? { version: patch.version } : {}),
+      ...(patch.order !== undefined ? { order: Number(patch.order) } : {}),
     }
 
-    const res = await apiService.patch(`/courses?id=eq.${courseId}`, dbPatch)
+    const res = await apiService.patch(`/courses?id=eq.${encodeURIComponent(courseId)}`, dbPatch)
 
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to update course in database' }
     }
 
-    const rawRecord = Array.isArray(res.data) ? res.data[0] : res.data
-    const mapped = mapRowToCourse(rawRecord)
+    const rawRecord = Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : res.data
+    const mapped = rawRecord ? mapRowToCourse(rawRecord) : null
 
-    if (patch.name) {
-      updateWorkspaceMetadata(courseId, 'name', patch.name)
+    updateWorkspace(courseId, {
+      ...patch,
+      ...(mapped || {}),
+    })
+
+    return { success: true, data: mapped || { id: courseId, ...patch } }
+  },
+
+  async duplicateCourse(courseId) {
+    if (!courseId) return { success: false, error: 'Course ID is required' }
+    const getRes = await this.getCourse(courseId)
+    if (!getRes.success || !getRes.data) {
+      return { success: false, error: 'Source course not found in database' }
     }
-
-    return { success: true, data: mapped }
+    const source = getRes.data
+    const newId = `c-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const copyPayload = {
+      id: newId,
+      name: `${source.name} (Copy)`,
+      description: source.description || '',
+      status: 'active',
+      published: true,
+      icon: source.icon || 'adminDashboard',
+      themeColor: source.themeColor || '#F1621B',
+      version: source.version || 'v1.0',
+    }
+    return this.createCourse(copyPayload)
   },
 
   async deleteCourse(courseId) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
-    const res = await apiService.delete(`/courses?id=eq.${courseId}`)
+    
+    // Cascade cleanup of child records from Supabase to prevent FK violations
+    try {
+      const subRes = await apiService.get(`/subjects?course_id=eq.${encodeURIComponent(courseId)}&select=id`)
+      if (subRes.success && Array.isArray(subRes.data)) {
+        for (const sub of subRes.data) {
+          if (sub?.id) {
+            await apiService.delete(`/mcqs?subject_id=eq.${encodeURIComponent(sub.id)}`).catch(() => {})
+            await apiService.delete(`/flashcards?subject_id=eq.${encodeURIComponent(sub.id)}`).catch(() => {})
+            await apiService.delete(`/chapters?subject_id=eq.${encodeURIComponent(sub.id)}`).catch(() => {})
+          }
+        }
+      }
+      await apiService.delete(`/subjects?course_id=eq.${encodeURIComponent(courseId)}`).catch(() => {})
+    } catch (cascadeErr) {
+      console.warn('[courseService] Cascade cleanup warning:', cascadeErr)
+    }
+
+    const res = await apiService.delete(`/courses?id=eq.${encodeURIComponent(courseId)}`)
 
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to delete course from database' }
@@ -125,60 +168,8 @@ export const courseService = {
         return { success: true, data: mapRowToCourse(res.data[0]) }
       }
 
-      const seedCourses = [
-        {
-          id: 'bpsc-tre-4',
-          name: 'BPSC TRE 4.0 – Computer Science',
-          icon: 'adminDashboard',
-          themeColor: '#F1621B',
-          description: 'Bihar Public Service Commission Teacher Recruitment Exam 4.0',
-          status: 'active',
-          published: true,
-          version: 'v2.3',
-        },
-        {
-          id: 'bpsc-prelims',
-          name: 'BPSC PRE LIMS',
-          icon: 'adminDashboard',
-          themeColor: '#F1621B',
-          description: 'Bihar Public Service Commission – Preliminary Examination',
-          status: 'active',
-          published: true,
-          version: 'v1.0',
-        },
-        {
-          id: 'cbse-12-cs',
-          name: 'CBSE Class 12 – Computer Science',
-          icon: 'computer',
-          themeColor: '#2E5CE6',
-          description: 'Central Board of Secondary Education Class 12 Computer Science',
-          status: 'active',
-          published: true,
-          version: 'v1.8',
-        },
-        {
-          id: 'cbse-11-ph',
-          name: 'CBSE Class 11 – Physics',
-          icon: 'physics',
-          themeColor: '#7C3AED',
-          description: 'Central Board of Secondary Education Class 11 Physics',
-          status: 'draft',
-          published: true,
-          version: 'v1.0',
-        },
-        {
-          id: 'ssc-cgl-computer',
-          name: 'SSC CGL – Computer',
-          icon: 'computerNetworks',
-          themeColor: '#12B76A',
-          description: 'Staff Selection Commission Combined Graduate Level – Computer Section',
-          status: 'active',
-          published: true,
-          version: 'v1.2',
-        },
-      ]
-
-      const matched = seedCourses.find((w) => w.id === courseId) || {
+      // If missing and requested by child subject creator, insert dynamic fallback record
+      const fallbackCourse = {
         id: courseId,
         name: courseId.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
         description: '',
@@ -189,11 +180,11 @@ export const courseService = {
         version: 'v1.0',
       }
 
-      const dbPayload = mapCourseToPayload(matched)
+      const dbPayload = mapCourseToPayload(fallbackCourse)
       const insertRes = await apiService.post('/courses', dbPayload)
       if (insertRes.success) {
-        const rawRecord = Array.isArray(insertRes.data) ? insertRes.data[0] : insertRes.data
-        const mapped = mapRowToCourse(rawRecord)
+        const rawRecord = Array.isArray(insertRes.data) && insertRes.data.length > 0 ? insertRes.data[0] : insertRes.data
+        const mapped = mapRowToCourse(rawRecord) || fallbackCourse
         return { success: true, data: mapped }
       }
       return { success: false, error: insertRes.error || 'Failed to insert course into database' }

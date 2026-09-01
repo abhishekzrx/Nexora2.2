@@ -24,12 +24,14 @@ export default function InjectionStatusCard({
   showPyqSection = false,
   matchedPYQs = [],
   bpscValidationResult = null,
+  qualityAuditResult = null,
   onRegenerateFailed = null,
   onAutoFix = null,
 }) {
   const textareaRef = useRef(null)
   const [showPyqList, setShowPyqList] = useState(false)
   const [showIssuesDetail, setShowIssuesDetail] = useState(false)
+  const [showAuditDetail, setShowAuditDetail] = useState(false)
 
   const isInjecting = status === 'injecting'
   const isSuccess = status === 'success'
@@ -111,6 +113,60 @@ export default function InjectionStatusCard({
             ))}
           </div>
         </div>
+      )}
+
+      {/* Quality Audit / Distractor Audit Ribbon (Master Unified Engine) */}
+      {qualityAuditResult && qualityAuditResult.total > 0 && !bpscValidationResult && (
+        <>
+          <div className={`bpsc-compact-ribbon ${qualityAuditResult.ok ? 'passed' : 'warning'}`}>
+            <div className="ribbon-text">
+              <AppIcon name={qualityAuditResult.ok ? "check" : "warning"} size={14} />
+              <span>
+                <strong>{qualityAuditResult.ok ? `NCERT Quality Pass (${qualityAuditResult.qualityScore}%)` : `Distractor Audit Flag (${qualityAuditResult.qualityScore}%)`}:</strong> {qualityAuditResult.summary}
+              </span>
+            </div>
+
+            <div className="ribbon-actions-group">
+              {qualityAuditResult.invalidCount > 0 && (
+                <button
+                  type="button"
+                  className="view-issues-btn"
+                  onClick={() => setShowAuditDetail((prev) => !prev)}
+                  title="Inspect distractor or question issues"
+                >
+                  <AppIcon name="info" size={12} />
+                  {showAuditDetail ? 'Hide Issues' : `Inspect ${qualityAuditResult.invalidCount} Issue${qualityAuditResult.invalidCount > 1 ? 's' : ''}`}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {qualityAuditResult.invalidCount > 0 && showAuditDetail && (
+            <div className="validation-issues-drawer">
+              <div className="issues-drawer-header">
+                <span>Distractor & Quality Audit Issues ({qualityAuditResult.failedItems?.length || 0} Questions)</span>
+                <button type="button" className="pyq-close-btn" onClick={() => setShowAuditDetail(false)}>
+                  <AppIcon name="close" size={12} />
+                </button>
+              </div>
+              <div className="issues-drawer-list">
+                {(qualityAuditResult.failedItems || []).map((item, idx) => (
+                  <div key={idx} className="issue-item-row">
+                    <span className="issue-item-badge">Item #{item.index}</span>
+                    <div className="issue-item-details">
+                      <div className="issue-q-stem">"{item.questionSummary}"</div>
+                      <div className="issue-reasons-list">
+                        {(item.issues || []).map((iss, i) => (
+                          <span key={i} className="issue-reason-pill">⚠️ {iss}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Validation / Diagnostic Bar */}

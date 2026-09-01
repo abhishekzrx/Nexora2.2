@@ -265,25 +265,24 @@ let snapshot = { workspaces: [], activeWorkspaceId: null }
 // ── Hydration ──────────────────────────────────────────────────
 let hydrationPromise = null
 
-export async function hydrateWorkspacesFromSupabase() {
-  if (hydrationPromise) return hydrationPromise
+export async function hydrateWorkspacesFromSupabase(force = false) {
+  if (hydrationPromise && !force) return hydrationPromise
   hydrationPromise = (async () => {
     try {
       const res = await courseService.getCourses()
       let dbCourses = res.success && Array.isArray(res.data) ? res.data : []
 
-      const seedWorkspaces = getSeedWorkspaces()
-      const dbIds = new Set(dbCourses.map((c) => c.id))
-
-      for (const seed of seedWorkspaces) {
-        if (!dbIds.has(seed.id)) {
-          dbCourses = [...dbCourses, seed]
-          // Background sync missing seed course to Supabase to prevent FK constraint errors
-          courseService.ensureCourseExists(seed.id).catch(() => {})
+      if (res.success && dbCourses.length > 0) {
+        // Supabase is the sole root database source of truth
+        workspaces = dbCourses
+      } else if (workspaces.length === 0) {
+        // Fallback only if no workspaces exist at all and DB returned empty
+        if (dbCourses.length === 0 && (!res.success || !Array.isArray(res.data))) {
+          workspaces = getSeedWorkspaces()
+        } else {
+          workspaces = dbCourses
         }
       }
-
-      workspaces = dbCourses
 
       const savedId = (() => {
         try {
@@ -313,15 +312,21 @@ export async function hydrateWorkspacesFromSupabase() {
 
       snapshot = { workspaces, activeWorkspaceId }
       emit()
+      return { success: true, data: workspaces }
     } catch (err) {
       if (import.meta.env.DEV) {
         console.warn('[workspaceStore] hydrateWorkspacesFromSupabase failed:', err)
       }
+      return { success: false, error: err.message }
     } finally {
       hydrationPromise = null
     }
   })()
   return hydrationPromise
+}
+
+export function refreshWorkspaces() {
+  return hydrateWorkspacesFromSupabase(true)
 }
 
 // ── Active Course Persistence & Fallback ──────────────────────────

@@ -4203,6 +4203,199 @@
   margin-top: 8px;
 }
 
+/* ── Course Manager Modal Overlays & Cards ────────────────────── */
+.cm-modal-overlay,
+.cm-security-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: cmFadeIn 0.15s ease-out;
+}
+
+.cm-modal-card,
+.cm-security-modal-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: cmScaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.cm-modal-header,
+.cm-security-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.cm-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #0F172A;
+}
+
+.cm-modal-title,
+.cm-security-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+}
+
+.cm-security-sub {
+  font-size: 12px;
+  color: #64748B;
+  margin: 2px 0 0;
+}
+
+.cm-security-badge-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cm-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cm-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #F1F5F9;
+}
+
+.cm-modal-error,
+.cm-security-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #FEF2F2;
+  border: 1px solid #FEE2E2;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #DC2626;
+}
+
+.cm-security-code-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cm-security-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+  background: #F8FAFC;
+  outline: none;
+  transition: all 0.15s ease;
+  letter-spacing: 0.5px;
+}
+
+.cm-security-input:focus {
+  background: #FFFFFF;
+  border-color: #F1621B;
+  box-shadow: 0 0 0 3px rgba(241, 98, 27, 0.12);
+}
+
+.cm-color-swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cm-color-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.cm-color-btn:hover {
+  transform: scale(1.15);
+}
+
+.cm-color-btn.active {
+  border-color: #0F172A;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #0F172A;
+  transform: scale(1.1);
+}
+
+.cm-refresh-db-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cm-refresh-db-btn:hover {
+  background: #EEF2FF;
+  border-color: #2E5CE6;
+  color: #2E5CE6;
+}
+
+.cm-refresh-db-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes cmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cmScaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 /* KPI Summary Grid (8 Cards) */
 .cm-kpi-summary-grid {
   display: grid;

@@ -20,6 +20,7 @@ import {
   deleteWorkspace,
   toggleLockWorkspace,
   setActiveWorkspace,
+  refreshWorkspaces,
 } from '../../data/workspaceStore'
 import { useAdminStore } from '../../data/adminStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
@@ -52,12 +53,22 @@ function StatusBadge({ status }) {
 function InlineForm({ onSubmit, onCancel }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [status, setStatus] = useState('draft')
+  const [icon, setIcon] = useState('adminDashboard')
+  const [themeColor, setThemeColor] = useState('#F1621B')
+  const [status, setStatus] = useState('active')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
-    onSubmit({ name, description, status })
+    setIsSubmitting(true)
+    setError('')
+    const res = await onSubmit({ name: name.trim(), description: description.trim(), icon, themeColor, status })
+    setIsSubmitting(false)
+    if (res && !res.success) {
+      setError(res.error || 'Failed to create course in database.')
+    }
   }
 
   return (
@@ -71,11 +82,11 @@ function InlineForm({ onSubmit, onCancel }) {
 
       <form onSubmit={handleSubmit} className="cm-create-form">
         <div className="cm-field">
-          <label className="cm-label">Course Name</label>
+          <label className="cm-label">Course Name *</label>
           <input
             type="text"
             className="cm-input"
-            placeholder="e.g., GATE 2026 – Mechanical Engineering"
+            placeholder="e.g., GATE 2026 – Computer Science"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
@@ -95,24 +106,166 @@ function InlineForm({ onSubmit, onCancel }) {
         </div>
 
         <div className="cm-field">
+          <IconPicker value={icon} onChange={setIcon} label="Course Icon *" />
+        </div>
+
+        <div className="cm-field">
+          <label className="cm-label">Theme Color</label>
+          <div className="cm-color-swatches">
+            {COLOR_PRESETS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`cm-color-btn${themeColor === c ? ' active' : ''}`}
+                style={{ background: c }}
+                onClick={() => setThemeColor(c)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="cm-field">
           <label className="cm-label">Publishing Status</label>
           <select className="cm-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
             <option value="active">Active</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>
         </div>
 
+        {error && (
+          <div className="cm-modal-error">
+            <AppIcon name="error" size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="cm-form-actions">
-          <Button variant="secondary" type="button" onClick={onCancel}>
+          <Button variant="secondary" type="button" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit">
-            Create Course
+          <Button variant="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating Course...' : 'Create Course'}
           </Button>
         </div>
       </form>
+    </div>
+  )
+}
+
+/* ── Modal: Edit Existing Course ───────────────────────────────── */
+function EditCourseModal({ course, onSubmit, onClose }) {
+  const [name, setName] = useState(course?.name || '')
+  const [description, setDescription] = useState(course?.description || '')
+  const [icon, setIcon] = useState(course?.icon || 'adminDashboard')
+  const [themeColor, setThemeColor] = useState(course?.themeColor || '#F1621B')
+  const [status, setStatus] = useState(course?.status || 'active')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    setIsSubmitting(true)
+    setError('')
+    const res = await onSubmit({
+      name: name.trim(),
+      description: description.trim(),
+      icon,
+      themeColor,
+      status,
+      published: status !== 'draft' && status !== 'archived',
+    })
+    setIsSubmitting(false)
+    if (res && !res.success) {
+      setError(res.error || 'Failed to update course in database.')
+    }
+  }
+
+  return (
+    <div className="cm-modal-overlay" onClick={onClose}>
+      <div className="cm-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-modal-header">
+          <div className="cm-modal-title-wrap">
+            <AppIcon name="edit" size={18} />
+            <h3 className="cm-modal-title">Edit Course Workspace</h3>
+          </div>
+          <button type="button" className="cm-close-btn" onClick={onClose}>
+            <AppIcon name="close" size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="cm-modal-form">
+          <div className="cm-field">
+            <label className="cm-label">Course Name *</label>
+            <input
+              type="text"
+              className="cm-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="cm-field">
+            <label className="cm-label">Description</label>
+            <input
+              type="text"
+              className="cm-input"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief course overview..."
+            />
+          </div>
+
+          <div className="cm-field">
+            <IconPicker value={icon} onChange={setIcon} label="Course Icon *" />
+          </div>
+
+          <div className="cm-field">
+            <label className="cm-label">Theme Color</label>
+            <div className="cm-color-swatches">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`cm-color-btn${themeColor === c ? ' active' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => setThemeColor(c)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="cm-field">
+            <label className="cm-label">Publishing Status</label>
+            <select className="cm-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="active">Active</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+
+          {error && (
+            <div className="cm-modal-error">
+              <AppIcon name="error" size={14} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="cm-modal-actions">
+            <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
@@ -354,6 +507,7 @@ function CourseListItem({
   course,
   isSelected,
   onSelect,
+  onEditCourse,
   onOpenActionModal,
 }) {
   const triggerAction = (e, actionType) => {
@@ -383,13 +537,16 @@ function CourseListItem({
 
         {/* Embedded Action Icon Toolbar matching design reference */}
         <div className="cm-row-embedded-actions">
-          {/* Rename / Edit */}
+          {/* Edit Course Settings */}
           <button
             type="button"
             className="cm-row-action-icon-btn"
-            onClick={(e) => triggerAction(e, 'rename')}
-            title="Rename Course"
-            aria-label="Rename Course"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditCourse(course)
+            }}
+            title="Edit Course Workspace"
+            aria-label="Edit Course Workspace"
           >
             <AppIcon name="edit" size={14} />
           </button>
@@ -421,8 +578,8 @@ function CourseListItem({
             type="button"
             className="cm-row-action-icon-btn"
             onClick={(e) => triggerAction(e, 'duplicate')}
-            title="Duplicate Course"
-            aria-label="Duplicate Course"
+            title="Duplicate Course in Database"
+            aria-label="Duplicate Course in Database"
           >
             <AppIcon name="copy" size={14} />
           </button>
@@ -432,8 +589,8 @@ function CourseListItem({
             type="button"
             className="cm-row-action-icon-btn danger"
             onClick={(e) => triggerAction(e, 'delete')}
-            title="Delete Course"
-            aria-label="Delete Course"
+            title="Permanently Delete Course"
+            aria-label="Permanently Delete Course"
           >
             <AppIcon name="delete" size={14} />
           </button>
@@ -807,6 +964,13 @@ function CourseManager({ courseName: _courseName }) {
   const [showCreate, setShowCreate] = useState(false)
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false)
   const [selectedCourseId, setSelectedCourseId] = useState(activeWorkspaceId || workspaces[0]?.id)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Edit Course Modal State
+  const [editModal, setEditModal] = useState({
+    open: false,
+    course: null,
+  })
 
   // Security Passcode Modal State
   const [securityModal, setSecurityModal] = useState({
@@ -905,6 +1069,56 @@ function CourseManager({ courseName: _courseName }) {
     })
   }
 
+  const handleOpenEditModal = (course) => {
+    setEditModal({
+      open: true,
+      course,
+    })
+  }
+
+  const handleSaveCourseEdit = async (data) => {
+    if (!editModal.course) return { success: false, error: 'No course selected.' }
+    try {
+      const res = await courseService.updateCourse(editModal.course.id, data)
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'Course Updated',
+          message: `Course "${data.name}" updated in root database.`,
+        })
+        setEditModal({ open: false, course: null })
+        return { success: true }
+      }
+      return { success: false, error: res.error || 'Failed to update course in database.' }
+    } catch (err) {
+      return { success: false, error: err.message || 'Error updating course.' }
+    }
+  }
+
+  const handleRefreshDatabase = async () => {
+    setIsRefreshing(true)
+    try {
+      const res = await refreshWorkspaces()
+      if (res?.success) {
+        showToast({
+          type: 'success',
+          title: 'Database Synchronized',
+          message: `Loaded ${res.data?.length || 0} active courses from Supabase.`,
+        })
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Sync Warning',
+          message: res?.error || 'Could not reach database.',
+        })
+      }
+    } catch (err) {
+      showToast({ type: 'error', title: 'Sync Failed', message: err.message })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   const handleExecuteSecurityAction = async () => {
     if (securityModal.securityCode.trim() !== 'Abhisheka') {
       setSecurityModal((prev) => ({
@@ -921,35 +1135,69 @@ function CourseManager({ courseName: _courseName }) {
     try {
       if (actionType === 'rename') {
         if (!newName.trim()) return
-        renameWorkspace(course.id, newName.trim())
-        await courseService.updateCourse(course.id, { name: newName.trim() })
+        const res = await courseService.updateCourse(course.id, { name: newName.trim() })
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to rename course in database.' }))
+          showToast({ type: 'error', title: 'Rename Failed', message: res.error || 'Failed to rename course.' })
+          return
+        }
         showToast({ type: 'success', title: 'Renamed', message: `Course renamed to "${newName.trim()}".` })
       } else if (actionType === 'delete') {
-        deleteWorkspace(course.id)
-        await courseService.deleteCourse(course.id)
-        showToast({ type: 'success', title: 'Deleted', message: `Course "${course.name}" deleted successfully.` })
+        const res = await courseService.deleteCourse(course.id)
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to delete course from database.' }))
+          showToast({ type: 'error', title: 'Delete Failed', message: res.error || 'Failed to delete from database.' })
+          return
+        }
+        showToast({ type: 'success', title: 'Permanently Deleted', message: `Course "${course.name}" deleted from root database.` })
       } else if (actionType === 'lock' || actionType === 'unlock') {
         toggleLockWorkspace(course.id)
+        await courseService.updateCourse(course.id, { status: course.locked ? 'active' : 'locked' })
         showToast({ type: 'success', title: course.locked ? 'Unlocked' : 'Locked', message: `Course "${course.name}" status updated.` })
       } else if (actionType === 'publish') {
         publishWorkspace(course.id)
-        await courseService.updateCourse(course.id, { status: 'published' })
+        const res = await courseService.updateCourse(course.id, { status: 'published', published: true })
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to publish course.' }))
+          return
+        }
         showToast({ type: 'success', title: 'Published', message: `Course "${course.name}" published.` })
       } else if (actionType === 'unpublish') {
         unpublishWorkspace(course.id)
-        await courseService.updateCourse(course.id, { status: 'draft' })
+        const res = await courseService.updateCourse(course.id, { status: 'draft', published: false })
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to unpublish course.' }))
+          return
+        }
         showToast({ type: 'info', title: 'Unpublished', message: `Course "${course.name}" set to draft.` })
       } else if (actionType === 'archive') {
         archiveWorkspace(course.id)
-        await courseService.updateCourse(course.id, { status: 'archived' })
+        const res = await courseService.updateCourse(course.id, { status: 'archived', published: false })
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to archive course.' }))
+          return
+        }
         showToast({ type: 'info', title: 'Archived', message: `Course "${course.name}" archived.` })
       } else if (actionType === 'activate') {
         activateWorkspace(course.id)
-        await courseService.updateCourse(course.id, { status: 'active' })
+        const res = await courseService.updateCourse(course.id, { status: 'active', published: true })
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to activate course.' }))
+          return
+        }
         showToast({ type: 'success', title: 'Activated', message: `Course "${course.name}" activated.` })
       } else if (actionType === 'duplicate') {
-        duplicateWorkspace(course.id)
-        showToast({ type: 'success', title: 'Duplicated', message: `Copy of "${course.name}" created.` })
+        const res = await courseService.duplicateCourse(course.id)
+        if (!res.success) {
+          setSecurityModal((prev) => ({ ...prev, error: res.error || 'Failed to duplicate course in database.' }))
+          showToast({ type: 'error', title: 'Duplicate Failed', message: res.error || 'Failed to duplicate course.' })
+          return
+        }
+        if (res.data?.id) {
+          setSelectedCourseId(res.data.id)
+          setActiveWorkspace(res.data.id)
+        }
+        showToast({ type: 'success', title: 'Duplicated', message: `Copy of "${course.name}" created in database.` })
       }
       setSecurityModal({ open: false, actionType: '', course: null, newName: '', securityCode: '', error: '' })
     } catch (err) {
@@ -960,18 +1208,28 @@ function CourseManager({ courseName: _courseName }) {
   // Handlers
   const handleCreateCourse = async (values) => {
     try {
-      const res = await courseService.createCourse({ name: values.name.trim(), description: values.description.trim(), status: values.status })
+      const res = await courseService.createCourse({
+        name: values.name.trim(),
+        description: values.description.trim(),
+        icon: values.icon,
+        themeColor: values.themeColor,
+        status: values.status,
+        published: values.status !== 'draft' && values.status !== 'archived',
+      })
       if (res.success && res.data) {
         const course = res.data
         setActiveWorkspace(course.id)
         setSelectedCourseId(course.id)
         setShowCreate(false)
-        showToast({ type: 'success', title: 'Course Created', message: `Workspace "${course.name}" created.` })
+        showToast({ type: 'success', title: 'Course Created', message: `Course "${course.name}" saved to database.` })
+        return { success: true }
       } else {
-        showToast({ type: 'error', title: 'Error', message: res.error || 'Unable to create course.' })
+        showToast({ type: 'error', title: 'Error', message: res.error || 'Unable to create course in database.' })
+        return { success: false, error: res.error }
       }
     } catch (err) {
       showToast({ type: 'error', title: 'Error', message: err.message || 'Unable to create course.' })
+      return { success: false, error: err.message }
     }
   }
 
@@ -1117,6 +1375,17 @@ function CourseManager({ courseName: _courseName }) {
             <select className="cm-toolbar-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+
+            <button
+              type="button"
+              className="cm-refresh-db-btn"
+              onClick={handleRefreshDatabase}
+              title="Refresh and sync from root database"
+              disabled={isRefreshing}
+            >
+              <AppIcon name="analyticsTab" size={14} />
+              <span>{isRefreshing ? 'Syncing...' : 'Sync DB'}</span>
+            </button>
           </div>
 
           {/* Course List Header & Items */}
@@ -1138,6 +1407,7 @@ function CourseManager({ courseName: _courseName }) {
                   course={c}
                   isSelected={c.id === selectedCourseId}
                   onSelect={handleSelectCourse}
+                  onEditCourse={handleOpenEditModal}
                   onOpenActionModal={handleOpenActionModal}
                 />
               ))}
@@ -1156,14 +1426,19 @@ function CourseManager({ courseName: _courseName }) {
               <div>
                 <h3 className="cm-top-header-title">Course Manager</h3>
                 <p className="cm-top-header-sub">
-                  Manage all learning courses, their content and publishing status
+                  Root database course management, publishing status & content hierarchy
                 </p>
               </div>
             </div>
 
-            <Button variant="primary" size="sm" className="cm-create-course-btn" onClick={() => setShowCreate(!showCreate)}>
-              <AppIcon name="add" size={14} /> + Create Course
-            </Button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Button variant="secondary" size="sm" onClick={handleRefreshDatabase} disabled={isRefreshing} title="Sync with Database">
+                <AppIcon name="analyticsTab" size={14} /> {isRefreshing ? 'Syncing...' : 'Sync DB'}
+              </Button>
+              <Button variant="primary" size="sm" className="cm-create-course-btn" onClick={() => setShowCreate(!showCreate)}>
+                <AppIcon name="add" size={14} /> + Create Course
+              </Button>
+            </div>
           </div>
 
           {showCreate && (
@@ -1182,6 +1457,15 @@ function CourseManager({ courseName: _courseName }) {
           />
         </div>
       </div>
+
+      {/* Edit Course Modal */}
+      {editModal.open && editModal.course && (
+        <EditCourseModal
+          course={editModal.course}
+          onSubmit={handleSaveCourseEdit}
+          onClose={() => setEditModal({ open: false, course: null })}
+        />
+      )}
 
       {/* Security Passcode Confirmation Modal */}
       <SecurityCodeConfirmModal
