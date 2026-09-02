@@ -8,6 +8,7 @@ import AppIcon from '../ui/AppIcon'
 import Button from '../ui/Button'
 import { useAdminStore } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
+import { useMemberStore } from '../../data/memberStore'
 import { mcqService } from '../../services/mcqService'
 import { showToast } from '../../data/feedbackStore'
 import { getActiveExamKey, getExamProfile } from '../../data/examProfiles'
@@ -17,6 +18,7 @@ import PyqBadge from '../mcq/PyqBadge'
 export default function McqManager() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { allSubjects, allChapters, allMcqs } = useAdminStore()
+  const { isSuperAdmin, isViewingAs } = useMemberStore()
 
   const activeExamKey = getActiveExamKey()
   const activeExamProfile = getExamProfile(activeExamKey)
@@ -120,18 +122,13 @@ export default function McqManager() {
     }
     setLoading(true)
     const res = await mcqService.getMcqs(selectedCourseId, selectedSubjectId, selectedChapterId)
-    if (res.success && Array.isArray(res.data)) {
+    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
       setChapterMcqs(res.data.filter((m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)))
     } else {
-      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
-      if (isUuid(selectedChapterId)) {
-        const storeFiltered = allMcqs.filter(
-          (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
-        )
-        setChapterMcqs(storeFiltered)
-      } else {
-        setChapterMcqs([])
-      }
+      const storeFiltered = allMcqs.filter(
+        (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
+      )
+      setChapterMcqs(storeFiltered)
     }
     setLoading(false)
   }
@@ -215,6 +212,10 @@ export default function McqManager() {
 
   // Delete Single MCQ (without deleting chapter)
   const handleDeleteSingleMcq = (mcqId, qText) => {
+    if (!isSuperAdmin || isViewingAs) {
+      showToast({ type: 'error', title: 'Permission Denied', message: 'Only Super Admin can delete MCQs.' })
+      return
+    }
     const currentChap = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
     const chapName = currentChap?.name || currentChap?.title || 'Selected Chapter'
 

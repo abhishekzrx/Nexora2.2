@@ -37,16 +37,37 @@ function SideDrawer({
     }
   }
 
-  // Filter out Admin link if not Super Admin
-  const filteredSections = (sections || []).map((sec) => ({
-    ...sec,
-    items: (sec.items || []).filter((item) => {
+  // Filter out Admin links if not Super Admin & add Member Management for Super Admin
+  const filteredSections = (sections || []).map((sec) => {
+    let items = (sec.items || []).filter((item) => {
       if (item.label === 'Admin' || item.icon === 'adminDashboard') {
         return isSuperAdmin && !isViewingAs
       }
       return true
-    }),
-  }))
+    })
+
+    if (sec.label === 'SYSTEM' && isSuperAdmin && !isViewingAs) {
+      const hasMembers = items.some((it) => it.label === 'Member Management' || it.key === 'members')
+      if (!hasMembers) {
+        const adminIndex = items.findIndex((it) => it.label === 'Admin')
+        const memberItem = { icon: 'profile', label: 'Member Management', key: 'members' }
+        if (adminIndex !== -1) {
+          items = [
+            ...items.slice(0, adminIndex + 1),
+            memberItem,
+            ...items.slice(adminIndex + 1),
+          ]
+        } else {
+          items = [memberItem, ...items]
+        }
+      }
+    }
+
+    return {
+      ...sec,
+      items,
+    }
+  })
 
   return (
     <>
@@ -87,23 +108,41 @@ function SideDrawer({
               </div>
             ) : null}
 
-            {/* Quick Mode Switcher ONLY for Super Admin */}
+            {/* Quick Mode Switcher & Member Management ONLY for Super Admin */}
             {isSuperAdmin && !isViewingAs && (
-              <div className="drawer-mode-switch-card">
-                <div className="mode-switch-left">
-                  <span className="mode-role-icon">{isAdmin ? '⚡' : '👑'}</span>
-                  <div className="mode-role-text">
-                    <span className="mode-role-title">{isAdmin ? 'Admin Studio' : 'Super Admin'}</span>
-                    <span className="mode-role-sub">{isAdmin ? 'Content & Syllabus CMS' : 'Student View Active'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', width: '100%' }}>
+                <div className="drawer-mode-switch-card">
+                  <div className="mode-switch-left">
+                    <span className="mode-role-icon">{isAdmin ? '⚡' : '👑'}</span>
+                    <div className="mode-role-text">
+                      <span className="mode-role-title">{isAdmin ? 'Admin Studio' : 'Super Admin'}</span>
+                      <span className="mode-role-sub">{isAdmin ? 'Content & Syllabus CMS' : 'Student View Active'}</span>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    className="mode-switch-btn"
+                    onClick={handleToggleMode}
+                    title={isAdmin ? 'Switch to Student Learning' : 'Switch to Admin Studio'}
+                  >
+                    {isAdmin ? 'Student Mode ➔' : 'Admin Mode ➔'}
+                  </button>
                 </div>
+
                 <button
                   type="button"
-                  className="mode-switch-btn"
-                  onClick={handleToggleMode}
-                  title={isAdmin ? 'Switch to Student Learning' : 'Switch to Admin Studio'}
+                  className="drawer-members-quick-btn"
+                  onClick={() => {
+                    onClose?.()
+                    onItemClick?.({ label: 'Member Management', key: 'members' })
+                  }}
+                  title="Open Super Admin Member Management"
                 >
-                  {isAdmin ? 'Student Mode ➔' : 'Admin Mode ➔'}
+                  <div className="drawer-members-btn-left">
+                    <span className="drawer-members-btn-icon">👥</span>
+                    <span>Member Management</span>
+                  </div>
+                  <span className="drawer-members-btn-arrow">➔</span>
                 </button>
               </div>
             )}

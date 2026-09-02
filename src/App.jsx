@@ -39,7 +39,7 @@ function resolveRoute() {
 
   if (parts[0] === 'notes') return { name: 'notes' }
 
-  if (parts[0] === 'admin') return { name: 'admin' }
+  if (parts[0] === 'admin') return { name: 'admin', section: parts[1] || 'dashboard' }
 
   if (parts[0] === 'subject' && parts[1]) {
     const subjectKey = parts[1]
@@ -86,12 +86,16 @@ function App() {
     navigate('login')
   }
 
-  const handleSwitchToAdmin = () => {
+  const handleSwitchToAdmin = (section) => {
     if (!permissionService.canAccessAdmin(effectiveMember)) {
       return
     }
     switchToAdmin()
-    navigate('admin')
+    if (section && typeof section === 'string') {
+      navigate(`admin/${section}`)
+    } else {
+      navigate('admin')
+    }
   }
 
   const handleSwitchToStudent = () => {
@@ -204,6 +208,7 @@ function App() {
 
     return (
       <AdminPage
+        initialSection={route?.section || 'dashboard'}
         onBackHome={handleSwitchToStudent}
         onLogout={handleLogout}
         onSwitchToStudent={handleSwitchToStudent}

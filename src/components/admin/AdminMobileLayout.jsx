@@ -29,6 +29,7 @@ function AdminMobileLayout({ children, activeTab, onNavigate, courseName, onBack
       label: 'ADMIN MANAGEMENT',
       items: [
         { key: 'dashboard', label: 'Dashboard', icon: 'adminDashboard', active: activeTab === 'Dashboard' },
+        { key: 'members', label: 'Member Management', icon: 'profile', active: activeTab === 'Member Management' || activeTab === 'Members' },
         { key: 'courses', label: 'Course Manager', icon: 'folder', active: activeTab === 'Courses' },
         { key: 'subjects', label: 'Subjects & Chapters', icon: 'chapters', active: activeTab === 'Subjects' },
         { key: 'notes', label: 'Notes Editor', icon: 'notesTab', active: activeTab === 'Notes Editor' || activeTab === 'Notes' },

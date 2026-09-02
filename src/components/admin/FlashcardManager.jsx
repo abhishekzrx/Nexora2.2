@@ -9,6 +9,7 @@ import { useAdminStore, getChaptersBySubject } from '../../data/adminStore'
 import { useWorkspaceStore } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
 import { mcqService } from '../../services/mcqService'
+import { useMemberStore } from '../../data/memberStore'
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard']
 
@@ -249,6 +250,7 @@ function PreviewFlashcardCard({ item, index, onUpdate, onRemove }) {
 
 export default function FlashcardManager({ onBack }) {
   const { activeWorkspaceId: activeCourseId } = useWorkspaceStore()
+  const { isSuperAdmin, isViewingAs } = useMemberStore()
   const subjects = useAdminStore().subjects
   const [form, setForm] = useState({
     subject: '',
@@ -275,6 +277,15 @@ export default function FlashcardManager({ onBack }) {
   }, [])
 
   const handleInject = useCallback(async () => {
+    if (!isSuperAdmin || isViewingAs) {
+      showToast({
+        type: 'error',
+        title: 'Permission Denied',
+        message: 'Only Super Admin is authorized to upload or inject flashcards.',
+      })
+      return
+    }
+
     if (preview.length === 0) return
     const records = preview.map(({ id: _id, ...rest }) => rest)
     const subject = subjects.find((s) => s.name === form.subject)

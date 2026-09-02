@@ -21,6 +21,7 @@ import {
   hydrateAdminStoreFromSupabase,
 } from '../../data/adminStore'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
+import { useMemberStore } from '../../data/memberStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 import { subjectService, getSubjectIconByName } from '../../services/subjectService'
 import { chapterService } from '../../services/chapterService'
@@ -2520,6 +2521,7 @@ function SelectedSubjectPanel({
 function SubjectManager({ courseName: _courseName, onNavigate }) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { subjects, chapters, mcqs, flashcards, notes, allSubjects } = useAdminStore()
+  const { isSuperAdmin, isViewingAs } = useMemberStore()
 
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -2555,6 +2557,11 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   }
 
   const handleExecuteSubjectDelete = async () => {
+    if (!isSuperAdmin || isViewingAs) {
+      showToast({ type: 'error', title: 'Permission Denied', message: 'Only Super Admin can delete subjects.' })
+      return
+    }
+
     if (deleteSubjectModal.securityCode.trim() !== 'Abhisheka') {
       setDeleteSubjectModal((prev) => ({
         ...prev,
@@ -2689,6 +2696,11 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   const [isSavingSubject, setIsSavingSubject] = useState(false)
 
   const handleSaveSubject = async (data) => {
+    if (!isSuperAdmin || isViewingAs) {
+      showToast({ type: 'error', title: 'Permission Denied', message: 'Only Super Admin can create or update subjects.' })
+      return { success: false, error: 'Permission Denied' }
+    }
+
     const targetCourse = workspaces.find((w) => w.id === data.courseId)
     setIsSavingSubject(true)
     try {

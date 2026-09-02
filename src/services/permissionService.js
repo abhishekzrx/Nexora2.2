@@ -48,6 +48,16 @@ export const permissionService = {
   },
 
   /**
+   * Layer 1 Super Admin Guard: Content updates (MCQs, Flashcards, Notes, Subjects, Chapters, Courses)
+   * can strictly and only be performed by Super Admin.
+   */
+  canEditContent(member) {
+    if (!member) return false
+    if (!this.isMemberActive(member)) return false
+    return this.isSuperAdmin(member)
+  },
+
+  /**
    * Layer 2 Guard: Can user access a specific course?
    */
   canAccessCourse(member, courseId) {

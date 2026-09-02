@@ -204,6 +204,46 @@
   box-shadow: 0 4px 12px rgba(241, 98, 27, 0.6);
 }
 
+.drawer-members-quick-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  color: #FFFFFF;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.drawer-members-quick-btn:hover {
+  background: rgba(241, 98, 27, 0.18);
+  border-color: rgba(241, 98, 27, 0.45);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(241, 98, 27, 0.2);
+}
+
+.drawer-members-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-members-btn-icon {
+  font-size: 1rem;
+}
+
+.drawer-members-btn-arrow {
+  color: #FF8A3D;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
 /* ── Menu List ─────────────────────────────────────────────────────── */
 .drawer-menu {
   flex: 1;

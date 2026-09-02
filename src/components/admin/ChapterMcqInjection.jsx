@@ -23,6 +23,7 @@ import {
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { showToast } from '../../data/feedbackStore'
 import { mcqService } from '../../services/mcqService'
+import { useMemberStore } from '../../data/memberStore'
 import { getExamProfile, getActiveExamKey, setActiveExam, resolveExamProfile } from '../../data/examProfiles'
 import { getRelevantPYQs, analyzePYQs } from '../../data/pyqRepository'
 import { getCourseConfig } from '../../data/courseConfigs'
@@ -95,6 +96,7 @@ const SUBJECT_DOMAINS = {
 export default function ChapterMcqInjection() {
   const adminState = useAdminStore()
   const workspaceState = useWorkspaceStore()
+  const { isSuperAdmin, isViewingAs } = useMemberStore()
   const workspaces = Array.isArray(workspaceState.workspaces) ? workspaceState.workspaces : []
   const activeWorkspaceId = workspaceState.activeWorkspaceId
 
@@ -583,6 +585,16 @@ export default function ChapterMcqInjection() {
   // Backend Injection Handler
   const handlePerformInjection = async () => {
     if (injectionStatus === 'injecting') return
+
+    if (!isSuperAdmin || isViewingAs) {
+      showToast({
+        type: 'error',
+        title: 'Permission Denied',
+        message: 'Only Super Admin can upload or inject MCQs and Flashcards.',
+      })
+      return
+    }
+
     if (!currentPayload || (Array.isArray(currentPayload) && currentPayload.length === 0)) {
       showToast({ type: 'warning', title: 'No Payload', message: 'Please load valid JSON first.' })
       return
@@ -590,13 +602,6 @@ export default function ChapterMcqInjection() {
 
     if (!selectedCourseId || !activeSubject || !activeChapter) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Please select a valid Course, Subject, and Chapter.' })
-      return
-    }
-
-    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
-
-    if (!isUuid(activeSubject.id) || !isUuid(activeChapter.id)) {
-      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Subject or Chapter is missing a valid database UUID.' })
       return
     }
 

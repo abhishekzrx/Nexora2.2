@@ -728,6 +728,7 @@ function DashboardPage({
           else if (item.label === 'Subjects') onNavigateSubjects()
           else if (item.label === 'Practice') onNavigatePractice()
           else if (item.label === 'Notes') onNavigateNotes ? onNavigateNotes() : navigate('notes')
+          else if (item.label === 'Member Management' || item.key === 'members') onNavigateAdmin ? onNavigateAdmin('members') : navigate('admin/members')
           else if (item.label === 'Admin') onNavigateAdmin()
         }}
         onSwitchMode={(mode) => {

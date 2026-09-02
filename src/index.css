@@ -1,4 +1,5 @@
 @import './styles/tokens.css';
+@import './styles/sideDrawer.css';
 
 * {
   box-sizing: border-box;
@@ -495,7 +496,3 @@ button:disabled {
 .mini-card.clickable {
   cursor: pointer;
 }
-
-/* ============================================
-/* ── SIDE DRAWER (Loaded from dedicated sideDrawer.css) ── */
-@import './styles/sideDrawer.css';
