@@ -1,0 +1,829 @@
+/**
+ * memberManager.css
+ * Clean, modern, calm & responsive design for Member Management & Access Control.
+ * Calms down vibrant colors to a balanced, professional, elegant dark slate palette.
+ */
+
+/* ── Container ─────────────────────────────────────────────────────── */
+.mm-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: #F8FAFC;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .mm-container {
+    padding: 16px 12px;
+  }
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.mm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.mm-header-title {
+  margin: 0 0 6px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+}
+
+.mm-header-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #94A3B8;
+  line-height: 1.4;
+}
+
+.mm-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.mm-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #EA580C;
+  color: #FFFFFF;
+  border: 1px solid rgba(234, 88, 12, 0.4);
+  border-radius: 9px;
+  padding: 9px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.mm-btn-primary:hover {
+  background: #F97316;
+  border-color: #F97316;
+  transform: translateY(-1px);
+}
+
+.mm-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(30, 41, 59, 0.7);
+  color: #E2E8F0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  padding: 9px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.mm-btn-secondary:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+/* ── Summary KPI Cards ─────────────────────────────────────────────── */
+.mm-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 900px) {
+  .mm-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .mm-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+.mm-metric-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: border-color 0.15s ease;
+}
+
+.mm-metric-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.mm-metric-label {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.mm-metric-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #F8FAFC;
+  line-height: 1.1;
+}
+
+.mm-metric-val.active {
+  color: #34D399;
+}
+
+.mm-metric-val.disabled {
+  color: #F87171;
+}
+
+.mm-metric-val.archived {
+  color: #94A3B8;
+}
+
+/* ── Course Filter Bar ─────────────────────────────────────────────── */
+.mm-course-bar {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.mm-course-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.mm-course-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #E2E8F0;
+}
+
+.mm-view-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mm-view-btn {
+  background: transparent;
+  color: #94A3B8;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.mm-view-btn.active {
+  background: #1E293B;
+  color: #F8FAFC;
+  font-weight: 700;
+}
+
+.mm-course-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.mm-course-pills::-webkit-scrollbar {
+  height: 4px;
+}
+
+.mm-course-pills::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.mm-pill {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94A3B8;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+}
+
+.mm-pill:hover {
+  background: rgba(51, 65, 85, 0.6);
+  color: #E2E8F0;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.mm-pill.active {
+  background: #EA580C;
+  border-color: #EA580C;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.mm-pill-count {
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.mm-pill.active .mm-pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+
+/* ── Filter & Search Toolbar ───────────────────────────────────────── */
+.mm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.mm-status-pills {
+  display: flex;
+  gap: 6px;
+  background: #111827;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mm-status-btn {
+  background: transparent;
+  color: #94A3B8;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mm-status-btn:hover {
+  color: #E2E8F0;
+}
+
+.mm-status-btn.active {
+  background: #1E293B;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.mm-search-box {
+  position: relative;
+  flex: 1;
+  max-width: 340px;
+  min-width: 220px;
+}
+
+@media (max-width: 640px) {
+  .mm-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mm-search-box {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .mm-status-pills {
+    overflow-x: auto;
+    width: 100%;
+  }
+}
+
+.mm-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  padding: 8px 34px 8px 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.mm-search-input:focus {
+  border-color: #EA580C;
+}
+
+.mm-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+}
+
+/* ── Grouped Section Card ──────────────────────────────────────────── */
+.mm-course-group {
+  background: #0F172A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.mm-course-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.mm-course-group-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mm-course-group-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.mm-course-group-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-course-group-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.mm-course-group-sub {
+  font-size: 0.76rem;
+  color: #94A3B8;
+  margin-top: 2px;
+}
+
+/* ── Members Grid ──────────────────────────────────────────────────── */
+.mm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 480px) {
+  .mm-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Member Card (Clean & Subtle) ─────────────────────────────────── */
+.mm-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.mm-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #141D2F;
+}
+
+.mm-card.super-admin {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(180deg, #161F30 0%, #111827 100%);
+}
+
+.mm-card.archived {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+/* Member Card Header */
+.mm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mm-card-name-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.mm-card-name {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mm-role-badge {
+  background: rgba(245, 158, 11, 0.12);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.mm-card-meta {
+  font-size: 0.76rem;
+  color: #94A3B8;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mm-status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.mm-status-pill.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.mm-status-pill.disabled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.mm-status-pill.archived {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94A3B8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Warrior Row */
+.mm-warrior-row {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mm-warrior-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #F8FAFC;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mm-public-id {
+  font-size: 0.72rem;
+  color: #94A3B8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+}
+
+/* Course Allotment Chips */
+.mm-allotment-block {
+  margin-bottom: 14px;
+}
+
+.mm-allotment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mm-allotment-label {
+  font-size: 0.72rem;
+  color: #64748B;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mm-allotment-edit-btn {
+  background: transparent;
+  border: none;
+  color: #EA580C;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mm-allotment-edit-btn:hover {
+  text-decoration: underline;
+}
+
+.mm-allotment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-course-chip {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #E2E8F0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mm-course-chip.global {
+  background: rgba(234, 88, 12, 0.12);
+  border-color: rgba(234, 88, 12, 0.25);
+  color: #FB923C;
+}
+
+.mm-course-chip.none {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+}
+
+/* Card Action Bar */
+.mm-card-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+@media (max-width: 400px) {
+  .mm-card-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.mm-action-btn {
+  background: rgba(30, 41, 59, 0.6);
+  color: #CBD5E1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mm-action-btn:hover {
+  background: rgba(51, 65, 85, 0.8);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.mm-action-btn.view-as {
+  color: #F8FAFC;
+  font-weight: 700;
+}
+
+.mm-action-btn.access {
+  background: rgba(234, 88, 12, 0.12);
+  border-color: rgba(234, 88, 12, 0.25);
+  color: #FB923C;
+}
+
+.mm-action-btn.access:hover {
+  background: rgba(234, 88, 12, 0.22);
+}
+
+.mm-action-btn.danger {
+  color: #F87171;
+}
+
+.mm-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.mm-action-btn.success {
+  color: #34D399;
+}
+
+.mm-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Modal Overlays & Cards ────────────────────────────────────────── */
+.mm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.mm-modal-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 540px;
+  color: #F8FAFC;
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.mm-modal-card.wide {
+  max-width: 760px;
+}
+
+@media (max-width: 600px) {
+  .mm-modal-card {
+    padding: 18px 14px;
+    max-height: 95vh;
+  }
+}
+
+.mm-modal-title {
+  margin: 0 0 6px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.mm-modal-sub {
+  margin: 0 0 18px 0;
+  font-size: 0.82rem;
+  color: #94A3B8;
+  line-height: 1.4;
+}
+
+.mm-form-group {
+  margin-bottom: 14px;
+}
+
+.mm-form-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94A3B8;
+  margin-bottom: 5px;
+}
+
+.mm-form-input,
+.mm-form-select {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0B0F17;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #FFFFFF;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.mm-form-input:focus,
+.mm-form-select:focus {
+  border-color: #EA580C;
+}
+
+.mm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.mm-empty-state {
+  background: #111827;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 36px 20px;
+  text-align: center;
+  color: #94A3B8;
+}
+
+.mm-empty-icon {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.mm-empty-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.mm-empty-sub {
+  font-size: 0.82rem;
+  margin: 0 0 14px 0;
+}
