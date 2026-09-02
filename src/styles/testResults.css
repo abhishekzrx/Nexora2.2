@@ -12,14 +12,14 @@
   --purple: #7C3AED;
   --purple-bg: #F3EEFE;
   --orange: #F1621B;
-  --orange-light: #FF8A3D;
-  --orange-bg: #FFF1E6;
-  --blue: #2E90FA;
-  --gray-text: #667085;
-  --dark: #101828;
-  --border: #EAECF0;
-  --card-bg: #FFFFFF;
-  --page-bg: #F7F8FA;
+  --orange-light: #F97316;
+  --orange-bg: rgba(234, 88, 12, 0.12);
+  --blue: #3B82F6;
+  --gray-text: #94A3B8;
+  --dark: #F8FAFC;
+  --border: rgba(255, 255, 255, 0.08);
+  --card-bg: #111827;
+  --page-bg: #0B0F19;
 }
 
 .results-shell * {
@@ -36,7 +36,8 @@
 }
 
 .results-shell .phone {
-  max-width: 600px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   background: var(--page-bg);
   min-height: 100vh;

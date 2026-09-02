@@ -7,15 +7,15 @@
 @import './notes.css';
 
 .subject-detail-shell {
-  --accent: #F1621B;
-  --accent-light: #FF7A2E;
-  --accent-bg: #FFF1E6;
-  --accent-soft: #FDECE3;
-  --bg: #fff;
-  --gray-text: #667085;
-  --dark: #101828;
-  --border: #EDEEF1;
-  --page-bg: #fff;
+  --accent: #EA580C;
+  --accent-light: #F97316;
+  --accent-bg: rgba(234, 88, 12, 0.12);
+  --accent-soft: rgba(234, 88, 12, 0.08);
+  --bg: #0B0F19;
+  --gray-text: #94A3B8;
+  --dark: #F8FAFC;
+  --border: rgba(255, 255, 255, 0.08);
+  --page-bg: #0B0F19;
 }
 
 .subject-detail-shell * {
@@ -23,7 +23,8 @@
 }
 
 .subject-detail-shell .phone {
-  max-width: 480px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   background: var(--page-bg);
   min-height: 100vh;

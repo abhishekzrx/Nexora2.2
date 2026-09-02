@@ -32,15 +32,15 @@
   --teal-bg: #E6F7F7;
 
   /* Neutral palette */
-  --gray-text: #667085;
-  --gray-subtle: #98A2B3;
-  --gray-light: #D0D5DD;
-  --gray-track: #EEF0F2;
-  --gray-border: #EAECF0;
-  --dark: #101828;
-  --dark-2: #344054;
-  --border: #EDEEF1;
-  --page-bg: #F7F8FA;
+  --gray-text: #94A3B8;
+  --gray-subtle: #64748B;
+  --gray-light: #334155;
+  --gray-track: #1E293B;
+  --gray-border: rgba(255, 255, 255, 0.08);
+  --dark: #F8FAFC;
+  --dark-2: #E2E8F0;
+  --border: rgba(255, 255, 255, 0.08);
+  --page-bg: #0B0F19;
 
   /* Dark card gradients */
   --dark-card: linear-gradient(115deg, #0B0F1A 0%, #14181F 55%, #4A2410 100%);
