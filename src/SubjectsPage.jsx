@@ -46,7 +46,7 @@ const drawerSections = [
   {
     label: 'MORE',
     items: [
-      { icon: 'notes', label: 'Notes', disabled: true },
+      { icon: 'notes', label: 'Notes' },
       { icon: 'notifications', label: 'Notifications', badge: '3', disabled: true },
       { icon: 'settings', label: 'Settings', disabled: true },
       { icon: 'help', label: 'Help & Support', disabled: true },
@@ -88,7 +88,15 @@ function generateSmoothPath(points, width = 200, height = 34, padding = 4) {
   return { path: d, area, lastPoint: last }
 }
 
-function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail = () => {}, onNavigatePractice = () => {}, onNavigateAdmin = () => {} }) {
+function SubjectsPage({
+  courseId,
+  onNavigateHome = () => {},
+  onOpenSubjectDetail = () => {},
+  onNavigatePractice = () => {},
+  onNavigateNotes = () => {},
+  onNavigateAdmin = () => {},
+  onLogout = () => {},
+}) {
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef(null)
@@ -295,6 +303,7 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
           setDrawerOpen(false)
           if (item.label === 'Dashboard') onNavigateHome()
           else if (item.label === 'Practice') onNavigatePractice()
+          else if (item.label === 'Notes') onNavigateNotes ? onNavigateNotes() : navigate('notes')
           else if (item.label === 'Admin') onNavigateAdmin()
         }}
       />

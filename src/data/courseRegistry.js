@@ -191,6 +191,7 @@ export function useCourseRegistry(courseId) {
   const chapters = useMemo(() => applyChapterOverrides(rawChapters), [rawChapters])
   const mcqs = adminState.allMcqs || adminState.mcqs || []
   const flashcards = adminState.allFlashcards || adminState.flashcards || []
+  const notes = adminState.allNotes || adminState.notes || []
   const progressList = userProgressState.progressList || []
 
   const courseSubjects = useMemo(() => {
@@ -212,6 +213,11 @@ export function useCourseRegistry(courseId) {
     if (!courseId) return flashcards
     return flashcards.filter((f) => !f.courseId || f.courseId === courseId)
   }, [courseId, flashcards])
+
+  const courseNotes = useMemo(() => {
+    if (!courseId) return notes
+    return notes.filter((n) => !n.courseId || n.courseId === courseId)
+  }, [courseId, notes])
 
   const snapshot = useMemo(() => {
     const catalog = {}
@@ -261,12 +267,35 @@ export function useCourseRegistry(courseId) {
         )
       })
 
+      const subNotes = courseNotes.filter((n) => {
+        if (!n) return false
+        const nSubKey = subjectKeyFor(n.subject || n.subjectName, n.subjectId || n.subject_id)
+        return (
+          n.subject === sub.name ||
+          n.subjectId === sub.id ||
+          n.subject === sub.id ||
+          n.subject_id === sub.id ||
+          n.subject === key ||
+          n.subjectId === key ||
+          nSubKey === key
+        )
+      })
+
       const enrichedChapters = subChapters.map((ch) => {
         const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
         const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
+        const chNotes = subNotes.filter((n) => {
+          return (
+            matchContentToChapter(n, ch) ||
+            String(n.chapterId || n.chapter_id) === String(ch.id) ||
+            (n.title && ch.name && n.title.toLowerCase().includes(ch.name.toLowerCase())) ||
+            (n.chapterName && ch.name && n.chapterName.toLowerCase() === ch.name.toLowerCase())
+          )
+        })
 
         const totalMcqs = chMcqs.length
         const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
+        const totalNotes = chNotes.length > 0 ? chNotes.length : (typeof ch.notes === 'number' ? ch.notes : 0)
 
         return {
           ...ch,
@@ -275,17 +304,22 @@ export function useCourseRegistry(courseId) {
           totalMcqs,
           flashcards: totalFlashcards,
           totalFlashcards,
+          chNotes,
+          notes: totalNotes,
+          totalNotes,
         }
       })
 
       const actualSubjectMcqs = enrichedChapters.reduce((sum, c) => sum + (c.totalMcqs || 0), 0)
+      const actualSubjectNotes = enrichedChapters.reduce((sum, c) => sum + (c.totalNotes || c.notes || 0), 0)
+      const finalNotes = actualSubjectNotes > 0 ? actualSubjectNotes : (subNotes.length > 0 ? subNotes.length : (sub.notes || 0))
 
       const enrichedSubject = {
         ...sub,
         chapters: enrichedChapters,
         mcqs: actualSubjectMcqs,
         flashcards: subFlashcards.length || sub.flashcards || 0,
-        notes: sub.notes || 0,
+        notes: finalNotes,
       }
 
       catalog[key] = buildSubjectEntry(key, enrichedSubject, index, progressList)
@@ -305,16 +339,17 @@ export function useCourseRegistry(courseId) {
       noteCount: list.reduce((n, s) => n + (s.counts?.notes || 0), 0),
       lockedSubjectCount: list.filter((s) => s.locked).length,
     }
-  }, [courseSubjects, courseChapters, courseMcqs, courseFlashcards, progressList])
+  }, [courseSubjects, courseChapters, courseMcqs, courseFlashcards, courseNotes, progressList])
 
   return snapshot
 }
 
-export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards, progressList = []) {
+export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards, notes = [], progressList = []) {
   const courseSubjects = subjects.filter((s) => s.courseId === courseId)
   const courseChapters = chapters.filter((c) => c.courseId === courseId)
   const courseMcqs = mcqs.filter((m) => m.courseId === courseId)
   const courseFlashcards = flashcards.filter((f) => f.courseId === courseId)
+  const courseNotes = notes.filter((n) => n.courseId === courseId)
 
   const catalog = {}
   const orderedKeys = []
@@ -329,12 +364,17 @@ export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards
     const subFlashcards = courseFlashcards.filter(
       (f) => f.subjectId === sub.id || f.subject_id === sub.id || f.subject === sub.name
     )
+    const subNotes = courseNotes.filter(
+      (n) => n.subjectId === sub.id || n.subject_id === sub.id || n.subject === sub.name
+    )
 
     const enrichedChapters = subChapters.map((ch) => {
       const chMcqs = subMcqs.filter((m) => matchContentToChapter(m, ch))
       const chFlash = subFlashcards.filter((f) => matchContentToChapter(f, ch))
+      const chNotes = subNotes.filter((n) => matchContentToChapter(n, ch) || String(n.chapterId || n.chapter_id) === String(ch.id))
       const totalMcqs = chMcqs.length
       const totalFlashcards = chFlash.length > 0 ? chFlash.length : (typeof ch.flashcards === 'number' ? ch.flashcards : 0)
+      const totalNotes = chNotes.length > 0 ? chNotes.length : (typeof ch.notes === 'number' ? ch.notes : 0)
       return {
         ...ch,
         chMcqs,
@@ -342,17 +382,22 @@ export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards
         totalMcqs,
         flashcards: totalFlashcards,
         totalFlashcards,
+        chNotes,
+        notes: totalNotes,
+        totalNotes,
       }
     })
 
     const actualSubjectMcqs = enrichedChapters.reduce((sum, c) => sum + (c.totalMcqs || 0), 0)
+    const actualSubjectNotes = enrichedChapters.reduce((sum, c) => sum + (c.totalNotes || c.notes || 0), 0)
+    const finalNotes = actualSubjectNotes > 0 ? actualSubjectNotes : (subNotes.length > 0 ? subNotes.length : (sub.notes || 0))
 
     const enrichedSubject = {
       ...sub,
       chapters: enrichedChapters,
       mcqs: actualSubjectMcqs,
       flashcards: subFlashcards.length || sub.flashcards || 0,
-      notes: 0,
+      notes: finalNotes,
     }
     catalog[key] = buildSubjectEntry(key, enrichedSubject, index, progressList)
     orderedKeys.push(key)

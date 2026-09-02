@@ -12,6 +12,7 @@ import StudentCourseSelector from './components/student/StudentCourseSelector'
 import RoleSwitch from './components/student/RoleSwitch'
 import { formatCompactNumber, formatInteger } from './services/mcqAnalyticsService'
 import SubjectCard from './components/subject/SubjectCard'
+import EmptyCourseState from './components/admin/EmptyCourseState'
 import { useMemberStore } from './data/memberStore'
 import { permissionService } from './services/permissionService'
 import { userAnalyticsService } from './services/userAnalyticsService'
@@ -134,7 +135,7 @@ const drawerSections = [
   {
     label: 'LEARNING',
     items: [
-      { icon: 'notes', label: 'Notes', disabled: true },
+      { icon: 'notes', label: 'Notes' },
       { icon: 'flashcards', label: 'Flashcards', disabled: true },
       { icon: 'mockTests', label: 'Mock Tests', disabled: true },
     ],
@@ -243,6 +244,7 @@ function DashboardPage({
   courseId,
   onNavigateSubjects = () => {},
   onNavigatePractice = () => {},
+  onNavigateNotes = () => {},
   onOpenSubjectDetail = () => {},
   onNavigateAdmin = () => {},
   onLogout = () => {},
@@ -725,6 +727,7 @@ function DashboardPage({
           if (item.label === 'Dashboard') navigate('')
           else if (item.label === 'Subjects') onNavigateSubjects()
           else if (item.label === 'Practice') onNavigatePractice()
+          else if (item.label === 'Notes') onNavigateNotes ? onNavigateNotes() : navigate('notes')
           else if (item.label === 'Admin') onNavigateAdmin()
         }}
         onSwitchMode={(mode) => {
@@ -1031,7 +1034,7 @@ function DashboardPage({
           </div>
 
           {effectiveCourseId && courseRegistry.subjectsList.length === 0 ? (
-            <EmptyCourseState />
+            <EmptyCourseState courseName={activeCourse?.name} />
           ) : (
             <section className="dash-subjects-grid">
               {subjectCards.map((subject) => (

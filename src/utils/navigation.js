@@ -14,6 +14,7 @@
  *   #/subject/:key/results                 → test results
  *   #/subject/:key/chapter/:chapterId/results → test results for specific chapter
  *   #/practice                             → practice hub
+ *   #/notes                                → notes hub
  *   #/admin                                → admin
  */
 

@@ -6,11 +6,11 @@ import { setActiveMember } from '../data/memberStore'
 import { clearUserProgressStore } from '../data/progressStore'
 import { clearAnalyticsStore } from '../data/analyticsStore'
 
-const QUICK_ACCOUNTS = [
-  { id: 'adminalpha', label: '👑 adminalpha', subtitle: 'Super Admin • All Access' },
-  { id: 'MEMBER01', label: '⚔️ MEMBER01 (Rahul)', subtitle: 'BPSC Prelims + CS' },
-  { id: 'MEMBER02', label: '⚔️ MEMBER02 (Priya)', subtitle: 'BPSC Prelims' },
-  { id: 'MEMBER03', label: '⚔️ MEMBER03 (Amit)', subtitle: 'BPSC CS' },
+const QUICK_PROFILES = [
+  { id: 'adminalpha', name: 'Super Admin', course: 'All Courses', icon: '👑' },
+  { id: 'MEMBER01', name: 'Rahul', course: 'BPSC Prelims + CS', icon: '👤' },
+  { id: 'MEMBER02', name: 'Priya', course: 'BPSC Prelims', icon: '👤' },
+  { id: 'MEMBER03', name: 'Amit', course: 'BPSC CS', icon: '👤' },
 ]
 
 const LOGIN_FLASH_DELAY = 1150
@@ -285,41 +285,31 @@ export default function AuthPage({
               </span>
             </div>
 
-            {/* Quick Demo Switcher */}
+            {/* Quick Profile Switcher */}
             {isLogin && (
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px', textAlign: 'center' }}>
+              <div className="authQuickProfilesSection">
+                <div className="authQuickProfilesLabel">
                   Quick Select Profile:
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {QUICK_ACCOUNTS.map((acc) => {
-                    const isSelected = loginStudentId.toUpperCase() === acc.id.toUpperCase()
+                <div className="authQuickProfilesGrid">
+                  {QUICK_PROFILES.map((prof) => {
+                    const isSelected = loginStudentId.toUpperCase() === prof.id.toUpperCase()
                     return (
                       <button
-                        key={acc.id}
+                        key={prof.id}
                         type="button"
+                        className={`authProfileChip${isSelected ? ' authProfileChip--selected' : ''}`}
                         onClick={() => {
-                          setLoginStudentId(acc.id)
+                          setLoginStudentId(prof.id)
                           setLoginPassword('Alpha@123')
                           setLoginError('')
                         }}
-                        style={{
-                          background: isSelected ? 'rgba(241, 98, 27, 0.2)' : '#1E1B1A',
-                          border: `1px solid ${isSelected ? '#F1621B' : '#2F2B28'}`,
-                          color: isSelected ? '#FFFFFF' : '#CBD5E1',
-                          borderRadius: '8px',
-                          padding: '6px 8px',
-                          fontSize: '0.76rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                        }}
                       >
-                        <span>{acc.label}</span>
-                        <span style={{ fontSize: '0.68rem', color: isSelected ? '#FF7A18' : '#64748B' }}>{acc.subtitle}</span>
+                        <div className="authProfileChipHeader">
+                          <span className="authProfileChipIcon">{prof.icon}</span>
+                          <span className="authProfileChipName">{prof.name}</span>
+                        </div>
+                        <span className="authProfileChipCourse">{prof.course}</span>
                       </button>
                     )
                   })}

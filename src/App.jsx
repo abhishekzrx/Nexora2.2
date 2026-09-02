@@ -5,10 +5,11 @@ import SubjectDetailPage from './pages/SubjectDetailPage'
 import MCQPracticePage from './pages/MCQPracticePage'
 import TestResultsPage from './pages/TestResultsPage'
 import PracticeHubPage from './pages/PracticeHubPage'
+import NotesPage from './pages/NotesPage'
 import AdminPage from './pages/AdminPage'
 import AuthPage from './pages/AuthPage'
 import AccessRestrictedCard from './components/common/AccessRestrictedCard'
-import { navigate, parseHash, testSession } from './utils/navigation'
+import { navigate, parseHash, testSession, subjectTabs } from './utils/navigation'
 import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
 import { useWorkspaceStore, hydrateWorkspacesFromSupabase } from './data/workspaceStore'
 import { hydrateAdminStoreFromSupabase } from './data/adminStore'
@@ -35,6 +36,8 @@ function resolveRoute() {
   if (parts[0] === 'subjects') return { name: 'subjects' }
 
   if (parts[0] === 'practice') return { name: 'practice' }
+
+  if (parts[0] === 'notes') return { name: 'notes' }
 
   if (parts[0] === 'admin') return { name: 'admin' }
 
@@ -229,6 +232,24 @@ function App() {
           onNavigateHome={() => navigate('')}
           onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
           onNavigatePractice={() => navigate('practice')}
+          onNavigateNotes={() => navigate('notes')}
+          onNavigateAdmin={handleSwitchToAdmin}
+          onLogout={handleLogout}
+        />
+      )
+    }
+
+    if (name === 'notes') {
+      return (
+        <NotesPage
+          courseId={activeWorkspaceId}
+          onNavigateHome={() => navigate('')}
+          onNavigateSubjects={() => navigate('subjects')}
+          onNavigatePractice={() => navigate('practice')}
+          onOpenSubjectNotes={(key) => {
+            subjectTabs[key] = 'notes'
+            navigate(`subject/${key}`)
+          }}
           onNavigateAdmin={handleSwitchToAdmin}
           onLogout={handleLogout}
         />
@@ -356,6 +377,7 @@ function App() {
         courseId={activeWorkspaceId}
         onNavigateSubjects={() => navigate('subjects')}
         onNavigatePractice={() => navigate('practice')}
+        onNavigateNotes={() => navigate('notes')}
         onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
         onNavigateAdmin={handleSwitchToAdmin}
         onLogout={handleLogout}

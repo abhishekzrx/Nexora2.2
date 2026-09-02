@@ -5,6 +5,7 @@
  * Automatically respects Super Admin privileges and Warrior identity.
  */
 import AppIcon from '../ui/AppIcon'
+import '../../styles/sideDrawer.css'
 import { useRoleStore, switchToAdmin, switchToStudent } from '../../data/roleStore'
 import { useMemberStore } from '../../data/memberStore'
 
@@ -57,25 +58,32 @@ function SideDrawer({
       <aside className={`side-drawer${open ? ' open' : ''}`}>
         {profile ? (
           <div className="drawer-profile">
+            <div className="drawer-profile-glow" aria-hidden="true" />
             <button
               type="button"
               className="drawer-close"
               onClick={onClose}
               aria-label="Close menu"
             >
-              <AppIcon name="close" size={18} />
+              <AppIcon name="close" size={16} />
             </button>
             {profile.name ? <div className="drawer-name">{profile.name}</div> : null}
             {profile.warrior ? (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(241, 98, 27, 0.15)', color: '#FF7A18', padding: '2px 8px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800, margin: '4px 0' }}>
-                ⚔️ {profile.warrior}
+              <div className="drawer-warrior-badge">
+                <span>⚔️</span>
+                <span>{profile.warrior}</span>
               </div>
             ) : null}
-            {profile.sub ? <div className="drawer-sub">{profile.sub}</div> : null}
+            {profile.sub ? (
+              <div className="drawer-sub">
+                <span>📚</span>
+                <span>{profile.sub}</span>
+              </div>
+            ) : null}
             {profile.streak ? (
               <div className="drawer-streak">
-                <AppIcon name="streak" size={14} />
-                {profile.streak}
+                <AppIcon name="streak" size={13} />
+                <span>{profile.streak}</span>
               </div>
             ) : null}
 

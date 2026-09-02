@@ -32,6 +32,8 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL') // 'ALL' | 'ACTIVE' | 'DISABLED' | 'ARCHIVED'
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState('ALL') // 'ALL' | courseId | 'UNASSIGNED'
+  const [viewMode, setViewMode] = useState('grouped') // 'grouped' | 'grid'
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false)
@@ -76,12 +78,36 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
     setLoading(false)
   }
 
+  // Course Member Counts
+  const courseMemberCounts = useMemo(() => {
+    const counts = {}
+    workspaces.forEach((w) => {
+      counts[w.id] = members.filter((m) =>
+        m.assigned_courses?.includes('*') || m.assigned_courses?.includes(w.id)
+      ).length
+    })
+    counts['UNASSIGNED'] = members.filter(
+      (m) => !m.assigned_courses || m.assigned_courses.length === 0
+    ).length
+    return counts
+  }, [members, workspaces])
+
   // Filtered members list
   const filteredMembers = useMemo(() => {
     return members.filter((m) => {
       if (filterStatus === 'ACTIVE' && m.status !== 'ACTIVE') return false
       if (filterStatus === 'DISABLED' && m.status !== 'DISABLED') return false
       if (filterStatus === 'ARCHIVED' && m.status !== 'ARCHIVED') return false
+
+      if (selectedCourseFilter !== 'ALL') {
+        if (selectedCourseFilter === 'UNASSIGNED') {
+          if (m.assigned_courses && m.assigned_courses.length > 0) return false
+        } else {
+          const hasAccess =
+            m.assigned_courses?.includes('*') || m.assigned_courses?.includes(selectedCourseFilter)
+          if (!hasAccess) return false
+        }
+      }
 
       if (!searchQuery.trim()) return true
       const q = searchQuery.toLowerCase()
@@ -92,7 +118,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
         m.public_user_id?.toLowerCase().includes(q)
       )
     })
-  }, [members, filterStatus, searchQuery])
+  }, [members, filterStatus, selectedCourseFilter, searchQuery])
 
   // Stats
   const activeCount = members.filter((m) => m.status === 'ACTIVE').length
@@ -100,11 +126,17 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
   const archivedCount = members.filter((m) => m.status === 'ARCHIVED').length
 
   // Handlers
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (presetCourseId = null) => {
     setNewUsername(`MEMBER${String(members.length + 1).padStart(2, '0')}`)
     setNewDisplayName('')
     setNewEmail('')
-    setNewAssignedCourses(workspaces.length > 0 ? [workspaces[0].id] : ['bpsc_prelims'])
+    if (presetCourseId) {
+      setNewAssignedCourses([presetCourseId])
+    } else if (selectedCourseFilter !== 'ALL' && selectedCourseFilter !== 'UNASSIGNED') {
+      setNewAssignedCourses([selectedCourseFilter])
+    } else {
+      setNewAssignedCourses(workspaces.length > 0 ? [workspaces[0].id] : ['bpsc_prelims'])
+    }
     setNewWarriorName(identityService.generateWarriorName(members))
     setNewPublicId(identityService.generatePublicId(members))
     setAddModalOpen(true)
@@ -265,6 +297,293 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
     setAllAuditLogs(logs)
   }
 
+  // Render individual member card
+  const renderMemberCard = (m) => {
+    const isSuper = m.role === 'SUPER_ADMIN' || m.username === 'adminalpha'
+    const isArchived = m.status === 'ARCHIVED'
+    const isDisabled = m.status === 'DISABLED'
+
+    return (
+      <div
+        key={m.id}
+        style={{
+          background: isArchived ? 'rgba(24, 23, 22, 0.4)' : '#181716',
+          border: isSuper
+            ? '1px solid rgba(241, 98, 27, 0.5)'
+            : isArchived
+            ? '1px dashed rgba(255,255,255,0.1)'
+            : '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '14px',
+          padding: '18px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          position: 'relative',
+          opacity: isArchived ? 0.75 : 1,
+          boxShadow: isSuper ? '0 4px 20px rgba(241, 98, 27, 0.12)' : 'none',
+        }}
+      >
+        <div>
+          {/* Header Row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {m.display_name || m.username}
+                {isSuper && (
+                  <span style={{ background: 'linear-gradient(90deg, #F1621B, #D9480F)', color: '#FFF', fontSize: '0.66rem', padding: '2px 6px', borderRadius: '6px', fontWeight: 800 }}>
+                    👑 SUPER ADMIN
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '2px' }}>
+                @{m.username} • {m.email || 'No email provided'}
+              </div>
+            </div>
+
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background:
+                  m.status === 'ACTIVE'
+                    ? 'rgba(18, 183, 106, 0.15)'
+                    : isArchived
+                    ? 'rgba(148, 163, 184, 0.15)'
+                    : 'rgba(240, 68, 56, 0.15)',
+                color: m.status === 'ACTIVE' ? '#12B76A' : isArchived ? '#94A3B8' : '#F04438',
+              }}
+            >
+              {m.status}
+            </span>
+          </div>
+
+          {/* Warrior Badge */}
+          <div
+            style={{
+              background: 'rgba(241, 98, 27, 0.08)',
+              border: '1px solid rgba(241, 98, 27, 0.2)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.9rem' }}>⚔️</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#F1621B', letterSpacing: '0.04em' }}>
+                {m.warrior_name}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.74rem', color: '#CBD5E1', fontFamily: 'monospace', fontWeight: 700 }}>
+              {m.public_user_id}
+            </span>
+          </div>
+
+          {/* Course Allotment Badges */}
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>
+                Allotted Course ({m.assigned_courses?.includes('*') ? 'All' : m.assigned_courses?.length || 0}):
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenAccessModal(m)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#F1621B',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                + Change Allotment
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {m.assigned_courses?.includes('*') ? (
+                <span style={{ background: 'linear-gradient(90deg, rgba(241, 98, 27, 0.2), rgba(217, 72, 15, 0.15))', border: '1px solid rgba(241, 98, 27, 0.35)', color: '#FF8A3D', fontSize: '0.74rem', fontWeight: 800, padding: '3px 9px', borderRadius: '6px' }}>
+                  🌐 Global Allotment (All Courses)
+                </span>
+              ) : !m.assigned_courses || m.assigned_courses.length === 0 ? (
+                <span style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#F87171', fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '6px' }}>
+                  ⚠️ No Course Allotted
+                </span>
+              ) : (
+                (m.assigned_courses || []).map((cid) => {
+                  const course = workspaces.find((w) => w.id === cid)
+                  return (
+                    <span
+                      key={cid}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#E2E8F0',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span>📚</span>
+                      <span>{course?.name || cid}</span>
+                    </span>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => handleViewAsMember(m)}
+            style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.06)',
+              color: '#F8FAFC',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            👁️ View As
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenAccessModal(m)}
+            style={{
+              flex: 1,
+              background: 'rgba(241, 98, 27, 0.12)',
+              color: '#FF8A3D',
+              border: '1px solid rgba(241, 98, 27, 0.3)',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            🔐 Access
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenIdentityModal(m)}
+            style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.06)',
+              color: '#F8FAFC',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ⚔️ Identity
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenIntelligence(m)}
+            style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.06)',
+              color: '#F8FAFC',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            📊 Stats
+          </button>
+
+          {/* Archival / Restore Controls (Soft Delete) */}
+          {isArchived ? (
+            <button
+              type="button"
+              onClick={() => handleRestoreMember(m)}
+              style={{
+                background: 'rgba(18, 183, 106, 0.15)',
+                color: '#12B76A',
+                border: '1px solid rgba(18, 183, 106, 0.3)',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              ♻️ Restore
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={isSuper}
+                onClick={() => handleToggleStatus(m)}
+                style={{
+                  background: isDisabled ? 'rgba(18, 183, 106, 0.15)' : 'rgba(240, 68, 56, 0.15)',
+                  color: isDisabled ? '#12B76A' : '#F04438',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: isSuper ? 'not-allowed' : 'pointer',
+                  opacity: isSuper ? 0.4 : 1,
+                }}
+                title={isSuper ? 'Super Admin cannot be disabled' : isDisabled ? 'Reactivate account' : 'Deactivate account'}
+              >
+                {isDisabled ? 'Enable' : 'Disable'}
+              </button>
+
+              <button
+                type="button"
+                disabled={isSuper}
+                onClick={() => handleArchiveMember(m)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: '#94A3B8',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: isSuper ? 'not-allowed' : 'pointer',
+                  opacity: isSuper ? 0.4 : 1,
+                }}
+                title={isSuper ? 'Super Admin cannot be archived' : 'Archive member (Soft Delete)'}
+              >
+                📦 Archive
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="admin-page-container" style={{ padding: '24px', color: '#F8FAFC' }}>
       {/* Header */}
@@ -274,7 +593,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
             Member Management & Access Control
           </h1>
           <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.94rem' }}>
-            Manage course access, granular subject/content permissions, and Warrior identities for all members.
+            Manage course allotment, granular permissions, and Warrior identities for all members.
           </p>
         </div>
 
@@ -303,7 +622,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
 
           <button
             type="button"
-            onClick={handleOpenAdd}
+            onClick={() => handleOpenAdd()}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -343,6 +662,144 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
         <div style={{ background: '#181716', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px' }}>
           <div style={{ fontSize: '0.8rem', color: '#E2E8F0', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>Archived</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#94A3B8' }}>{archivedCount}</div>
+        </div>
+      </div>
+
+      {/* ── COURSE ALLOTMENT FILTER BAR ─────────────────────────────── */}
+      <div style={{ background: '#141A28', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.1rem' }}>📚</span>
+            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#FFFFFF' }}>Show Members by Allotted Course:</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('grouped')}
+              style={{
+                background: viewMode === 'grouped' ? 'linear-gradient(135deg, #F1621B, #D9480F)' : 'transparent',
+                color: viewMode === 'grouped' ? '#FFF' : '#94A3B8',
+                border: 'none',
+                borderRadius: '7px',
+                padding: '5px 12px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>📑</span>
+              <span>Grouped by Course</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              style={{
+                background: viewMode === 'grid' ? 'linear-gradient(135deg, #F1621B, #D9480F)' : 'transparent',
+                color: viewMode === 'grid' ? '#FFF' : '#94A3B8',
+                border: 'none',
+                borderRadius: '7px',
+                padding: '5px 12px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>▦</span>
+              <span>Filtered Grid</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Course Filter Pills */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            type="button"
+            onClick={() => setSelectedCourseFilter('ALL')}
+            style={{
+              background: selectedCourseFilter === 'ALL' ? 'rgba(241, 98, 27, 0.2)' : 'rgba(255,255,255,0.04)',
+              border: selectedCourseFilter === 'ALL' ? '1px solid #F1621B' : '1px solid rgba(255,255,255,0.08)',
+              color: selectedCourseFilter === 'ALL' ? '#FF8A3D' : '#94A3B8',
+              padding: '7px 14px',
+              borderRadius: '10px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🌐 All Courses</span>
+            <span style={{ background: selectedCourseFilter === 'ALL' ? '#F1621B' : 'rgba(255,255,255,0.1)', color: '#FFF', fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px' }}>
+              {members.length}
+            </span>
+          </button>
+
+          {workspaces.map((w) => {
+            const count = courseMemberCounts[w.id] || 0
+            const isSelected = selectedCourseFilter === w.id
+            return (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => setSelectedCourseFilter(w.id)}
+                style={{
+                  background: isSelected ? 'rgba(241, 98, 27, 0.2)' : 'rgba(255,255,255,0.04)',
+                  border: isSelected ? '1px solid #F1621B' : '1px solid rgba(255,255,255,0.08)',
+                  color: isSelected ? '#FF8A3D' : '#CBD5E1',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>📚</span>
+                <span>{w.name}</span>
+                <span style={{ background: isSelected ? '#F1621B' : 'rgba(255,255,255,0.1)', color: '#FFF', fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px' }}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+
+          {courseMemberCounts['UNASSIGNED'] > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedCourseFilter('UNASSIGNED')}
+              style={{
+                background: selectedCourseFilter === 'UNASSIGNED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.04)',
+                border: selectedCourseFilter === 'UNASSIGNED' ? '1px solid #EF4444' : '1px solid rgba(255,255,255,0.08)',
+                color: selectedCourseFilter === 'UNASSIGNED' ? '#F87171' : '#94A3B8',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>⚠️ Unassigned</span>
+              <span style={{ background: selectedCourseFilter === 'UNASSIGNED' ? '#EF4444' : 'rgba(255,255,255,0.1)', color: '#FFF', fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px' }}>
+                {courseMemberCounts['UNASSIGNED']}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -388,245 +845,196 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
         />
       </div>
 
-      {/* Member Directory Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-        {filteredMembers.map((m) => {
-          const isSuper = m.role === 'SUPER_ADMIN' || m.username === 'adminalpha'
-          const isArchived = m.status === 'ARCHIVED'
-          const isDisabled = m.status === 'DISABLED'
+      {/* ── VIEW MODE 1: GROUPED BY COURSE ──────────────────────────── */}
+      {viewMode === 'grouped' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          {workspaces
+            .filter((w) => selectedCourseFilter === 'ALL' || selectedCourseFilter === w.id)
+            .map((w) => {
+              const courseMembers = filteredMembers.filter(
+                (m) => m.assigned_courses?.includes('*') || m.assigned_courses?.includes(w.id)
+              )
 
-          return (
-            <div
-              key={m.id}
-              style={{
-                background: isArchived ? 'rgba(24, 23, 22, 0.4)' : '#181716',
-                border: isSuper ? '1px solid rgba(241, 98, 27, 0.5)' : isArchived ? '1px dashed rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '14px',
-                padding: '18px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                position: 'relative',
-                opacity: isArchived ? 0.75 : 1,
-              }}
-            >
-              <div>
-                {/* Header Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                  <div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {m.display_name || m.username}
-                      {isSuper && (
-                        <span style={{ background: 'linear-gradient(90deg, #F1621B, #D9480F)', color: '#FFF', fontSize: '0.66rem', padding: '2px 6px', borderRadius: '6px', fontWeight: 800 }}>
-                          👑 SUPER ADMIN
-                        </span>
-                      )}
+              return (
+                <div
+                  key={w.id}
+                  style={{
+                    background: 'rgba(18, 23, 36, 0.7)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '16px',
+                    padding: '20px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  {/* Course Header Banner */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(241, 98, 27, 0.15)', border: '1px solid rgba(241, 98, 27, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                        📚
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF' }}>{w.name}</h2>
+                          <span style={{ background: 'rgba(241, 98, 27, 0.15)', color: '#FF8A3D', fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '12px' }}>
+                            {courseMembers.length} {courseMembers.length === 1 ? 'Member' : 'Members'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>
+                          {w.level || 'Course'} • Exam: {w.examProfile || 'Standard'}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '2px' }}>
-                      @{m.username} • {m.email}
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAdd(w.id)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#F8FAFC',
+                        borderRadius: '8px',
+                        padding: '6px 14px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <span>+</span>
+                      <span>Enroll Member in {w.name.split(' ')[0]}</span>
+                    </button>
                   </div>
 
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      background: m.status === 'ACTIVE' ? 'rgba(18, 183, 106, 0.15)' : isArchived ? 'rgba(148, 163, 184, 0.15)' : 'rgba(240, 68, 56, 0.15)',
-                      color: m.status === 'ACTIVE' ? '#12B76A' : isArchived ? '#94A3B8' : '#F04438',
-                    }}
-                  >
-                    {m.status}
-                  </span>
+                  {/* Course Members Grid */}
+                  {courseMembers.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+                      {courseMembers.map((m) => renderMemberCard(m))}
+                    </div>
+                  ) : (
+                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: '#94A3B8' }}>
+                      <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>👥</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#CBD5E1', marginBottom: '4px' }}>
+                        No members currently allotted to {w.name}
+                      </div>
+                      <p style={{ margin: '0 0 12px', fontSize: '0.82rem' }}>
+                        Add a new member directly to this course or use Access controls to assign existing students.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAdd(w.id)}
+                        style={{
+                          background: '#F1621B',
+                          color: '#FFF',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '7px 16px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + Enroll First Member
+                      </button>
+                    </div>
+                  )}
                 </div>
+              )
+            })}
 
-                {/* Warrior Badge */}
+          {/* Unassigned Section */}
+          {(selectedCourseFilter === 'ALL' || selectedCourseFilter === 'UNASSIGNED') && (
+            (() => {
+              const unassignedMembers = filteredMembers.filter(
+                (m) => !m.assigned_courses || m.assigned_courses.length === 0
+              )
+              if (unassignedMembers.length === 0 && selectedCourseFilter !== 'UNASSIGNED') return null
+
+              return (
                 <div
                   style={{
-                    background: 'rgba(241, 98, 27, 0.08)',
-                    border: '1px solid rgba(241, 98, 27, 0.2)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '12px',
+                    background: 'rgba(239, 68, 68, 0.04)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: '16px',
+                    padding: '20px',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.9rem' }}>⚔️</span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#F1621B', letterSpacing: '0.04em' }}>
-                      {m.warrior_name}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.74rem', color: '#CBD5E1', fontFamily: 'monospace', fontWeight: 700 }}>
-                    {m.public_user_id}
-                  </span>
-                </div>
-
-                {/* Course Access Badges */}
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>
-                    Assigned Courses ({m.assigned_courses?.includes('*') ? 'All Courses' : m.assigned_courses?.length || 0}):
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {m.assigned_courses?.includes('*') ? (
-                      <span style={{ background: 'rgba(255,255,255,0.06)', color: '#F8FAFC', fontSize: '0.74rem', padding: '3px 8px', borderRadius: '6px' }}>
-                        🌐 Global Access (All Courses)
-                      </span>
-                    ) : (m.assigned_courses || []).map((cid) => {
-                      const course = workspaces.find((w) => w.id === cid)
-                      return (
-                        <span key={cid} style={{ background: 'rgba(255,255,255,0.06)', color: '#E2E8F0', fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px' }}>
-                          📚 {course?.name || cid}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#F87171' }}>Unassigned Members</h2>
+                        <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#FCA5A5', fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '12px' }}>
+                          {unassignedMembers.length} Members
                         </span>
-                      )
-                    })}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>
+                        These members currently do not have any courses allotted to them.
+                      </div>
+                    </div>
                   </div>
+
+                  {unassignedMembers.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+                      {unassignedMembers.map((m) => renderMemberCard(m))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#94A3B8', fontSize: '0.86rem' }}>
+                      🎉 All members have been allotted to at least one course!
+                    </div>
+                  )}
                 </div>
-              </div>
+              )
+            })()
+          )}
+        </div>
+      ) : (
+        /* ── VIEW MODE 2: FILTERED GRID ─────────────────────────────── */
+        <div>
+          <div style={{ marginBottom: '14px', fontSize: '0.86rem', color: '#94A3B8', fontWeight: 600 }}>
+            Showing {filteredMembers.length} {filteredMembers.length === 1 ? 'member' : 'members'}
+            {selectedCourseFilter !== 'ALL' && (
+              <span style={{ color: '#FF8A3D', marginLeft: '6px' }}>
+                • Course: {workspaces.find((w) => w.id === selectedCourseFilter)?.name || selectedCourseFilter}
+              </span>
+            )}
+          </div>
 
-              {/* Action Buttons */}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleViewAsMember(m)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#F8FAFC',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  👁️ View As
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenAccessModal(m)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#F8FAFC',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  🔐 Access
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenIdentityModal(m)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#F8FAFC',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ⚔️ Identity
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenIntelligence(m)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#F8FAFC',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  📊 Stats
-                </button>
-
-                {/* Archival / Restore Controls (Soft Delete) */}
-                {isArchived ? (
-                  <button
-                    type="button"
-                    onClick={() => handleRestoreMember(m)}
-                    style={{
-                      background: 'rgba(18, 183, 106, 0.15)',
-                      color: '#12B76A',
-                      border: '1px solid rgba(18, 183, 106, 0.3)',
-                      borderRadius: '6px',
-                      padding: '6px 10px',
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ♻️ Restore
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isSuper}
-                      onClick={() => handleToggleStatus(m)}
-                      style={{
-                        background: isDisabled ? 'rgba(18, 183, 106, 0.15)' : 'rgba(240, 68, 56, 0.15)',
-                        color: isDisabled ? '#12B76A' : '#F04438',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '6px 10px',
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        cursor: isSuper ? 'not-allowed' : 'pointer',
-                        opacity: isSuper ? 0.4 : 1,
-                      }}
-                      title={isSuper ? 'Super Admin cannot be disabled' : isDisabled ? 'Reactivate account' : 'Deactivate account'}
-                    >
-                      {isDisabled ? 'Enable' : 'Disable'}
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isSuper}
-                      onClick={() => handleArchiveMember(m)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        color: '#94A3B8',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: '6px',
-                        padding: '6px 10px',
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        cursor: isSuper ? 'not-allowed' : 'pointer',
-                        opacity: isSuper ? 0.4 : 1,
-                      }}
-                      title={isSuper ? 'Super Admin cannot be archived' : 'Archive member (Soft Delete)'}
-                    >
-                      📦 Archive
-                    </button>
-                  </>
-                )}
-              </div>
+          {filteredMembers.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+              {filteredMembers.map((m) => renderMemberCard(m))}
             </div>
-          )
-        })}
-      </div>
+          ) : (
+            <div style={{ background: '#181716', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '14px', padding: '40px 20px', textAlign: 'center', color: '#94A3B8' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px' }}>No Members Found</div>
+              <p style={{ margin: '0 0 16px', fontSize: '0.88rem' }}>No members match the selected course filter and search criteria.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCourseFilter('ALL')
+                  setSearchQuery('')
+                  setFilterStatus('ALL')
+                }}
+                style={{
+                  background: '#F1621B',
+                  color: '#FFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 18px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Reset Filters
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── MODAL 1: ADD MEMBER ────────────────────────────────────────── */}
       {addModalOpen && (

@@ -148,12 +148,208 @@ function getSeedFlashcards() {
   return flashcardCards.map((f) => ({ ...f, courseId: DEFAULT_COURSE_ID }))
 }
 
+export function getSeedNotes() {
+  return [
+    {
+      id: 'seed-note-cn-1',
+      courseId: DEFAULT_COURSE_ID,
+      subjectId: 'cn',
+      subject: 'Computer Networks',
+      chapterId: 'cn-1',
+      chapterName: 'Introduction to Networks',
+      title: 'Computer Networks Overview & OSI Reference Architecture',
+      content: `# 🌐 Computer Networks Overview & OSI Reference Architecture
+
+## 1. Executive Summary & Core Definitions
+A **Computer Network** is an interconnected collection of autonomous computing nodes capable of exchanging data and sharing resources via wired or wireless transmission media.
+
+### Network Topologies:
+* **Star Topology:** All nodes connect to a central hub/switch. Easy to troubleshoot, single point of failure at hub.
+* **Mesh Topology:** Every device has a dedicated point-to-point link to every other device. High redundancy, expensive ($N(N-1)/2$ physical channels).
+* **Bus Topology:** Single backbone cable with drop lines and terminators. Low cable cost, collisions likely on heavy traffic.
+* **Ring Topology:** Unidirectional token passing along repeaters. Deterministic latency, broken ring halts transmission.
+
+---
+
+## 2. OSI 7-Layer Model vs. TCP/IP Architecture
+| OSI Layer | Key Protocols | Protocol Data Unit (PDU) | Primary Hardware |
+| :--- | :--- | :--- | :--- |
+| **7. Application** | HTTP, HTTPS, DNS, SMTP, FTP | Data / Message | Gateway |
+| **6. Presentation** | SSL/TLS, ASCII, JPEG, MPEG | Data | Gateway |
+| **5. Session** | RPC, NetBIOS, PPTP | Data | Gateway |
+| **4. Transport** | TCP (Connection-oriented), UDP (Connectionless) | Segment (TCP) / Datagram (UDP) | L4 Switch / Firewall |
+| **3. Network** | IPv4, IPv6, ICMP, ARP, OSPF, BGP | Packet | Router / L3 Switch |
+| **2. Data Link** | Ethernet (802.3), Wi-Fi (802.11), PPP | Frame | Switch / Bridge |
+| **1. Physical** | RS-232, 100BASE-T, Manchester Encoding | Bits | Hub / Repeater / Cables |
+
+---
+
+## 3. High-Yield Transmission Modes
+1. **Simplex:** Unidirectional communication only (e.g., Keyboard to CPU, Television broadcast).
+2. **Half-Duplex:** Bidirectional, but only one party transmits at a time (e.g., Walkie-Talkie).
+3. **Full-Duplex:** Simultaneous bidirectional transmission (e.g., Telephone network, Switched Ethernet).`,
+      type: 'TEXT',
+      status: 'published',
+      createdAt: '2026-08-15T10:00:00.000Z',
+      updatedAt: '2026-08-15T10:00:00.000Z',
+    },
+    {
+      id: 'seed-note-cn-2',
+      courseId: DEFAULT_COURSE_ID,
+      subjectId: 'cn',
+      subject: 'Computer Networks',
+      chapterId: 'cn-2',
+      chapterName: 'OSI Model',
+      title: 'OSI 7 Layers Deep Dive & Data Encapsulation Notes',
+      content: `# 📡 OSI 7 Layers Deep Dive & Data Encapsulation
+
+## 1. Encapsulation & Decapsulation
+As user data travels down the protocol stack at the sender side, each layer attaches its own protocol control information (header/trailer) — this is **Data Encapsulation**.
+* **Application/Presentation/Session:** Raw user payload + headers = Data
+* **Transport:** Adds Source Port & Destination Port = Segment
+* **Network:** Adds Source IP & Destination IP = Packet
+* **Data Link:** Adds Source MAC, Destination MAC & CRC Trailer = Frame
+* **Physical:** Encodes frame into physical electrical/optical/radio signals = Bits
+
+---
+
+## 2. IP Addressing & Subnetting Cheat Sheet
+* **IPv4 Address Space:** 32 bits (4 octets, $2^{32} \\approx 4.29$ billion addresses).
+* **Class A:** 0.0.0.0 to 127.255.255.255 (Default Subnet: 255.0.0.0 /8)
+* **Class B:** 128.0.0.0 to 191.255.255.255 (Default Subnet: 255.255.0.0 /16)
+* **Class C:** 192.0.0.0 to 223.255.255.255 (Default Subnet: 255.255.255.0 /24)
+* **Class D (Multicast):** 224.0.0.0 to 239.255.255.255
+* **Class E (Experimental):** 240.0.0.0 to 255.255.255.255
+* **Loopback Address:** 127.0.0.1 (Used for local host interface diagnostics).
+
+> 💡 **Subnet Formula:** Total usable hosts per subnet = $2^{(32 - \\text{prefix})} - 2$ (subtracting Network ID and Broadcast Address).`,
+      type: 'TEXT',
+      status: 'published',
+      createdAt: '2026-08-16T10:00:00.000Z',
+      updatedAt: '2026-08-16T10:00:00.000Z',
+    },
+    {
+      id: 'seed-note-dbms-1',
+      courseId: DEFAULT_COURSE_ID,
+      subjectId: 's-dbms-sql-1',
+      subject: 'Database Management Systems (DBMS) and SQL',
+      chapterId: '1',
+      chapterName: 'DBMS Architecture & Data Independence',
+      title: 'DBMS Architecture, Three-Schema & ACID Properties Study Notes',
+      content: `# 🗄️ DBMS Architecture & Data Independence Study Notes
+
+## 1. Database Architecture & Three-Schema SPARC
+A Database Management System (DBMS) separates user applications from the physical storage layer using a **three-level architecture**:
+
+1. **External Level (User Views):**
+   * Individual end-user views tailored to specific applications.
+   * Hides irrelevant schema details from unauthorized users.
+2. **Conceptual Level (Logical Community View):**
+   * Describes *what* data is stored in the entire database and relationships between entities.
+   * Enforces semantic integrity constraints, types, and security rules.
+3. **Internal Level (Physical Storage Schema):**
+   * Describes *how* data is stored on secondary hardware (blocks, pages, B+ trees, clustering).
+
+### Data Independence:
+* **Logical Data Independence:** Ability to modify conceptual schema without changing external views/programs. (Harder to achieve).
+* **Physical Data Independence:** Ability to modify physical storage schemas without changing conceptual schema. (Easier to achieve).
+
+---
+
+## 2. Transaction Management & The ACID Contract
+* **Atomicity (All-or-Nothing):** Entire transaction finishes or rolls back completely. Maintained by Recovery Manager.
+* **Consistency:** Database moves from one valid consistent state to another, satisfying all integrity constraints.
+* **Isolation:** Concurrent transactions execute as if running in isolation. Managed by Concurrency Control (2PL, Timestamping).
+* **Durability:** Committed state survives system crashes. Maintained by WAL (Write-Ahead Logging).
+
+---
+
+## 3. Normalization Quick Reference
+* **1NF:** Eliminate repeating groups; ensure all attributes are atomic.
+* **2NF:** 1NF + Eliminate partial functional dependencies (non-prime attributes must depend on full candidate key).
+* **3NF:** 2NF + Eliminate transitive dependencies ($X \\to Y$ where $Y$ is non-prime $\\implies X$ is superkey).
+* **BCNF:** For every non-trivial $X \\to Y$, $X$ must be a strict superkey.`,
+      type: 'TEXT',
+      status: 'published',
+      createdAt: '2026-08-17T10:00:00.000Z',
+      updatedAt: '2026-08-17T10:00:00.000Z',
+    },
+    {
+      id: 'seed-note-py-1',
+      courseId: 'cbse-12-cs',
+      subjectId: 's-cbse12-1',
+      subject: 'Python Programming',
+      chapterId: 'c-cbse12-1',
+      chapterName: 'Functions & Recursion',
+      title: 'Python Functions, Scope & Recursion Revision Notes',
+      content: `# 🐍 Python Functions & Scope Revision Notes
+
+## 1. Function Arguments & Syntax
+* **Positional Arguments:** Passed in exact order defined in function signature.
+* **Default Arguments:** Default values specified in signature (\`def greet(name, msg="Hello")\`). Default arguments must follow non-default arguments.
+* **Keyword Arguments:** Arguments passed by name (\`greet(msg="Hi", name="Alice")\`).
+* **Variable-length Positional (\`*args\`):** Bundled into a **tuple**.
+* **Variable-length Keyword (\`**kwargs\`):** Bundled into a **dictionary**.
+
+---
+
+## 2. LEGB Scope Rule
+Python resolves variable identifiers in the following precedence:
+1. **Local (L):** Names defined inside the active function body.
+2. **Enclosing (E):** Names defined in outer/enclosing nested functions.
+3. **Global (G):** Names defined at the module top level or marked with \`global\`.
+4. **Built-in (B):** Predefined built-in names (e.g. \`print\`, \`len\`, \`range\`).`,
+      type: 'TEXT',
+      status: 'published',
+      createdAt: '2026-08-18T10:00:00.000Z',
+      updatedAt: '2026-08-18T10:00:00.000Z',
+    },
+    {
+      id: 'seed-note-ph-1',
+      courseId: 'cbse-11-ph',
+      subjectId: 's-cbse11-1',
+      subject: 'Kinematics & Laws of Motion',
+      chapterId: 'c-cbse11-1',
+      chapterName: 'Vectors & Projectile Motion',
+      title: 'Vectors, Equations of Motion & Projectile Motion Notes',
+      content: `# ⚡ Vectors & Kinematics Study Notes
+
+## 1. Kinematic Equations (Constant Acceleration)
+* $v = u + at$
+* $s = ut + \\frac{1}{2}at^2$
+* $v^2 = u^2 + 2as$
+* $s_n = u + \\frac{a}{2}(2n - 1)$ (Distance traveled in $n^{\\text{th}}$ second)
+
+---
+
+## 2. Projectile Motion (Launched at angle $\\theta$ with speed $u$)
+* **Time of Flight ($T$):** $T = \\frac{2u \\sin\\theta}{g}$
+* **Maximum Height ($H$):** $H = \\frac{u^2 \\sin^2\\theta}{2g}$
+* **Horizontal Range ($R$):** $R = \\frac{u^2 \\sin(2\\theta)}{g}$
+* **Maximum Range condition:** $\\theta = 45^\\circ \\implies R_{\\max} = \\frac{u^2}{g}$`,
+      type: 'TEXT',
+      status: 'published',
+      createdAt: '2026-08-19T10:00:00.000Z',
+      updatedAt: '2026-08-19T10:00:00.000Z',
+    },
+  ]
+}
+
+function getInitialNotes() {
+  const seeds = getSeedNotes()
+  const localList = typeof getLocalNotes === 'function' ? getLocalNotes() : []
+  const map = new Map()
+  seeds.forEach((n) => map.set(String(n.id), n))
+  localList.forEach((n) => map.set(String(n.id), n))
+  return Array.from(map.values())
+}
+
 // ── State ──────────────────────────────────────────────────────
 let subjects = getSeedSubjects()
 let chapters = getSeedChapters()
 let mcqs = getSeedMcqs()
 let flashcards = getSeedFlashcards()
-let notes = typeof getLocalNotes === 'function' ? getLocalNotes() : []
+let notes = getInitialNotes()
 
 let snapshot = {
   allSubjects: subjects,
@@ -203,12 +399,12 @@ export async function hydrateAdminStoreFromSupabase() {
         flashcards = flashcardsRes.data
       }
       if (notesRes.success && Array.isArray(notesRes.data) && notesRes.data.length > 0) {
-        notes = notesRes.data
+        const map = new Map()
+        getSeedNotes().forEach((n) => map.set(String(n.id), n))
+        notesRes.data.forEach((n) => map.set(String(n.id), n))
+        notes = Array.from(map.values())
       } else {
-        const localList = typeof getLocalNotes === 'function' ? getLocalNotes() : []
-        if (localList.length > 0) {
-          notes = localList
-        }
+        notes = getInitialNotes()
       }
 
       recomputeAllSubjectStats()
