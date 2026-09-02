@@ -217,6 +217,8 @@ export const iconRegistry = {
   image: { component: ImageRounded, optical: 0 },
   preview: { component: VisibilityRounded, optical: 0 },
   previewOff: { component: VisibilityOffRounded, optical: 0 },
+  visibility: { component: VisibilityRounded, optical: 0 },
+  visibilityOff: { component: VisibilityOffRounded, optical: 0 },
   save: { component: SaveRounded, optical: 0 },
   tableChart: { component: TableChartRounded, optical: 0 },
   splitScreen: { component: VerticalSplitRounded, optical: 0 },

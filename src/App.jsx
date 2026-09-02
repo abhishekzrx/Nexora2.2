@@ -7,11 +7,15 @@ import TestResultsPage from './pages/TestResultsPage'
 import PracticeHubPage from './pages/PracticeHubPage'
 import AdminPage from './pages/AdminPage'
 import AuthPage from './pages/AuthPage'
+import AccessRestrictedCard from './components/common/AccessRestrictedCard'
 import { navigate, parseHash, testSession } from './utils/navigation'
 import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
-import { useWorkspaceStore } from './data/workspaceStore'
-import { hydrateWorkspacesFromSupabase } from './data/workspaceStore'
+import { useWorkspaceStore, hydrateWorkspacesFromSupabase } from './data/workspaceStore'
 import { hydrateAdminStoreFromSupabase } from './data/adminStore'
+import { useMemberStore, exitViewAsMember, clearMemberSession } from './data/memberStore'
+import { permissionService } from './services/permissionService'
+import { clearUserProgressStore } from './data/progressStore'
+import { clearAnalyticsStore } from './data/analyticsStore'
 
 const AUTH_ROUTES = new Set(['login', 'signup'])
 
@@ -68,19 +72,21 @@ function App() {
   })
   const { activeWorkspaceId } = useWorkspaceStore()
   const { activeRole } = useRoleStore()
+  const { effectiveMember, isSuperAdmin, isViewingAs } = useMemberStore()
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem('nexora_is_authenticated')
-    } catch {
-      // ignore
-    }
+    clearMemberSession()
+    clearUserProgressStore()
+    clearAnalyticsStore()
     setIsAuthenticated(false)
     switchToStudent()
     navigate('login')
   }
 
   const handleSwitchToAdmin = () => {
+    if (!permissionService.canAccessAdmin(effectiveMember)) {
+      return
+    }
     switchToAdmin()
     navigate('admin')
   }
@@ -116,12 +122,14 @@ function App() {
     if (!isAuthenticated) return
 
     if (route.name === 'admin' && activeRole !== 'admin') {
-      switchToAdmin()
+      if (permissionService.canAccessAdmin(effectiveMember)) {
+        switchToAdmin()
+      }
     }
     if (route.name !== 'admin' && activeRole === 'admin') {
       switchToStudent()
     }
-  }, [route, activeRole, isAuthenticated])
+  }, [route, activeRole, isAuthenticated, effectiveMember])
 
   useEffect(() => {
     async function bootstrap() {
@@ -147,11 +155,6 @@ function App() {
       onGoLogin={() => navigate('login')}
       onGoSignup={() => navigate('signup')}
       onLoginSuccess={() => {
-        try {
-          localStorage.setItem('nexora_is_authenticated', 'true')
-        } catch {
-          // ignore
-        }
         setIsAuthenticated(true)
         switchToStudent()
         navigate('')
@@ -170,9 +173,32 @@ function App() {
     return renderAuthPage()
   }
 
+  // Account Disabled Shield
+  if (effectiveMember && effectiveMember.status === 'DISABLED') {
+    return (
+      <AccessRestrictedCard
+        title="Account Deactivated"
+        message="This account has been disabled by Super Admin. Please contact adminalpha to re-enable access."
+        onReturnDashboard={handleLogout}
+        showContactAdmin={false}
+      />
+    )
+  }
+
   const { name, subjectKey, chapterId } = route
 
+  // Layer 2 Security Guard: Admin Route Protection
   if (name === 'admin') {
+    if (!permissionService.canAccessAdmin(effectiveMember)) {
+      return (
+        <AccessRestrictedCard
+          title="Access Restricted — Admin Panel"
+          message="You do not have administrative permissions. Only Super Admin (adminalpha) is authorized to access the CMS studio."
+          onReturnDashboard={() => navigate('')}
+        />
+      )
+    }
+
     return (
       <AdminPage
         onBackHome={handleSwitchToStudent}
@@ -182,144 +208,212 @@ function App() {
     )
   }
 
-  if (name === 'subjects') {
+  // Layer 2 Security Guard: Course & Subject Permission Protection
+  if (name === 'subject' && subjectKey) {
+    if (!permissionService.canAccessSubject(effectiveMember, activeWorkspaceId, subjectKey)) {
+      return (
+        <AccessRestrictedCard
+          title="Course Access Restricted"
+          message="Your student profile is not assigned to access this course or subject. Please select an allowed course."
+          onReturnDashboard={() => navigate('')}
+        />
+      )
+    }
+  }
+
+  const renderMainContent = () => {
+    if (name === 'subjects') {
+      return (
+        <SubjectsPage
+          courseId={activeWorkspaceId}
+          onNavigateHome={() => navigate('')}
+          onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
+          onNavigatePractice={() => navigate('practice')}
+          onNavigateAdmin={handleSwitchToAdmin}
+          onLogout={handleLogout}
+        />
+      )
+    }
+
+    if (name === 'practice') {
+      return (
+        <PracticeHubPage
+          onNavigateHome={() => navigate('')}
+          onNavigateSubjects={() => navigate('subjects')}
+          onOpenSubject={(key) => navigate(`subject/${key}`)}
+          onResume={(session) => {
+            testSession.subjectKey = session.subjectKey
+            testSession.chapter = session.chapterId ? { id: session.chapterId, name: session.chapterName } : null
+            testSession.mode = 'practice'
+            testSession.save()
+            if (session.chapterId) {
+              navigate(`subject/${session.subjectKey}/chapter/${session.chapterId}/mcq`)
+            } else {
+              navigate(`subject/${session.subjectKey}/mcq`)
+            }
+          }}
+          onStartPractice={() => navigate('subjects')}
+        />
+      )
+    }
+
+    if (name === 'subject') {
+      return (
+        <SubjectDetailPage
+          courseId={activeWorkspaceId}
+          subjectKey={subjectKey}
+          onBackToSubjects={() => navigate('subjects')}
+          onNavigateHome={() => navigate('')}
+          onNavigateSubjects={() => navigate('subjects')}
+          onStartMCQPractice={(key) => navigate(`subject/${key}/mcq`)}
+          onChapterClick={(chapter) => {
+            testSession.subjectKey = subjectKey
+            testSession.chapter = chapter
+            testSession.mode = 'practice'
+            testSession.save()
+            if (chapter?.id) {
+              navigate(`subject/${subjectKey}/chapter/${chapter.id}/mcq`)
+            } else {
+              navigate(`subject/${subjectKey}/mcq`)
+            }
+          }}
+        />
+      )
+    }
+
+    if (name === 'mcq') {
+      return (
+        <MCQPracticePage
+          subjectKey={subjectKey}
+          chapterId={chapterId}
+          chapter={testSession.chapter}
+          onBack={() => navigate(`subject/${subjectKey}`)}
+          onSubmit={() => {
+            if (chapterId) {
+              navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+            } else {
+              navigate(`subject/${subjectKey}/results`)
+            }
+          }}
+        />
+      )
+    }
+
+    if (name === 'review') {
+      return (
+        <MCQPracticePage
+          subjectKey={subjectKey}
+          chapterId={chapterId}
+          chapter={testSession.chapter}
+          reviewMode
+          onBack={() => {
+            if (chapterId) {
+              navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+            } else {
+              navigate(`subject/${subjectKey}/results`)
+            }
+          }}
+          onSubmit={() => {
+            if (chapterId) {
+              navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
+            } else {
+              navigate(`subject/${subjectKey}/results`)
+            }
+          }}
+        />
+      )
+    }
+
+    if (name === 'results') {
+      return (
+        <TestResultsPage
+          subjectKey={subjectKey}
+          chapterId={chapterId}
+          onBack={() => navigate(`subject/${subjectKey}`)}
+          onReviewAnswers={() => {
+            if (chapterId) {
+              navigate(`subject/${subjectKey}/chapter/${chapterId}/review`)
+            } else {
+              navigate(`subject/${subjectKey}/review`)
+            }
+          }}
+          onPracticeAgain={() => {
+            testSession.mode = 'practice'
+            testSession.save()
+            if (chapterId) {
+              navigate(`subject/${subjectKey}/chapter/${chapterId}/mcq`)
+            } else {
+              navigate(`subject/${subjectKey}/mcq`)
+            }
+          }}
+          onBackToSubjects={() => navigate('subjects')}
+        />
+      )
+    }
+
     return (
-      <SubjectsPage
+      <DashboardPage
         courseId={activeWorkspaceId}
-        onNavigateHome={() => navigate('')}
-        onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
+        onNavigateSubjects={() => navigate('subjects')}
         onNavigatePractice={() => navigate('practice')}
+        onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
         onNavigateAdmin={handleSwitchToAdmin}
         onLogout={handleLogout}
       />
     )
   }
 
-  if (name === 'practice') {
-    return (
-      <PracticeHubPage
-        onNavigateHome={() => navigate('')}
-        onNavigateSubjects={() => navigate('subjects')}
-        onOpenSubject={(key) => navigate(`subject/${key}`)}
-        onResume={(session) => {
-          testSession.subjectKey = session.subjectKey
-          testSession.chapter = session.chapterId ? { id: session.chapterId, name: session.chapterName } : null
-          testSession.mode = 'practice'
-          testSession.save()
-          if (session.chapterId) {
-            navigate(`subject/${session.subjectKey}/chapter/${session.chapterId}/mcq`)
-          } else {
-            navigate(`subject/${session.subjectKey}/mcq`)
-          }
-        }}
-        onStartPractice={() => navigate('subjects')}
-      />
-    )
-  }
-
-  if (name === 'subject') {
-    return (
-      <SubjectDetailPage
-        courseId={activeWorkspaceId}
-        subjectKey={subjectKey}
-        onBackToSubjects={() => navigate('subjects')}
-        onNavigateHome={() => navigate('')}
-        onNavigateSubjects={() => navigate('subjects')}
-        onStartMCQPractice={(key) => navigate(`subject/${key}/mcq`)}
-        onChapterClick={(chapter) => {
-          testSession.subjectKey = subjectKey
-          testSession.chapter = chapter
-          testSession.mode = 'practice'
-          testSession.save()
-          if (chapter?.id) {
-            navigate(`subject/${subjectKey}/chapter/${chapter.id}/mcq`)
-          } else {
-            navigate(`subject/${subjectKey}/mcq`)
-          }
-        }}
-      />
-    )
-  }
-
-  if (name === 'mcq') {
-    return (
-      <MCQPracticePage
-        subjectKey={subjectKey}
-        chapterId={chapterId}
-        chapter={testSession.chapter}
-        onBack={() => navigate(`subject/${subjectKey}`)}
-        onSubmit={() => {
-          if (chapterId) {
-            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
-          } else {
-            navigate(`subject/${subjectKey}/results`)
-          }
-        }}
-      />
-    )
-  }
-
-  if (name === 'review') {
-    return (
-      <MCQPracticePage
-        subjectKey={subjectKey}
-        chapterId={chapterId}
-        chapter={testSession.chapter}
-        reviewMode
-        onBack={() => {
-          if (chapterId) {
-            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
-          } else {
-            navigate(`subject/${subjectKey}/results`)
-          }
-        }}
-        onSubmit={() => {
-          if (chapterId) {
-            navigate(`subject/${subjectKey}/chapter/${chapterId}/results`)
-          } else {
-            navigate(`subject/${subjectKey}/results`)
-          }
-        }}
-      />
-    )
-  }
-
-  if (name === 'results') {
-    return (
-      <TestResultsPage
-        subjectKey={subjectKey}
-        chapterId={chapterId}
-        onBack={() => navigate(`subject/${subjectKey}`)}
-        onReviewAnswers={() => {
-          if (chapterId) {
-            navigate(`subject/${subjectKey}/chapter/${chapterId}/review`)
-          } else {
-            navigate(`subject/${subjectKey}/review`)
-          }
-        }}
-        onPracticeAgain={() => {
-          testSession.mode = 'practice'
-          testSession.save()
-          if (chapterId) {
-            navigate(`subject/${subjectKey}/chapter/${chapterId}/mcq`)
-          } else {
-            navigate(`subject/${subjectKey}/mcq`)
-          }
-        }}
-        onBackToSubjects={() => navigate('subjects')}
-      />
-    )
-  }
-
   return (
-    <DashboardPage
-      courseId={activeWorkspaceId}
-      onNavigateSubjects={() => navigate('subjects')}
-      onNavigatePractice={() => navigate('practice')}
-      onOpenSubjectDetail={(key) => navigate(`subject/${key}`)}
-      onNavigateAdmin={handleSwitchToAdmin}
-      onLogout={handleLogout}
-    />
+    <>
+      {/* Super Admin Read-Only "View as Member" Banner */}
+      {isViewingAs && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #F1621B 0%, #D9480F 100%)',
+            color: '#FFFFFF',
+            padding: '8px 20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.84rem',
+            fontWeight: 700,
+            position: 'sticky',
+            top: 0,
+            zIndex: 99999,
+            boxShadow: '0 4px 16px rgba(241, 98, 27, 0.4)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>👁️</span>
+            <span>
+              VIEWING AS: <b>{effectiveMember?.warrior_name}</b> ({effectiveMember?.display_name}) — READ-ONLY MODE
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              exitViewAsMember()
+              navigate('admin')
+            }}
+            style={{
+              background: '#0F0E0D',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '5px 12px',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            }}
+          >
+            Exit View Mode ✕
+          </button>
+        </div>
+      )}
+
+      {renderMainContent()}
+    </>
   )
 }
 

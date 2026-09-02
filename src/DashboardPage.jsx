@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './Dashboard.css'
 import AppIcon from './components/ui/AppIcon'
 import MobileLayout from './components/layout/MobileLayout'
+import SideDrawer from './components/layout/SideDrawer'
 import { useContentRegistry } from './data/contentRegistry'
 import { navigate, testSession } from './utils/navigation'
 import { useRoleStore } from './data/roleStore'
@@ -9,9 +10,13 @@ import { useWorkspaceStore, setActiveWorkspace } from './data/workspaceStore'
 import { useCourseRegistry } from './data/courseRegistry'
 import StudentCourseSelector from './components/student/StudentCourseSelector'
 import RoleSwitch from './components/student/RoleSwitch'
-import EmptyCourseState from './components/admin/EmptyCourseState'
 import { formatCompactNumber, formatInteger } from './services/mcqAnalyticsService'
 import SubjectCard from './components/subject/SubjectCard'
+import { useMemberStore } from './data/memberStore'
+import { permissionService } from './services/permissionService'
+import { userAnalyticsService } from './services/userAnalyticsService'
+import { hydrateUserAnalytics, useUserAnalytics } from './data/analyticsStore'
+import { hydrateUserProgressFromSupabase } from './data/progressStore'
 
 const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreas = ['COA', 'Digital Electronics']
@@ -117,26 +122,39 @@ const DASH_TONE_MAP = [
   { iconClass: 'icon-teal', accent: '#0E9494', accentBg: '#E6F7F7', ringTrack: '#DDF4F4' },
 ]
 
-const drawerPrimaryItems = [
-  { icon: 'home', label: 'Dashboard', active: true },
-  { icon: 'subjects', label: 'Subjects' },
-  { icon: 'practice', label: 'Practice' },
-  { icon: 'flashcards', label: 'Flashcards', disabled: true },
-  { icon: 'mockTests', label: 'Mock Tests', disabled: true },
-]
-
-const drawerProgressItems = [
-  { icon: 'analytics', label: 'Analytics', disabled: true },
-  { icon: 'studyPlanner', label: 'Study Planner', disabled: true },
-  { icon: 'leaderboard', label: 'Leaderboard', disabled: true },
-]
-
-const drawerMoreItems = [
-  { icon: 'notes', label: 'Notes', disabled: true },
-  { icon: 'notifications', label: 'Notifications', badge: '3', disabled: true },
-  { icon: 'settings', label: 'Settings', disabled: true },
-  { icon: 'help', label: 'Help & Support', disabled: true },
-  { icon: 'adminDashboard', label: 'Admin' },
+const drawerSections = [
+  {
+    label: 'HOME',
+    items: [
+      { icon: 'home', label: 'Dashboard', active: true },
+      { icon: 'subjects', label: 'Subjects' },
+      { icon: 'practice', label: 'Practice' },
+    ],
+  },
+  {
+    label: 'LEARNING',
+    items: [
+      { icon: 'notes', label: 'Notes', disabled: true },
+      { icon: 'flashcards', label: 'Flashcards', disabled: true },
+      { icon: 'mockTests', label: 'Mock Tests', disabled: true },
+    ],
+  },
+  {
+    label: 'INSIGHTS',
+    items: [
+      { icon: 'analytics', label: 'Analytics', disabled: true },
+      { icon: 'studyPlanner', label: 'Study Planner', disabled: true },
+      { icon: 'leaderboard', label: 'Leaderboard', disabled: true },
+    ],
+  },
+  {
+    label: 'SYSTEM',
+    items: [
+      { icon: 'adminDashboard', label: 'Admin' },
+      { icon: 'settings', label: 'Settings', disabled: true },
+      { icon: 'help', label: 'Help & Support', disabled: true },
+    ],
+  },
 ]
 
 function ReadinessRing({ size = 96, radius = 38, strokeWidth = 8, progress, gradient, glow, trackColor = '#1E293B', children }) {
@@ -234,16 +252,57 @@ function DashboardPage({
   const registry = useContentRegistry()
   const courseRegistry = useCourseRegistry(activeWorkspaceId)
   const { isAdmin } = useRoleStore()
+  const { effectiveMember, isSuperAdmin, isViewingAs } = useMemberStore()
+  const [persistentAttempts, setPersistentAttempts] = useState([])
 
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
   const effectiveCourseId = activeWorkspaceId || activeCourse?.id
 
-  // Past attempts history merging in-memory state with persistent localStorage cache
+  // Hydrate user progress and persistent analytics on mount & when user or course changes
+  useEffect(() => {
+    const userId = effectiveMember?.id
+    if (!userId || !effectiveCourseId) return
+
+    let isMounted = true
+    async function hydrate() {
+      await Promise.all([
+        hydrateUserProgressFromSupabase(userId),
+        hydrateUserAnalytics(userId, effectiveCourseId),
+      ])
+      const attempts = await userAnalyticsService.getUserAttempts(userId, effectiveCourseId)
+      if (isMounted) {
+        setPersistentAttempts(attempts)
+      }
+    }
+
+    hydrate()
+    return () => {
+      isMounted = false
+    }
+  }, [effectiveMember?.id, effectiveCourseId])
+
+  const userAnalytics = useUserAnalytics(effectiveMember?.id, effectiveCourseId, 50)
+
+  // Past attempts history merging persistent Supabase/local attempts with testSession
   const pastAttempts = useMemo(() => {
     let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
+    if (memoryAttempts.length === 0 && persistentAttempts.length > 0) {
+      return persistentAttempts.map((a) => ({
+        id: a.id,
+        timestamp: new Date(a.created_at || Date.now()).getTime(),
+        subjectKey: a.subject_id,
+        subjectTitle: a.subject_title || a.subject_id,
+        chapterId: a.chapter_id,
+        chapterTitle: a.chapter_title,
+        accuracy: a.accuracy,
+        correct: a.correct_count,
+        attempted: a.attempted_count,
+        total: a.total_questions,
+      }))
+    }
     if (memoryAttempts.length === 0) {
       try {
-        const cached = localStorage.getItem('nexora_recent_mcq_attempts')
+        const cached = localStorage.getItem(`nexora_attempts_${effectiveMember?.id}`) || localStorage.getItem('nexora_recent_mcq_attempts')
         if (cached) {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed)) memoryAttempts = parsed
@@ -253,7 +312,7 @@ function DashboardPage({
       }
     }
     return memoryAttempts
-  }, [testSession.attemptHistoryData])
+  }, [testSession.attemptHistoryData, persistentAttempts, effectiveMember?.id])
 
   // Recent attempted MCQs list sorted by newest attempt first
   const recentAttemptsList = useMemo(() => {
@@ -650,121 +709,29 @@ function DashboardPage({
         onClick={() => setDrawerOpen(false)}
       />
 
-      <aside className={`side-drawer${drawerOpen ? ' open' : ''}`}>
-        <div className="drawer-profile">
-          <button
-            type="button"
-            className="drawer-close"
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Close menu"
-          >
-            <AppIcon name="close" size={18} />
-          </button>
-          <div className="drawer-avatar" aria-hidden="true">
-            <AppIcon name="profile" size={26} />
-          </div>
-          <div className="drawer-name">Abhi Kumar</div>
-          <div className="drawer-sub">{activeCourse?.name || 'BPSC TRE 4.0 • Computer Science'}</div>
-          <div className="drawer-streak">
-            <AppIcon name="streak" size={14} />
-            14 Day Streak
-          </div>
-
-          {/* Quick Mode Switcher */}
-          <div className="drawer-mode-switch-card">
-            <div className="mode-switch-left">
-              <span className="mode-role-icon">🎓</span>
-              <div className="mode-role-text">
-                <span className="mode-role-title">Student Mode</span>
-                <span className="mode-role-sub">Learning & Practice</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="mode-switch-btn"
-              onClick={() => {
-                setDrawerOpen(false)
-                onNavigateAdmin()
-              }}
-              title="Switch to Admin Mode"
-            >
-              Admin Mode ➔
-            </button>
-          </div>
-        </div>
-
-        <div className="drawer-menu">
-          {drawerPrimaryItems.map((item) => (
-            <DrawerItem
-              key={item.label}
-              icon={item.icon}
-              label={item.label}
-              active={item.active}
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.label === 'Subjects') {
-                  onNavigateSubjects()
-                  return
-                }
-                if (item.label === 'Practice') {
-                  onNavigatePractice()
-                  return
-                }
-                setDrawerOpen(false)
-              }}
-            />
-          ))}
-
-          <div className="drawer-divider" />
-          <div className="drawer-section-label">TRACK PROGRESS</div>
-
-          {drawerProgressItems.map((item) => (
-            <DrawerItem
-              key={item.label}
-              icon={item.icon}
-              label={item.label}
-              disabled={item.disabled}
-              onClick={() => setDrawerOpen(false)}
-            />
-          ))}
-
-          <div className="drawer-divider" />
-          <div className="drawer-section-label">MORE</div>
-
-          {drawerMoreItems.map((item) => (
-            <DrawerItem
-              key={item.label}
-              icon={item.icon}
-              label={item.label}
-              badge={item.badge}
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.label === 'Admin') {
-                  onNavigateAdmin()
-                  return
-                }
-                setDrawerOpen(false)
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="drawer-footer">
-          <button
-            type="button"
-            className="drawer-logout"
-            onClick={() => {
-              setDrawerOpen(false)
-              onLogout?.()
-            }}
-          >
-            <span className="d-icon" aria-hidden="true">
-              <AppIcon name="logout" size={18} />
-            </span>
-            Log Out
-          </button>
-        </div>
-      </aside>
+      <SideDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onLogout={onLogout}
+        profile={{
+          name: effectiveMember?.display_name || 'Student',
+          warrior: `${effectiveMember?.warrior_name || 'WARRIOR'} • ${effectiveMember?.public_user_id || 'NEX-WAR-001'}`,
+          sub: `${activeCourse?.name || 'Assigned Course'}`,
+          streak: '14 Day Streak',
+        }}
+        sections={drawerSections}
+        onItemClick={(item) => {
+          setDrawerOpen(false)
+          if (item.label === 'Dashboard') navigate('')
+          else if (item.label === 'Subjects') onNavigateSubjects()
+          else if (item.label === 'Practice') onNavigatePractice()
+          else if (item.label === 'Admin') onNavigateAdmin()
+        }}
+        onSwitchMode={(mode) => {
+          if (mode === 'admin') onNavigateAdmin?.()
+          else navigate('')
+        }}
+      />
 
       <MobileLayout
         activeTab="Home"
@@ -792,7 +759,7 @@ function DashboardPage({
                   <AppIcon name="menu" size={20} />
                 </button>
                 <div className="dash-greeting-box">
-                  <div className="dash-greeting-title">Good Evening, Abhi 👋</div>
+                  <div className="dash-greeting-title">Good Evening, {effectiveMember?.display_name?.split(' ')[0] || effectiveMember?.warrior_name || 'Warrior'} 👋</div>
                   <div className="dash-greeting-sub">{courseDisplayName}</div>
                 </div>
               </div>

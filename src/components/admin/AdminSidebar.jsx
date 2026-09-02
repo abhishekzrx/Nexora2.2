@@ -3,19 +3,22 @@
  * Sidebar navigation for the Admin Panel.
  */
 import AppIcon from '../ui/AppIcon'
+import { useMemberStore } from '../../data/memberStore'
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'DASHBOARD', icon: 'adminDashboard' },
+  { key: 'members', label: 'MEMBER MANAGEMENT', icon: 'profile' },
   { key: 'courses', label: 'COURSE MANAGER', icon: 'folder' },
   { key: 'subjects', label: 'SUBJECTS', icon: 'chapters' },
   { key: 'notes', label: 'NOTES EDITOR', icon: 'notesTab' },
   { key: 'mcq-injection', label: 'CHAPTER MCQS INJECTION', icon: 'document' },
   { key: 'mcq-manager', label: 'MCQ MANAGER', icon: 'mcqs' },
-  { key: 'analytics', label: 'ANALYTICS', icon: 'analyticsTab', disabled: true },
   { key: 'settings', label: 'SETTINGS', icon: 'settings' },
 ]
 
 function AdminSidebar({ activeSection, onNavigate, courseName, onBackHome, onLogout }) {
+  const { activeMember } = useMemberStore()
+
   return (
     <nav className="admin-sidebar">
       <div className="admin-sidebar-header">
@@ -80,8 +83,8 @@ function AdminSidebar({ activeSection, onNavigate, courseName, onBackHome, onLog
           <AppIcon name="profile" size={20} />
         </div>
         <div className="admin-user-info">
-          <div className="admin-user-name">Abhi</div>
-          <div className="admin-user-role">Administrator</div>
+          <div className="admin-user-name">{activeMember?.display_name || 'adminalpha'}</div>
+          <div className="admin-user-role">Super Admin</div>
         </div>
       </div>
     </nav>

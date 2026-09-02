@@ -440,12 +440,19 @@ export const mcqService = {
     const payload = progressUpdates.map((item) => ({
       user_id: item.user_id || userId,
       mcq_id: item.mcq_id,
-      chapter_id: item.chapter_id,
+      course_id: item.course_id || item.courseId || null,
+      subject_id: item.subject_id || item.subjectId || null,
+      chapter_id: item.chapter_id || item.chapterId || null,
       status: item.status,
-      attempts: item.attempts !== undefined ? item.attempts : 1,
-      correct_count: item.correct_count !== undefined ? item.correct_count : 0,
-      incorrect_count: item.incorrect_count !== undefined ? item.incorrect_count : 0,
+      first_attempted_at: item.first_attempted_at || item.last_attempted_at || new Date().toISOString(),
       last_attempted_at: item.last_attempted_at || new Date().toISOString(),
+      attempts: item.total_attempts !== undefined ? item.total_attempts : (item.attempts !== undefined ? item.attempts : 1),
+      total_attempts: item.total_attempts !== undefined ? item.total_attempts : (item.attempts !== undefined ? item.attempts : 1),
+      correct_count: item.correct_attempts !== undefined ? item.correct_attempts : (item.correct_count !== undefined ? item.correct_count : 0),
+      correct_attempts: item.correct_attempts !== undefined ? item.correct_attempts : (item.correct_count !== undefined ? item.correct_count : 0),
+      incorrect_count: item.incorrect_attempts !== undefined ? item.incorrect_attempts : (item.incorrect_count !== undefined ? item.incorrect_count : 0),
+      incorrect_attempts: item.incorrect_attempts !== undefined ? item.incorrect_attempts : (item.incorrect_count !== undefined ? item.incorrect_count : 0),
+      latest_result: item.latest_result || (item.status === 'MASTERED' ? 'CORRECT' : 'INCORRECT'),
       updated_at: item.updated_at || new Date().toISOString(),
     }))
 

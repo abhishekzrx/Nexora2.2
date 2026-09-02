@@ -1,7 +1,7 @@
 /**
  * progressStore.js
  * Reactive user progress store for student MCQ attempt data.
- * Manages caching and reactive subscriptions for mcq_progress records.
+ * Manages user-scoped caching and reactive subscriptions for mcq_progress records.
  */
 
 import { useSyncExternalStore } from 'react'
@@ -11,6 +11,7 @@ import { getUserId } from '../services/userService.js'
 let listeners = []
 let version = 0
 
+let activeScopedUserId = null
 let progressList = []
 let progressMap = new Map() // mcq_id -> progress object
 let isHydrated = false
@@ -45,11 +46,27 @@ export function getUserProgressSnapshot() {
   return snapshot
 }
 
-export async function hydrateUserProgressFromSupabase(force = false) {
-  if (hydrationPromise && !force) return hydrationPromise
+export function clearUserProgressStore() {
+  progressList = []
+  progressMap = new Map()
+  isHydrated = false
+  activeScopedUserId = null
+  emit()
+}
 
-  const userId = getUserId()
+export async function hydrateUserProgressFromSupabase(targetUserId = null, force = false) {
+  const userId = targetUserId || getUserId()
   if (!userId) return { success: true, data: [] }
+
+  // If user changed, clear previous user's cached progress to prevent leakage
+  if (activeScopedUserId && activeScopedUserId !== userId) {
+    progressList = []
+    progressMap = new Map()
+    isHydrated = false
+  }
+  activeScopedUserId = userId
+
+  if (hydrationPromise && !force) return hydrationPromise
 
   hydrationPromise = (async () => {
     try {

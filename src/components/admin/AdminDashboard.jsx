@@ -16,6 +16,7 @@ import ChapterMcqInjection from './ChapterMcqInjection'
 import McqManager from './McqManager'
 import NotesManager from './NotesManager'
 import SettingsManager from './SettingsManager'
+import MemberManager from './MemberManager'
 import FeedbackUI from './FeedbackUI'
 
 import DashboardHero from './dashboard/DashboardHero'
@@ -185,6 +186,8 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
         return <ChapterMcqInjection key={activeWorkspaceId} />
       case 'courses':
         return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'members':
+        return <MemberManager onNavigateStudentView={onBackHome} />
       case 'settings':
         return <SettingsManager />
       default:

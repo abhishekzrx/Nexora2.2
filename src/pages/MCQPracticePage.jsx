@@ -23,6 +23,10 @@ import { calculateAccuracy, calculateChapterMetrics } from '../services/mcqAnaly
 import { useWorkspaceStore } from '../data/workspaceStore'
 import { updateUserProgressStore } from '../data/progressStore'
 import { onPracticeSessionCompleted } from '../services/performanceEngine'
+import { userAnalyticsService } from '../services/userAnalyticsService'
+import { submissionService } from '../services/submissionService'
+import { hydrateUserAnalytics } from '../data/analyticsStore'
+import { useMemberStore } from '../data/memberStore'
 import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
 
@@ -347,6 +351,7 @@ function getIsMobile() {
 function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChapterId, chapter, onBack, onSubmit, reviewMode = false }) {
   const registry = useContentRegistry()
   const { activeWorkspaceId } = useWorkspaceStore()
+  const { isViewingAs } = useMemberStore()
   const subject = registry.subjectCatalog[subjectKey] || null
   const subjectTitle = subject?.title || 'Subject'
 
@@ -779,8 +784,11 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
 
       const existing = userProgressMap.get(q.id) || {
         attempts: 0,
+        total_attempts: 0,
         correct_count: 0,
+        correct_attempts: 0,
         incorrect_count: 0,
+        incorrect_attempts: 0,
         status: 'UNSEEN',
       }
 
@@ -799,35 +807,24 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       const updatedRecord = {
         user_id: userId,
         mcq_id: q.id,
+        course_id: activeWorkspaceId || 'course_default',
+        subject_id: subjectKey,
         chapter_id: q.chapterId || chapterId,
         status: newStatus,
-        attempts: (existing.attempts || 0) + 1,
-        correct_count: (existing.correct_count || 0) + (isCorrect ? 1 : 0),
-        incorrect_count: (existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
+        first_attempted_at: existing.first_attempted_at || new Date().toISOString(),
         last_attempted_at: new Date().toISOString(),
+        attempts: (existing.total_attempts || existing.attempts || 0) + 1,
+        total_attempts: (existing.total_attempts || existing.attempts || 0) + 1,
+        correct_count: (existing.correct_attempts || existing.correct_count || 0) + (isCorrect ? 1 : 0),
+        correct_attempts: (existing.correct_attempts || existing.correct_count || 0) + (isCorrect ? 1 : 0),
+        incorrect_count: (existing.incorrect_attempts || existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
+        incorrect_attempts: (existing.incorrect_attempts || existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
+        latest_result: isCorrect ? 'CORRECT' : 'INCORRECT',
       }
 
       progressUpdates.push(updatedRecord)
       newProgressMap.set(q.id, updatedRecord)
     })
-
-    if (progressUpdates.length > 0) {
-      const saveRes = await mcqService.updateUserProgress(userId, progressUpdates)
-
-      if (!saveRes.success) {
-        setIsEvaluating(false)
-        showToast({
-          type: 'error',
-          title: 'Progress Save Failed',
-          message: saveRes.error || 'Failed to save question progress to database. Questions were not retired.',
-          duration: 5000,
-        })
-        return
-      }
-
-      // Update global reactive progressStore so dashboard and chapter analytics recalculate reactively
-      updateUserProgressStore(progressUpdates)
-    }
 
     // Persisted to database successfully -> Update local component state
     setUserProgressMap(newProgressMap)
@@ -848,8 +845,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         currentTotalMastered += 1
       }
     })
-
-    const remainingEligible = Math.max(0, totalPool - currentTotalMastered)
 
     const currentAttemptRecord = {
       id: `att-${Date.now()}`,
@@ -886,6 +881,52 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(updatedHistory))
     } catch {
       // ignore
+    }
+
+    // Atomic & Idempotent Submission Pipeline
+    const submissionId = submissionService.generateSubmissionId(userId)
+    const submitRes = await submissionService.submitPracticeSession({
+      userId,
+      submissionId,
+      courseId: activeWorkspaceId || 'course_default',
+      subjectId: subjectKey,
+      subjectTitle: subjectTitle || subjectKey,
+      chapterId: chapter?.id || 'ch_default',
+      chapterTitle: chapter?.title || chapter?.name || 'Chapter Practice',
+      totalQuestions: totalCount,
+      attemptedCount,
+      correctCount,
+      incorrectCount,
+      skippedCount: unansweredCount,
+      score,
+      percentage,
+      accuracy,
+      timeTakenSeconds: testSession.timeTakenSeconds,
+      progressUpdates,
+      isReadOnly: Boolean(isViewingAs),
+    })
+
+    if (isViewingAs) {
+      showToast({
+        type: 'info',
+        title: '👁️ Read-Only Preview',
+        message: 'Viewing as member: Practice test evaluated for preview only. Student data was not modified.',
+        duration: 4000,
+      })
+    } else if (submitRes.pending) {
+      showToast({
+        type: 'warning',
+        title: '⚠ Unable to Save Progress',
+        message: 'Network offline: Practice progress saved locally and will auto-sync when connection returns.',
+        duration: 5000,
+      })
+    } else if (submitRes.success) {
+      showToast({
+        type: 'success',
+        title: '✓ Progress Saved',
+        message: `Saved ${attemptedCount} unique question responses and updated persistent analytics.`,
+        duration: 3500,
+      })
     }
 
     // Record historical chapter and subject performance intelligence snapshots
@@ -938,6 +979,13 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     if (isEvaluating) return
     setIsEvaluating(true)
     setEvalStep(0)
+
+    showToast({
+      type: 'info',
+      title: 'Saving Progress...',
+      message: 'Evaluating responses and synchronizing with database.',
+      duration: 1500,
+    })
 
     const questionList = activeQuestions.map((q) => ({
       id: q.id,

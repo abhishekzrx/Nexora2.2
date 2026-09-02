@@ -1,22 +1,35 @@
 /**
  * StudentCourseSelector
  * Centralized Course selector for Student Dashboard and Header.
- * Data-bound directly to workspaceStore. Automatically reflects all courses
- * created, renamed, or updated in the Admin Panel in real time.
+ * Automatically filtered by active member's assigned courses and permissions.
  */
 
 import { useState, useRef, useEffect } from 'react'
 import AppIcon from '../ui/AppIcon'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
+import { useMemberStore } from '../../data/memberStore'
+import { permissionService } from '../../services/permissionService'
 
 function StudentCourseSelector({ onSelect }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+  const { effectiveMember } = useMemberStore()
 
-  // Filter out archived/deleted courses — all active, draft, and published courses from Admin UI appear here
-  const visibleCourses = workspaces.filter((w) => w.status !== 'archived' && w.status !== 'deleted')
-  const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || visibleCourses[0] || null
+  // Filter out archived/deleted courses
+  const allNonDeleted = workspaces.filter((w) => w.status !== 'archived' && w.status !== 'deleted')
+  
+  // Layer 1 Security: Only show courses the member is assigned & allowed to access
+  const visibleCourses = permissionService.filterAllowedCourses(effectiveMember, allNonDeleted)
+
+  const activeCourse = visibleCourses.find((w) => w.id === activeWorkspaceId) || visibleCourses[0] || null
+
+  // Ensure active workspace points to an allowed course
+  useEffect(() => {
+    if (visibleCourses.length > 0 && !visibleCourses.some((c) => c.id === activeWorkspaceId)) {
+      setActiveWorkspace(visibleCourses[0].id)
+    }
+  }, [visibleCourses, activeWorkspaceId])
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -47,7 +60,7 @@ function StudentCourseSelector({ onSelect }) {
       {open && (
         <div className="student-course-dropdown">
           {visibleCourses.length === 0 ? (
-            <div className="student-course-empty">No courses available</div>
+            <div className="student-course-empty">No assigned courses available</div>
           ) : (
             visibleCourses.map((course) => (
               <button
@@ -69,4 +82,3 @@ function StudentCourseSelector({ onSelect }) {
 }
 
 export default StudentCourseSelector
-

@@ -5,6 +5,8 @@ import MobileLayout from './components/layout/MobileLayout'
 import SideDrawer from './components/layout/SideDrawer'
 import { useCourseRegistry } from './data/courseRegistry'
 import { useWorkspaceStore } from './data/workspaceStore'
+import { useMemberStore } from './data/memberStore'
+import { permissionService } from './services/permissionService'
 
 import ProgressRing from './components/ui/ProgressRing'
 import ConcentricRingGraph from './components/ui/ConcentricRingGraph'
@@ -91,6 +93,7 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef(null)
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
+  const { effectiveMember } = useMemberStore()
   const registry = useCourseRegistry(courseId || activeWorkspaceId)
 
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
@@ -166,7 +169,8 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
   }, [pastAttempts])
 
   const subjects = useMemo(() => {
-    const list = [...(registry.subjectsList || [])]
+    const rawList = [...(registry.subjectsList || [])]
+    const list = permissionService.filterAllowedSubjects(effectiveMember, activeCourse?.id, rawList)
     
     // Sort by most recently used/attempted subject at the TOP
     list.sort((a, b) => {
@@ -280,7 +284,12 @@ function SubjectsPage({ courseId, onNavigateHome = () => {}, onOpenSubjectDetail
       <SideDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        profile={{ name: 'Abhi Kumar', sub: `${activeCourse?.name || 'Select Course'}`, streak: '14 Day Streak' }}
+        profile={{
+          name: effectiveMember?.display_name || 'Student',
+          warrior: `${effectiveMember?.warrior_name || 'WARRIOR'} • ${effectiveMember?.public_user_id || 'NEX-WAR-001'}`,
+          sub: `${activeCourse?.name || 'Select Course'}`,
+          streak: '14 Day Streak',
+        }}
         sections={drawerSections}
         onItemClick={(item) => {
           setDrawerOpen(false)

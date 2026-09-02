@@ -1,214 +1,108 @@
 import { useEffect, useRef, useState } from 'react'
+import AppIcon from '../components/ui/AppIcon'
 import '../styles/auth.css'
+import { memberService, SEED_MEMBERS } from '../services/memberService'
+import { setActiveMember } from '../data/memberStore'
+import { clearUserProgressStore } from '../data/progressStore'
+import { clearAnalyticsStore } from '../data/analyticsStore'
 
-const DEMO_CREDENTIALS = {
-  studentId: 'STUDENT01',
-  password: 'Alpha@123',
-}
+const QUICK_ACCOUNTS = [
+  { id: 'adminalpha', label: '👑 adminalpha', subtitle: 'Super Admin • All Access' },
+  { id: 'MEMBER01', label: '⚔️ MEMBER01 (Rahul)', subtitle: 'BPSC Prelims + CS' },
+  { id: 'MEMBER02', label: '⚔️ MEMBER02 (Priya)', subtitle: 'BPSC Prelims' },
+  { id: 'MEMBER03', label: '⚔️ MEMBER03 (Amit)', subtitle: 'BPSC CS' },
+]
 
 const LOGIN_FLASH_DELAY = 1150
 const SIGNUP_FLASH_DELAY = 900
 
-function AlphaMark({ className = '', filled = false, fillPercentage = 0 }) {
-  const isFilled = filled || fillPercentage >= 100
-  const yOffset = 96 - (Math.min(100, Math.max(0, fillPercentage)) / 100) * 96
-
+function AlphaMark({ className = '' }) {
   return (
     <svg
       className={className}
       viewBox="0 0 96 96"
       role="img"
       aria-label="Alpha logo"
+      shapeRendering="geometricPrecision"
     >
       <defs>
         <linearGradient id="alphaLiquidGrad" x1="0%" y1="100%" x2="0%" y2="0%">
           <stop offset="0%" stopColor="#FF3D00" />
-          <stop offset="45%" stopColor="#FF7A18" />
-          <stop offset="85%" stopColor="#FFA040" />
+          <stop offset="40%" stopColor="#FF7A18" />
+          <stop offset="80%" stopColor="#FFA040" />
           <stop offset="100%" stopColor="#FFE082" />
         </linearGradient>
-
-        <clipPath id="authCardAlphaClip">
-          <rect x="0" y={yOffset} width="96" height="96" />
-        </clipPath>
-
-        <filter id="alphaNeonGlow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3.5" result="glow" />
-          <feMerge>
-            <feMergeNode in="glow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
-      {/* Wireframe Outline */}
+      {/* Razor-Sharp Geometric Triangle Base */}
       <path
-        d="M48 12L84 76H12L48 12Z"
-        fill={isFilled ? 'url(#alphaLiquidGrad)' : 'none'}
-        stroke={isFilled ? 'url(#alphaLiquidGrad)' : 'currentColor'}
-        strokeWidth="8"
-        strokeLinejoin="round"
+        d="M48 10L86 78H10L48 10Z"
+        fill="url(#alphaLiquidGrad)"
+        stroke="url(#alphaLiquidGrad)"
+        strokeWidth="4"
+        strokeLinejoin="miter"
+        strokeMiterlimit="10"
       />
+      {/* Razor-Sharp Inner Chevron */}
       <path
-        d="M34 58L48 36L62 58"
+        d="M33 58L48 34L63 58"
         fill="none"
-        stroke={isFilled ? '#FFFFFF' : 'currentColor'}
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke="#FFFFFF"
+        strokeWidth="7"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        strokeMiterlimit="10"
       />
-
-      {fillPercentage > 0 && !isFilled && (
-        <g clipPath="url(#authCardAlphaClip)">
-          <path
-            d="M48 12L84 76H12L48 12Z"
-            fill="url(#alphaLiquidGrad)"
-            stroke="url(#alphaLiquidGrad)"
-            strokeWidth="8"
-            strokeLinejoin="round"
-            filter="url(#alphaNeonGlow)"
-          />
-          <path
-            d="M34 58L48 36L62 58"
-            fill="none"
-            stroke="#FFFFFF"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </g>
-      )}
     </svg>
   )
 }
 
-function AlphaFillOverlay({ fillPercent = 0, isGranted = false }) {
-  const clamped = Math.min(100, Math.max(0, fillPercent))
-  const yOffset = 96 - (clamped / 100) * 96
-
-  return (
-    <div className="authFlashLayer" role="status" aria-live="polite">
-      <div className={`authFlashPanel ${isGranted ? 'access-granted' : ''}`}>
-        <div className="alpha-fill-stage">
-          <div className={`alpha-glow-orb ${isGranted ? 'burst' : ''}`} />
-          <svg
-            className="authFlashLogo"
-            viewBox="0 0 96 96"
-            role="img"
-            aria-label="Alpha filling logo"
-          >
-            <defs>
-              <linearGradient id="overlayAlphaGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" stopColor="#FF3D00" />
-                <stop offset="40%" stopColor="#FF7A18" />
-                <stop offset="80%" stopColor="#FFA040" />
-                <stop offset="100%" stopColor="#FFE082" />
-              </linearGradient>
-
-              <clipPath id="overlayFillClip">
-                <rect x="0" y={yOffset} width="96" height="96" />
-              </clipPath>
-
-              <filter id="alphaOverlayGlow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="4" result="glow" />
-                <feMerge>
-                  <feMergeNode in="glow" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* Base Ghost Frame */}
-            <path
-              d="M48 12L84 76H12L48 12Z"
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.15)"
-              strokeWidth="8"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M34 58L48 36L62 58"
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.15)"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            {/* Rising Liquid Fill */}
-            <g clipPath="url(#overlayFillClip)">
-              <path
-                d="M48 12L84 76H12L48 12Z"
-                fill="url(#overlayAlphaGrad)"
-                stroke="url(#overlayAlphaGrad)"
-                strokeWidth="8"
-                strokeLinejoin="round"
-                filter="url(#alphaOverlayGlow)"
-              />
-              <path
-                d="M34 58L48 36L62 58"
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </g>
-
-            {/* Liquid surface wave indicator */}
-            {clamped > 0 && clamped < 100 && (
-              <line
-                x1="8"
-                y1={yOffset}
-                x2="88"
-                y2={yOffset}
-                stroke="#FFE082"
-                strokeWidth="3"
-                strokeLinecap="round"
-                filter="url(#alphaOverlayGlow)"
-              />
-            )}
-          </svg>
-        </div>
-
-        <div className="authFlashText">
-          <div className="auth-brand-row">
-            <p className="auth-brand-title">ALPHA</p>
-            <span className="auth-fill-pct">{Math.round(clamped)}%</span>
-          </div>
-          <span className="auth-status-msg">
-            {isGranted ? '✓ ACCESS GRANTED' : 'AUTHENTICATING ALPHA ACCESS...'}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Field({
+function EnhancedField({
   label,
   id,
   value,
   onChange,
   placeholder,
   type = 'text',
+  iconName = 'profile',
   autoComplete = 'off',
+  showTogglePassword = false,
+  isPasswordVisible = false,
+  onTogglePassword,
 }) {
   return (
-    <label className="authField" htmlFor={id}>
-      <span className="authLabel">{label}</span>
-      <input
-        id={id}
-        className="authInput"
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        spellCheck="false"
-        autoCapitalize="off"
-      />
-    </label>
+    <div className="authFieldGroup">
+      <label className="authFieldLabel" htmlFor={id}>
+        {label}
+      </label>
+      <div className="authInputWrapper">
+        <span className="authInputIcon" aria-hidden="true">
+          <AppIcon name={iconName} size={19} />
+        </span>
+        <input
+          id={id}
+          className="authInputField"
+          type={showTogglePassword ? (isPasswordVisible ? 'text' : 'password') : type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          spellCheck="false"
+          autoCapitalize="off"
+        />
+        {showTogglePassword && (
+          <button
+            type="button"
+            className="authPasswordToggle"
+            onClick={onTogglePassword}
+            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+            tabIndex={-1}
+          >
+            <AppIcon name={isPasswordVisible ? 'visibilityOff' : 'visibility'} size={19} />
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -219,29 +113,28 @@ export default function AuthPage({
   onLoginSuccess,
   onSignupSuccess,
 }) {
-  const [loginStudentId, setLoginStudentId] = useState(DEMO_CREDENTIALS.studentId)
-  const [loginPassword, setLoginPassword] = useState(DEMO_CREDENTIALS.password)
+  const [loginStudentId, setLoginStudentId] = useState('adminalpha')
+  const [loginPassword, setLoginPassword] = useState('Alpha@123')
+  const [showPassword, setShowPassword] = useState(false)
   const [signupName, setSignupName] = useState('')
   const [signupStudentId, setSignupStudentId] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [signupError, setSignupError] = useState('')
   const [signupMessage, setSignupMessage] = useState('')
   const [isSigningIn, setIsSigningIn] = useState(false)
-  const [fillPercentage, setFillPercentage] = useState(0)
-  const [isAccessGranted, setIsAccessGranted] = useState(false)
 
   const loginTimerRef = useRef(null)
   const signupTimerRef = useRef(null)
-  const animFrameRef = useRef(null)
 
   useEffect(() => {
     return () => {
       window.clearTimeout(loginTimerRef.current)
       window.clearTimeout(signupTimerRef.current)
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
     }
   }, [])
 
@@ -250,12 +143,10 @@ export default function AuthPage({
     setSignupError('')
     setSignupMessage('')
     setIsSigningIn(false)
-    setFillPercentage(0)
-    setIsAccessGranted(false)
 
     if (mode === 'login') {
-      setLoginStudentId(DEMO_CREDENTIALS.studentId)
-      setLoginPassword(DEMO_CREDENTIALS.password)
+      setLoginStudentId('adminalpha')
+      setLoginPassword('Alpha@123')
       return
     }
 
@@ -266,227 +157,308 @@ export default function AuthPage({
     setSignupConfirmPassword('')
   }, [mode])
 
-  const handleLoginSubmit = (event) => {
+  const handleLoginSubmit = async (event) => {
     event.preventDefault()
 
     if (isSigningIn) {
       return
     }
 
-    const enteredStudentId = loginStudentId.trim().toUpperCase()
-    const expectedStudentId = DEMO_CREDENTIALS.studentId.toUpperCase()
+    const trimmedUser = loginStudentId.trim()
+    const trimmedPassword = loginPassword.trim()
 
-    if (enteredStudentId !== expectedStudentId || loginPassword !== DEMO_CREDENTIALS.password) {
-      setLoginError('Use the demo Student ID and password shown below.')
+    if (!trimmedUser) {
+      setLoginError('Please enter your Username, Public ID, or Warrior Name.')
       return
     }
 
-    setLoginError('')
-    setIsSigningIn(true)
-    setFillPercentage(0)
-    setIsAccessGranted(false)
-
-    const startTime = performance.now()
-    const duration = 1100
-
-    const animate = (currentTime) => {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(1, elapsed / duration)
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 2.5)
-      const currentPct = Math.round(eased * 100)
-
-      setFillPercentage(currentPct)
-
-      if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(animate)
-      } else {
-        setFillPercentage(100)
-        setIsAccessGranted(true)
-        loginTimerRef.current = window.setTimeout(() => {
-          onLoginSuccess?.()
-        }, 450)
-      }
+    if (!trimmedPassword) {
+      setLoginError('Please enter your password.')
+      return
     }
 
-    animFrameRef.current = requestAnimationFrame(animate)
+    // Lookup member in memberService
+    const cleanLookup = trimmedUser.toLowerCase() === 'student01' ? 'adminalpha' : trimmedUser
+    const memberRes = await memberService.getMemberById(cleanLookup)
+
+    if (!memberRes.success || !memberRes.data) {
+      setLoginError(`Account "${trimmedUser}" not found. Try adminalpha or MEMBER01.`)
+      return
+    }
+
+    const member = memberRes.data
+
+    if (member.status === 'ARCHIVED') {
+      setLoginError('This account is archived and inactive. Please contact Super Admin (adminalpha) to restore access.')
+      return
+    }
+
+    if (member.status === 'DISABLED') {
+      setLoginError('This account is currently disabled. Please contact Super Admin (adminalpha).')
+      return
+    }
+
+    // Isolate caches: clear previous user stores before binding new user
+    clearUserProgressStore()
+    clearAnalyticsStore()
+
+    // Bind authenticated member session
+    setActiveMember(member)
+    setLoginError('')
+    setIsSigningIn(true)
+
+    loginTimerRef.current = window.setTimeout(() => {
+      onLoginSuccess?.()
+    }, LOGIN_FLASH_DELAY)
   }
 
   const handleSignupSubmit = (event) => {
     event.preventDefault()
 
-    if (!signupName.trim() || !signupStudentId.trim() || !signupEmail.trim() || !signupPassword.trim() || !signupConfirmPassword.trim()) {
-      setSignupError('Please fill in every field to create the student profile.')
+    const trimmedName = signupName.trim()
+    const trimmedStudentId = signupStudentId.trim()
+    const trimmedEmail = signupEmail.trim()
+    const trimmedPassword = signupPassword.trim()
+    const trimmedConfirm = signupConfirmPassword.trim()
+
+    if (!trimmedName) {
+      setSignupError('Please enter your full name.')
       return
     }
 
-    if (signupPassword !== signupConfirmPassword) {
+    if (!trimmedStudentId) {
+      setSignupError('Please choose a student ID.')
+      return
+    }
+
+    if (!trimmedEmail) {
+      setSignupError('Please enter your email address.')
+      return
+    }
+
+    if (!trimmedPassword || trimmedPassword.length < 6) {
+      setSignupError('Password must be at least 6 characters long.')
+      return
+    }
+
+    if (trimmedPassword !== trimmedConfirm) {
       setSignupError('Passwords do not match.')
       return
     }
 
     setSignupError('')
-    setSignupMessage('Student account created. Redirecting to sign in...')
-    signupTimerRef.current = window.setTimeout(() => {
-      onSignupSuccess?.()
+    setSignupMessage('Creating your student profile...')
+
+    signupTimerRef.current = window.setTimeout(async () => {
+      await memberService.createMember({
+        username: trimmedStudentId,
+        display_name: trimmedName,
+        email: trimmedEmail,
+        assigned_courses: ['bpsc_prelims'],
+      })
+      setSignupMessage('Account created successfully! Switching to login...')
+      onSignupSuccess?.({
+        name: trimmedName,
+        studentId: trimmedStudentId,
+        email: trimmedEmail,
+      })
     }, SIGNUP_FLASH_DELAY)
   }
 
+  const isLogin = mode === 'login'
+
   return (
-    <main className={`authShell authShell--${mode}`}>
-      <div className="authBackdrop" aria-hidden="true">
-        <span className="authOrb authOrb--one" />
-        <span className="authOrb authOrb--two" />
-        <span className="authGrid" />
-      </div>
-
-      <section className="authCard" aria-labelledby="auth-title">
-        <div className="authHeader">
-          <div className="authLogoWrap">
-            <AlphaMark className="authLogo" fillPercentage={isSigningIn ? fillPercentage : 0} />
+    <div className="authPageRoot">
+      <div className={`authShell${isSigningIn ? ' authShell--authenticating' : ''}`}>
+        {/* Heartbeat transition state during signin */}
+        {isSigningIn ? (
+          <div className="authTransitionStage" role="status" aria-label="Authenticating student access">
+            <div className="authTransitionLogoWrap">
+              <AlphaMark className="authLogo authLogo--heartbeat authLogo--transition" />
+            </div>
           </div>
-
-          <div className="authHeading">
-            <p className="authEyebrow">Alpha student access</p>
-            <h1 id="auth-title">
-              {mode === 'login' ? 'Welcome back' : 'Create your student account'}
-            </h1>
-            <p className="authCopy">
-              {mode === 'login'
-                ? 'Sign in with the hardcoded student ID and password.'
-                : 'Join as a student and move back to sign in with a smooth transition.'}
-            </p>
-          </div>
-        </div>
-
-        {mode === 'login' ? (
-          <form className="authForm" onSubmit={handleLoginSubmit}>
-            <Field
-              label="Student ID"
-              id="student-id"
-              value={loginStudentId}
-              onChange={(event) => setLoginStudentId(event.target.value)}
-              placeholder="Enter your student ID"
-              autoComplete="username"
-            />
-
-            <Field
-              label="Password"
-              id="student-password"
-              type="password"
-              value={loginPassword}
-              onChange={(event) => setLoginPassword(event.target.value)}
-              placeholder="Enter your password"
-              autoComplete="current-password"
-            />
-
-            <div className="authDemo">
-              <div className="authDemoChip">
-                <span>Demo ID</span>
-                <strong>{DEMO_CREDENTIALS.studentId}</strong>
-              </div>
-              <div className="authDemoChip">
-                <span>Demo password</span>
-                <strong>{DEMO_CREDENTIALS.password}</strong>
-              </div>
+        ) : (
+          <div className="authCard">
+            <div className="authHeader">
+              <span className="authLogoStandalone" aria-hidden="true">
+                <AlphaMark className="authLogo" />
+              </span>
             </div>
 
-            {loginError ? (
-              <p className="authError" role="alert">
-                {loginError}
-              </p>
-            ) : null}
+            {/* Quick Demo Switcher */}
+            {isLogin && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px', textAlign: 'center' }}>
+                  Quick Select Profile:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {QUICK_ACCOUNTS.map((acc) => {
+                    const isSelected = loginStudentId.toUpperCase() === acc.id.toUpperCase()
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => {
+                          setLoginStudentId(acc.id)
+                          setLoginPassword('Alpha@123')
+                          setLoginError('')
+                        }}
+                        style={{
+                          background: isSelected ? 'rgba(241, 98, 27, 0.2)' : '#1E1B1A',
+                          border: `1px solid ${isSelected ? '#F1621B' : '#2F2B28'}`,
+                          color: isSelected ? '#FFFFFF' : '#CBD5E1',
+                          borderRadius: '8px',
+                          padding: '6px 8px',
+                          fontSize: '0.76rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                        }}
+                      >
+                        <span>{acc.label}</span>
+                        <span style={{ fontSize: '0.68rem', color: isSelected ? '#FF7A18' : '#64748B' }}>{acc.subtitle}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
-            <button className="authPrimaryButton" type="submit" disabled={isSigningIn}>
-              {isSigningIn ? `Authenticating ${fillPercentage}%...` : 'Sign in'}
-            </button>
+            {isLogin ? (
+              <form className="authForm" onSubmit={handleLoginSubmit} noValidate>
+                <EnhancedField
+                  id="auth-student-id"
+                  label="Username, Public ID or Warrior Name"
+                  placeholder="e.g. adminalpha or MEMBER01"
+                  value={loginStudentId}
+                  onChange={(e) => setLoginStudentId(e.target.value)}
+                  iconName="profile"
+                  autoComplete="username"
+                />
 
-            <p className="authSwitch">
-              New student?{' '}
-              <button type="button" className="authLinkButton" onClick={onGoSignup}>
-                Create one
-              </button>
-            </p>
-          </form>
-        ) : (
-          <form className="authForm" onSubmit={handleSignupSubmit}>
-            <Field
-              label="Full name"
-              id="student-name"
-              value={signupName}
-              onChange={(event) => setSignupName(event.target.value)}
-              placeholder="Your full name"
-              autoComplete="name"
-            />
+                <EnhancedField
+                  id="auth-password"
+                  label="Password"
+                  placeholder="Enter your password"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  iconName="lock"
+                  autoComplete="current-password"
+                  showTogglePassword
+                  isPasswordVisible={showPassword}
+                  onTogglePassword={() => setShowPassword((prev) => !prev)}
+                />
 
-            <Field
-              label="Student ID"
-              id="signup-student-id"
-              value={signupStudentId}
-              onChange={(event) => setSignupStudentId(event.target.value)}
-              placeholder="Choose a student ID"
-              autoComplete="username"
-            />
+                {loginError && (
+                  <div className="authInlineError" role="alert">
+                    <span className="authInlineErrorIcon">
+                      <AppIcon name="warning" size={16} />
+                    </span>
+                    <span>{loginError}</span>
+                  </div>
+                )}
 
-            <Field
-              label="Email"
-              id="signup-email"
-              type="email"
-              value={signupEmail}
-              onChange={(event) => setSignupEmail(event.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
+                <button type="submit" className="authSubmitBtn" disabled={isSigningIn}>
+                  Sign in
+                </button>
+              </form>
+            ) : (
+              <form className="authForm" onSubmit={handleSignupSubmit} noValidate>
+                <EnhancedField
+                  id="auth-signup-name"
+                  label="Full Name"
+                  placeholder="Enter your full name"
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  iconName="profile"
+                />
 
-            <Field
-              label="Password"
-              id="signup-password"
-              type="password"
-              value={signupPassword}
-              onChange={(event) => setSignupPassword(event.target.value)}
-              placeholder="Create a password"
-              autoComplete="new-password"
-            />
+                <EnhancedField
+                  id="auth-signup-id"
+                  label="Student ID"
+                  placeholder="Choose a student ID (e.g. STUDENT02)"
+                  value={signupStudentId}
+                  onChange={(e) => setSignupStudentId(e.target.value)}
+                  iconName="profile"
+                />
 
-            <Field
-              label="Confirm password"
-              id="signup-confirm-password"
-              type="password"
-              value={signupConfirmPassword}
-              onChange={(event) => setSignupConfirmPassword(event.target.value)}
-              placeholder="Repeat the password"
-              autoComplete="new-password"
-            />
+                <EnhancedField
+                  id="auth-signup-email"
+                  label="Email Address"
+                  placeholder="name@student.nexora.io"
+                  type="email"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  iconName="mail"
+                />
 
-            {signupMessage ? (
-              <p className="authSuccess" role="status" aria-live="polite">
-                {signupMessage}
-              </p>
-            ) : null}
+                <EnhancedField
+                  id="auth-signup-password"
+                  label="Create Password"
+                  placeholder="Minimum 6 characters"
+                  type="password"
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  iconName="lock"
+                  showTogglePassword
+                  isPasswordVisible={showSignupPassword}
+                  onTogglePassword={() => setShowSignupPassword((prev) => !prev)}
+                />
 
-            {signupError ? (
-              <p className="authError" role="alert">
-                {signupError}
-              </p>
-            ) : null}
+                <EnhancedField
+                  id="auth-signup-confirm"
+                  label="Confirm Password"
+                  placeholder="Re-enter your password"
+                  type="password"
+                  value={signupConfirmPassword}
+                  onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                  iconName="lock"
+                  showTogglePassword
+                  isPasswordVisible={showSignupConfirmPassword}
+                  onTogglePassword={() => setShowSignupConfirmPassword((prev) => !prev)}
+                />
 
-            <button className="authPrimaryButton" type="submit" disabled={Boolean(signupMessage)}>
-              {signupMessage ? 'Preparing sign in...' : 'Create account'}
-            </button>
+                {signupError && (
+                  <div className="authInlineError" role="alert">
+                    <span className="authInlineErrorIcon">
+                      <AppIcon name="warning" size={16} />
+                    </span>
+                    <span>{signupError}</span>
+                  </div>
+                )}
 
-            <p className="authSwitch">
-              Already have an account?{' '}
-              <button type="button" className="authLinkButton" onClick={onGoLogin}>
-                Sign in
-              </button>
-            </p>
-          </form>
+                {signupMessage && <div className="authInlineSuccess">{signupMessage}</div>}
+
+                <button type="submit" className="authSubmitBtn">
+                  Create Student Profile
+                </button>
+              </form>
+            )}
+
+            <div className="authSwitchPrompt">
+              {isLogin ? (
+                <>
+                  <span>New student at Nexora?</span>{' '}
+                  <button type="button" className="authSwitchLink" onClick={onGoSignup}>
+                    Create account
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>Already have a student account?</span>{' '}
+                  <button type="button" className="authSwitchLink" onClick={onGoLogin}>
+                    Sign in
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         )}
-
-        {isSigningIn ? (
-          <AlphaFillOverlay fillPercent={fillPercentage} isGranted={isAccessGranted} />
-        ) : null}
-      </section>
-    </main>
+      </div>
+    </div>
   )
 }
