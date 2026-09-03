@@ -12,7 +12,7 @@
 
 import { calculateDeepChapterPerformance } from './chapterAnalyticsService.js'
 import { calculateSubjectIntelligence } from './subjectAnalyticsService.js'
-import { recordChapterSnapshot, recordSubjectSnapshot } from './trendService.js'
+import { recordChapterSnapshot } from './trendService.js'
 
 // In-memory cache for processed subject intelligence
 const subjectCache = new Map()
@@ -106,7 +106,6 @@ export function getEnrichedSubjectIntelligence(subject, progressList = []) {
  */
 export function onPracticeSessionCompleted({
   chapterId,
-  subjectId,
   totalPool = 0,
   updatedProgressRecords = [],
   chapterPriority = 'M',
@@ -114,7 +113,8 @@ export function onPracticeSessionCompleted({
   // Clear cached intelligence for this subject
   subjectCache.clear()
 
-  // 1. Calculate & record Chapter snapshot
+  // Record the chapter snapshot immediately. Subject snapshots are persisted
+  // from the subject detail view where we have the full aggregate metrics.
   if (chapterId) {
     const chapterMetrics = calculateDeepChapterPerformance(
       totalPool,
@@ -123,13 +123,6 @@ export function onPracticeSessionCompleted({
       chapterId
     )
     recordChapterSnapshot(chapterId, chapterMetrics)
-  }
-
-  // 2. Record Subject snapshot
-  if (subjectId) {
-    recordSubjectSnapshot(subjectId, {
-      subjectReadinessScore: 0, // Will be updated on next subject query or passed from caller
-    })
   }
 }
 

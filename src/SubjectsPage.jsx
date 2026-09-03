@@ -110,7 +110,7 @@ function SubjectsPage({
     let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
     if (memoryAttempts.length === 0) {
       try {
-        const cached = localStorage.getItem('nexora_recent_mcq_attempts')
+        const cached = localStorage.getItem(`nexora_recent_mcq_attempts_${effectiveMember?.id || 'anon'}`) || localStorage.getItem('nexora_recent_mcq_attempts')
         if (cached) {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed)) memoryAttempts = parsed
@@ -120,7 +120,7 @@ function SubjectsPage({
       }
     }
     return memoryAttempts
-  }, [testSession.attemptHistoryData])
+  }, [testSession.attemptHistoryData, effectiveMember?.id])
 
   const subjectPerformanceMap = useMemo(() => {
     const map = {}

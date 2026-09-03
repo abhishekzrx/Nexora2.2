@@ -878,6 +878,8 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     testSession.attemptHistoryData = updatedHistory
 
     try {
+      const recentAttemptsKey = `nexora_recent_mcq_attempts_${userId || 'anon'}`
+      localStorage.setItem(recentAttemptsKey, JSON.stringify(updatedHistory))
       localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(updatedHistory))
     } catch {
       // ignore

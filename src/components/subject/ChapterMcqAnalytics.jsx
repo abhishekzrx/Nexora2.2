@@ -13,6 +13,7 @@ import AppIcon from '../ui/AppIcon'
 import { formatInteger } from '../../services/mcqAnalyticsService'
 import { getChapterSnapshots, calculateTrendDirection } from '../../services/trendService'
 import { formatPriority } from '../../data/bpscPrelimsChapters'
+import { getUserId } from '../../services/userService.js'
 
 export function RecentPracticedChaptersSection({ subject, onChapterClick }) {
   const chapters = subject?.chapters || []
@@ -22,7 +23,7 @@ export function RecentPracticedChaptersSection({ subject, onChapterClick }) {
   const recentChapters = useMemo(() => {
     let recentIds = []
     try {
-      const raw = localStorage.getItem('nexora_recent_mcq_attempts')
+      const raw = localStorage.getItem(`nexora_recent_mcq_attempts_${getUserId() || 'anon'}`) || localStorage.getItem('nexora_recent_mcq_attempts')
       if (raw) {
         const attempts = JSON.parse(raw)
         if (Array.isArray(attempts)) {

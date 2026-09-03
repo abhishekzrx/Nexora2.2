@@ -1,17 +1,10 @@
 /**
  * SubjectCard.jsx
- * Highly structured, aesthetic & robust EdTech Subject Card.
- * Clean, structured cards with zero text overlap:
- * - Top Row: Subject Icon Box (Left) + Circular Progress Ring (Right)
- * - Title & Status Badge
- * - 2-Column Structured Stat Boxes (Chapters & MCQs)
- * - Progress Bar with Percentage
- * - Full-Width Interactive CTA Action
+ * Forest Green 2-Column Mobile Subject Card matching htmlresource design.
+ * Fixed height, auto-clamping, zero overflow, responsive layout.
  */
 
 import AppIcon from '../ui/AppIcon'
-import ProgressRing from '../ui/ProgressRing'
-import { getBatteryGrade } from '../ui/BatteryCoverageRing'
 import { formatInteger } from '../../services/mcqAnalyticsService'
 
 export function SubjectCard({ subject, onSelect, className = '' }) {
@@ -21,25 +14,25 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
   const title = subject.title || subject.name || 'Subject'
   const chaptersList = subject.chapters || []
 
-  // Dynamic Content Counts
+  // Dynamic Content Counts strictly from real hierarchy
   const totalChapters = Number(
-    subject.totalChapters ||
-    subject.counts?.chapters ||
-    subject.chaptersCount ||
-    (chaptersList.length > 0 ? chaptersList.length : 10)
-  )
+    subject.totalChapters ??
+    subject.counts?.chapters ??
+    subject.chaptersCount ??
+    chaptersList.length
+  ) || 0
 
   const calculatedChapterMcqs = chaptersList.length > 0
     ? chaptersList.reduce((sum, ch) => sum + (Number(ch.totalMcqs || ch.mcqs?.length || ch.mcqs || 0) || 0), 0)
     : 0
 
   const totalMcqs = Number(
-    subject.totalMcqs ||
-    subject.counts?.mcqs ||
-    subject.mcqsCount ||
-    subject.mcqs ||
-    (calculatedChapterMcqs > 0 ? calculatedChapterMcqs : totalChapters * 100)
-  )
+    subject.totalMcqs ??
+    subject.counts?.mcqs ??
+    subject.mcqsCount ??
+    subject.mcqs ??
+    calculatedChapterMcqs
+  ) || 0
 
   // Student Progress & Attempted MCQs
   const attemptedMcqs = Number(subject.attemptedMcqs ?? subject.coveredMcqs ?? 0)
@@ -54,47 +47,37 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
     subject.masteryPercent ?? subject.accuracy ?? (attemptedMcqs > 0 ? (masteredMcqs / attemptedMcqs) * 100 : 0)
   )))
 
-  // Color grade
-  const gradeInfo = getBatteryGrade(coveragePercent)
-  const themeColor = subject.coverageLevel?.color || gradeInfo.color || '#10B981'
-  const ringTrack = 'rgba(255, 255, 255, 0.08)'
+  const displayProgress = hasAttempts ? masteryPercent : coveragePercent
 
-  // Status badge logic
-  let statusBadgeText = 'NOT STARTED'
-  let ctaText = 'Start Practice'
-  let cardAccent = '#EA580C'
-  let badgeClass = 'starting'
+  // Status badge logic matching theme
+  let statusBadgeText = 'Getting Started'
+  let ctaText = 'Start'
+  let themeVariant = 'forest' // 'forest' | 'amber' | 'rose' | 'gray'
 
   if (totalChapters === 0 && totalMcqs === 0) {
-    statusBadgeText = 'PREPARING'
+    statusBadgeText = 'Preparing'
     ctaText = 'Coming Soon'
-    cardAccent = '#64748B'
-    badgeClass = 'preparing'
-  } else if (masteryPercent === 100 && coveragePercent === 100) {
-    statusBadgeText = 'MASTERED'
-    ctaText = 'Revise Subject'
-    cardAccent = '#10B981'
-    badgeClass = 'mastered'
+    themeVariant = 'gray'
   } else if (masteryPercent >= 75 || coveragePercent >= 75) {
-    statusBadgeText = `${masteryPercent}% MASTERY`
-    ctaText = 'Keep Practicing'
-    cardAccent = '#10B981'
-    badgeClass = 'proficient'
+    statusBadgeText = 'Strong'
+    ctaText = 'Revise'
+    themeVariant = 'forest'
+  } else if (hasAttempts && masteryPercent < 40) {
+    statusBadgeText = 'Weak Area'
+    ctaText = 'Start'
+    themeVariant = 'rose'
   } else if (hasAttempts || coveragePercent > 0) {
-    statusBadgeText = `${masteryPercent}% ACCURACY`
-    ctaText = 'Continue Practice'
-    cardAccent = '#EA580C'
-    badgeClass = 'improving'
-  } else {
-    statusBadgeText = 'GETTING STARTED'
-    ctaText = 'Begin Practice'
-    cardAccent = '#3B82F6'
-    badgeClass = 'starting'
+    statusBadgeText = 'In Progress'
+    ctaText = 'Resume'
+    themeVariant = 'forest'
+  } else if (coveragePercent < 20) {
+    statusBadgeText = 'Needs Focus'
+    ctaText = 'Practice'
+    themeVariant = 'amber'
   }
 
   const formattedChapters = String(totalChapters).padStart(2, '0')
-  const formattedMcqs = `${formatInteger(attemptedMcqs)} / ${formatInteger(totalMcqs)}`
-  const displayProgress = hasAttempts ? masteryPercent : coveragePercent
+  const formattedMcqs = `${formatInteger(attemptedMcqs)}/${formatInteger(totalMcqs)}`
 
   const handleCardClick = (e) => {
     e.preventDefault()
@@ -107,7 +90,7 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
     <div
       role="button"
       tabIndex={0}
-      className={`modern-subject-card ${className}`.trim()}
+      className={`sub-card-container theme-${themeVariant} ${className}`.trim()}
       onClick={handleCardClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -116,92 +99,72 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
         }
       }}
     >
-      {/* ROW 1: Top Bar with Icon & Circular Gauge */}
-      <div className="modern-card-header">
-        <div className="modern-icon-wrap" style={{ color: cardAccent }}>
-          <AppIcon name={subject.icon || 'chapters'} size={20} />
+      <div className="sub-card-top-content">
+        {/* Row 1: Icon box + Circular Radial Gauge */}
+        <div className="sub-card-header-row">
+          <div className="sub-card-icon-box">
+            <AppIcon name={subject.icon || 'chapters'} size={18} />
+          </div>
+
+          <div className="sub-card-gauge-wrap" title={`Progress: ${displayProgress}%`}>
+            <svg className="sub-gauge-svg" viewBox="0 0 36 36">
+              <path
+                className="sub-gauge-bg"
+                strokeWidth="3.5"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                className="sub-gauge-fill"
+                strokeWidth="3.5"
+                strokeDasharray={`${displayProgress}, 100`}
+                strokeLinecap="round"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            <span className="sub-gauge-pct-text">{displayProgress}%</span>
+          </div>
         </div>
 
-        <div className="modern-ring-wrap" title={`Overall Mastery: ${displayProgress}%`}>
-          <ProgressRing
-            size={42}
-            radius={16}
-            strokeWidth={4}
-            progress={displayProgress}
-            trackColor={ringTrack}
-            fillColor={cardAccent}
-          >
-            <span className="modern-ring-val" style={{ color: cardAccent }}>
-              {displayProgress}%
-            </span>
-          </ProgressRing>
-        </div>
-      </div>
-
-      {/* ROW 2: Subject Title & Status Badge */}
-      <div className="modern-card-body">
-        <h3 className="modern-subject-title" title={title}>
+        {/* Row 2: Title (Strictly clamped to 2 lines max with uniform height) */}
+        <h4 className="sub-card-title" title={title}>
           {title}
-        </h3>
+        </h4>
 
-        <div className="modern-badge-row">
-          <span className={`modern-status-badge ${badgeClass}`}>
-            <span className="modern-badge-dot" />
-            <span>{statusBadgeText}</span>
+        {/* Row 3: Status Badge */}
+        <div className="sub-card-badge-row">
+          <span className={`sub-status-pill ${themeVariant}`}>
+            <span className="sub-status-dot" />
+            {statusBadgeText}
           </span>
         </div>
-      </div>
 
-      {/* ROW 3: Structured 2-Column Stat Boxes */}
-      <div className="modern-stats-grid">
-        <div className="modern-stat-box">
-          <span className="modern-stat-box-lbl">CHAPTERS</span>
-          <div className="modern-stat-box-val">
-            <span>📖</span>
-            <b>{formattedChapters}</b>
+        {/* Row 4: Stats & Mini Progress Track */}
+        <div className="sub-card-meta-row">
+          <div className="sub-meta-counts">
+            <span className="sub-meta-ch">📖 {formattedChapters} Ch</span>
+            <span className="sub-meta-mcq">{formattedMcqs}</span>
           </div>
-        </div>
-
-        <div className="modern-stat-box">
-          <span className="modern-stat-box-lbl">MCQS SOLVED</span>
-          <div className="modern-stat-box-val">
-            <span>🎯</span>
-            <b>{formattedMcqs}</b>
+          <div className="sub-mini-track">
+            <div
+              className="sub-mini-fill"
+              style={{ width: `${displayProgress}%` }}
+            />
           </div>
         </div>
       </div>
 
-      {/* ROW 4: Progress Bar Track */}
-      <div className="modern-progress-section">
-        <div className="modern-progress-meta">
-          <span className="modern-progress-lbl">Syllabus Progress</span>
-          <span className="modern-progress-pct" style={{ color: cardAccent }}>
-            {displayProgress}%
-          </span>
-        </div>
-        <div className="modern-progress-track">
-          <div
-            className="modern-progress-fill"
-            style={{
-              width: `${displayProgress}%`,
-              backgroundColor: cardAccent,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* ROW 5: Full-Width Interactive CTA Action */}
-      <div className="modern-card-footer">
-        <button
-          type="button"
-          className="modern-cta-btn"
-          disabled={totalChapters === 0 && totalMcqs === 0}
-          onClick={handleCardClick}
-        >
-          <span>{ctaText}</span>
-          <span className="modern-cta-arrow">→</span>
-        </button>
-      </div>
+      {/* Row 5: Bottom CTA Action */}
+      <button
+        type="button"
+        className="sub-card-cta-btn"
+        disabled={totalChapters === 0 && totalMcqs === 0}
+        onClick={handleCardClick}
+      >
+        <span>{ctaText}</span>
+        <span className="sub-cta-arrow">→</span>
+      </button>
     </div>
   )
 }

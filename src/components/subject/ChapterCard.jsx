@@ -95,6 +95,9 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
               <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
             )}
           </div>
+          <div className="chapter-sub">
+            {chapter.sub || chapter.meta || (totalMcqs > 0 ? `${totalMcqs} MCQs available` : 'Practice-ready chapter')}
+          </div>
 
           {/* Expanded Trends Details */}
           {showTrends && (

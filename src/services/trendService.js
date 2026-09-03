@@ -9,10 +9,30 @@
  */
 
 import { PERFORMANCE_THRESHOLDS, METRIC_TYPES } from '../config/performanceConfig.js'
+import { getUserId } from './userService.js'
 
 const CHAPTER_SNAPSHOT_PREFIX = 'nexora_perf_snap_ch_'
 const SUBJECT_SNAPSHOT_PREFIX = 'nexora_perf_snap_sub_'
 const MAX_SNAPSHOT_HISTORY = 100 // retain up to 100 chronological snapshots per entity
+
+function getScopedSnapshotKey(prefix, entityId) {
+  const userId = getUserId()
+  return `${prefix}${userId || 'anon'}_${entityId}`
+}
+
+function getLegacySnapshotKey(prefix, entityId) {
+  return `${prefix}${entityId}`
+}
+
+function readScopedSnapshots(prefix, entityId) {
+  const scopedKey = getScopedSnapshotKey(prefix, entityId)
+  const scopedSnapshots = getStorageSafe(scopedKey)
+  if (scopedSnapshots.length > 0) {
+    return scopedSnapshots
+  }
+
+  return getStorageSafe(getLegacySnapshotKey(prefix, entityId))
+}
 
 function getStorageSafe(key) {
   try {
@@ -51,7 +71,7 @@ export function filterSnapshotsByTimeframe(snapshots = [], timeframe = 'all') {
  */
 export function recordChapterSnapshot(chapterId, metrics = {}) {
   if (!chapterId) return null
-  const key = `${CHAPTER_SNAPSHOT_PREFIX}${chapterId}`
+  const key = getScopedSnapshotKey(CHAPTER_SNAPSHOT_PREFIX, chapterId)
   const existing = getStorageSafe(key)
 
   const now = Date.now()
@@ -87,7 +107,7 @@ export function recordChapterSnapshot(chapterId, metrics = {}) {
  */
 export function recordSubjectSnapshot(subjectId, metrics = {}) {
   if (!subjectId) return null
-  const key = `${SUBJECT_SNAPSHOT_PREFIX}${subjectId}`
+  const key = getScopedSnapshotKey(SUBJECT_SNAPSHOT_PREFIX, subjectId)
   const existing = getStorageSafe(key)
 
   const now = Date.now()
@@ -122,8 +142,7 @@ export function recordSubjectSnapshot(subjectId, metrics = {}) {
  */
 export function getChapterSnapshots(chapterId, timeframe = 'all') {
   if (!chapterId) return []
-  const key = `${CHAPTER_SNAPSHOT_PREFIX}${chapterId}`
-  const all = getStorageSafe(key)
+  const all = readScopedSnapshots(CHAPTER_SNAPSHOT_PREFIX, chapterId)
   return filterSnapshotsByTimeframe(all, timeframe)
 }
 
@@ -132,8 +151,7 @@ export function getChapterSnapshots(chapterId, timeframe = 'all') {
  */
 export function getSubjectSnapshots(subjectId, timeframe = 'all') {
   if (!subjectId) return []
-  const key = `${SUBJECT_SNAPSHOT_PREFIX}${subjectId}`
-  const all = getStorageSafe(key)
+  const all = readScopedSnapshots(SUBJECT_SNAPSHOT_PREFIX, subjectId)
   return filterSnapshotsByTimeframe(all, timeframe)
 }
 

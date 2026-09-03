@@ -8,7 +8,8 @@ import '../styles/subjectDetail.css'
 import { useCourseRegistry } from '../data/courseRegistry'
 import { useWorkspaceStore } from '../data/workspaceStore'
 import { useAdminStore } from '../data/adminStore'
-import { deriveAnalytics } from '../utils/deriveAnalytics'
+import { useMemberStore } from '../data/memberStore'
+import { useUserProgressStore } from '../data/progressStore'
 import Header from '../components/layout/Header'
 import MobileLayout from '../components/layout/MobileLayout'
 import SubjectHero from '../components/subject/SubjectHero'
@@ -26,6 +27,8 @@ import ChapterNotesView from '../components/student/ChapterNotesView'
 import SubjectAnalysisTab from '../components/subject/SubjectAnalysisTab'
 import SubjectFlashcardsTab from '../components/subject/SubjectFlashcardsTab'
 import { subjectTabs } from '../utils/navigation'
+import { getEnrichedSubjectIntelligence } from '../services/performanceEngine'
+import { recordSubjectSnapshot } from '../services/trendService'
 
 const tabItems = [
   { key: 'chapters', icon: 'chapters', label: 'Chapters' },
@@ -47,10 +50,20 @@ function SubjectDetailPage({
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const registry = useCourseRegistry(courseId || activeWorkspaceId)
   const adminState = useAdminStore()
-  const subject = registry.subjectCatalog[subjectKey] || null
-  const derived = useMemo(() => subject ? deriveAnalytics(subject) : null, [subject])
+  const { effectiveMember } = useMemberStore()
+  const progressSnapshot = useUserProgressStore()
+  const baseSubject = registry.subjectCatalog[subjectKey] || null
+  const subject = useMemo(() => {
+    if (!baseSubject) return null
+    const progressList = progressSnapshot.progressList || []
+    return getEnrichedSubjectIntelligence(baseSubject, progressList) || baseSubject
+  }, [baseSubject, progressSnapshot.progressList])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
-  const [showChapterTrends, setShowChapterTrends] = useState(false)
+  const trendPreferenceKey = useMemo(() => {
+    const memberId = effectiveMember?.id || 'anon'
+    return `nexora_subject_trends_${memberId}_${subjectKey || 'subject'}`
+  }, [effectiveMember?.id, subjectKey])
+  const [showChapterTrends, setShowChapterTrends] = useState(true)
 
   const allFlashcards = adminState.allFlashcards || adminState.flashcards || []
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0]
@@ -59,10 +72,58 @@ function SubjectDetailPage({
     subjectTabs[subjectKey] = activeTab
   }, [subjectKey, activeTab])
 
-  // Subject isolation: Reset chapter trends toggle to default (OFF) when changing subjects
   useEffect(() => {
-    setShowChapterTrends(false)
-  }, [subjectKey])
+    try {
+      const saved = localStorage.getItem(trendPreferenceKey)
+      if (saved === 'true' || saved === 'false') {
+        setShowChapterTrends(saved === 'true')
+        return
+      }
+    } catch {
+      // ignore
+    }
+    setShowChapterTrends(true)
+  }, [trendPreferenceKey])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(trendPreferenceKey, String(showChapterTrends))
+    } catch {
+      // ignore
+    }
+  }, [trendPreferenceKey, showChapterTrends])
+
+  useEffect(() => {
+    if (!subject) return
+    const subjectId = subject.subjectId || subject.id || subjectKey
+    const practicedCount = Number(subject.subjectAttemptedMcqs || subject.attemptedMcqs || 0)
+    if (!subjectId || practicedCount <= 0) return
+
+    recordSubjectSnapshot(subjectId, {
+      subjectReadinessScore: subject.subjectReadinessScore || subject.readinessScore || subject.progress || 0,
+      subjectAccuracyPercentage: subject.subjectAccuracyPercentage || subject.accuracyPercentage || subject.accuracy || 0,
+      subjectCoveragePercent: subject.subjectCoveragePercent || subject.coveragePercent || subject.coverage || 0,
+      subjectMasteryPercentage: subject.subjectMasteryPercentage || subject.masteryPercentage || subject.mastery || 0,
+      subjectAttemptedMcqs: subject.subjectAttemptedMcqs || subject.attemptedMcqs || 0,
+      subjectTotalMcqs: subject.subjectTotalMcqs || subject.totalMcqs || subject.counts?.mcqs || 0,
+    })
+  }, [
+    subject?.subjectId,
+    subject?.id,
+    subject?.subjectReadinessScore,
+    subject?.subjectAccuracyPercentage,
+    subject?.subjectCoveragePercent,
+    subject?.subjectMasteryPercentage,
+    subject?.subjectAttemptedMcqs,
+    subject?.subjectTotalMcqs,
+    subject?.readinessScore,
+    subject?.accuracyPercentage,
+    subject?.coveragePercent,
+    subject?.masteryPercentage,
+    subject?.attemptedMcqs,
+    subject?.totalMcqs,
+    subjectKey,
+  ])
 
   if (!subject) {
     return (

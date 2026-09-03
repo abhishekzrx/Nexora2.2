@@ -1,15 +1,15 @@
 /**
  * sideDrawer.css
- * Ultra-Premium, Dark Cyber Glassmorphic Styling for Side Navigation Drawer.
+ * Forest Green Theme & Clean Light Styling for Side Navigation Drawer.
  */
 
 /* ── Overlay ────────────────────────────────────────────────────────── */
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 8, 16, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(8, 28, 21, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 999;
   opacity: 0;
   pointer-events: none;
@@ -29,16 +29,16 @@
   left: 0;
   width: 300px;
   max-width: 86%;
-  background: linear-gradient(180deg, #0D1526 0%, #080D18 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border-right: 1px solid #E2E8F0;
   z-index: 1000;
   transform: translateX(-100%);
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.8), inset -1px 0 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 10px 0 35px rgba(8, 28, 21, 0.12);
   overflow: hidden;
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -46,14 +46,14 @@
   transform: translateX(0);
 }
 
-/* ── Top Profile Header ────────────────────────────────────────────── */
+/* ── Top Profile Header (Forest Green Gradient) ─────────────────────── */
 .drawer-profile {
-  background: linear-gradient(145deg, rgba(241, 98, 27, 0.16) 0%, rgba(15, 23, 42, 0.98) 100%);
+  background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
   padding: 24px 20px 20px;
   color: #FFFFFF;
   position: relative;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 3px solid #F1621B;
+  border-bottom: 1px solid #2d6a4f;
+  border-top: 4px solid #52b788;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -65,7 +65,7 @@
   right: -30px;
   width: 140px;
   height: 140px;
-  background: radial-gradient(circle, rgba(241, 98, 27, 0.25) 0%, rgba(241, 98, 27, 0) 70%);
+  background: radial-gradient(circle, rgba(82, 183, 136, 0.35) 0%, rgba(82, 183, 136, 0) 70%);
   pointer-events: none;
 }
 
@@ -76,9 +76,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #94A3B8;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,8 +89,7 @@
 }
 
 .drawer-close:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.3);
   transform: rotate(90deg);
 }
 
@@ -106,22 +105,21 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(241, 98, 27, 0.15);
-  border: 1px solid rgba(241, 98, 27, 0.35);
-  color: #FF8A3D;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #d8f3dc;
   padding: 3px 9px;
   border-radius: 8px;
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   width: fit-content;
-  box-shadow: 0 2px 8px rgba(241, 98, 27, 0.2);
 }
 
 .drawer-sub {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #CBD5E1;
+  color: #d8f3dc;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -133,9 +131,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(239, 68, 68, 0.16) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #FBBF24;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fde047;
   border-radius: 20px;
   padding: 3px 10px;
   font-size: 0.74rem;
@@ -146,15 +144,15 @@
 /* ── Mode Switcher Card ────────────────────────────────────────────── */
 .drawer-mode-switch-card {
   margin-top: 6px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(241, 98, 27, 0.3);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .mode-switch-left {
@@ -181,32 +179,32 @@
 
 .mode-role-sub {
   font-size: 0.68rem;
-  color: #94A3B8;
+  color: #d8f3dc;
   margin-top: 1px;
 }
 
 .mode-switch-btn {
-  background: linear-gradient(135deg, #F1621B 0%, #D9480F 100%);
-  color: #FFFFFF;
+  background: #52b788;
+  color: #081c15;
   border: none;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 800;
   padding: 5px 10px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(241, 98, 27, 0.4);
+  box-shadow: 0 2px 8px rgba(82, 183, 136, 0.4);
   white-space: nowrap;
 }
 
 .mode-switch-btn:hover {
+  background: #74c69d;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(241, 98, 27, 0.6);
 }
 
 .drawer-members-quick-btn {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   padding: 8px 12px;
   display: flex;
@@ -222,10 +220,9 @@
 }
 
 .drawer-members-quick-btn:hover {
-  background: rgba(241, 98, 27, 0.18);
-  border-color: rgba(241, 98, 27, 0.45);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(241, 98, 27, 0.2);
 }
 
 .drawer-members-btn-left {
@@ -239,7 +236,7 @@
 }
 
 .drawer-members-btn-arrow {
-  color: #FF8A3D;
+  color: #52b788;
   font-weight: 800;
   font-size: 0.85rem;
 }
@@ -252,6 +249,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background: #ffffff;
 }
 
 .drawer-menu::-webkit-scrollbar {
@@ -259,7 +257,7 @@
 }
 
 .drawer-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #E2E8F0;
   border-radius: 4px;
 }
 
@@ -281,37 +279,37 @@
   border-radius: 12px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #94A3B8;
+  color: #334155;
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
   position: relative;
 }
 
 .drawer-item:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  color: #FFFFFF;
+  background: #F8FAFC;
+  color: #0F172A;
   transform: translateX(3px);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: #E2E8F0;
 }
 
 .drawer-item.active {
-  background: linear-gradient(90deg, rgba(241, 98, 27, 0.2) 0%, rgba(241, 98, 27, 0.04) 100%);
-  color: #FFFFFF;
-  font-weight: 700;
-  border-left: 3px solid #F1621B;
-  border-color: rgba(241, 98, 27, 0.3);
-  border-left-color: #F1621B;
+  background: #e8f5e9;
+  color: #1b4332;
+  font-weight: 800;
+  border-left: 3px solid #1b4332;
+  border-color: #b7e4c7;
+  border-left-color: #1b4332;
 }
 
 .drawer-item.active .d-icon {
-  color: #F1621B;
+  color: #2d6a4f;
 }
 
 .drawer-item.disabled {
-  opacity: 0.38;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -326,9 +324,9 @@
 
 .d-badge {
   margin-left: auto;
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #FCA5A5;
+  background: #e8f5e9;
+  border: 1px solid #b7e4c7;
+  color: #1b4332;
   font-size: 0.68rem;
   font-weight: 800;
   padding: 1px 7px;
@@ -337,15 +335,15 @@
 
 .drawer-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: #F1F5F9;
   margin: 8px 10px;
 }
 
 /* ── Footer / Log Out ──────────────────────────────────────────────── */
 .drawer-footer {
   padding: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid #E2E8F0;
+  background: #F8FAFC;
 }
 
 .drawer-logout {
@@ -357,15 +355,15 @@
   border-radius: 12px;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #F87171;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #e11d48;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .drawer-logout:hover {
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #FFFFFF;
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #be123c;
 }

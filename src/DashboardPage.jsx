@@ -17,10 +17,10 @@ import { useMemberStore } from './data/memberStore'
 import { permissionService } from './services/permissionService'
 import { userAnalyticsService } from './services/userAnalyticsService'
 import { hydrateUserAnalytics, useUserAnalytics } from './data/analyticsStore'
-import { hydrateUserProgressFromSupabase } from './data/progressStore'
+import { hydrateUserProgressFromSupabase, useUserProgressStore } from './data/progressStore'
 
-const strongAreas = ['DBMS', 'Operating System', 'Computer Networks']
-const weakAreas = ['COA', 'Digital Electronics']
+const strongAreasFallback = ['DBMS', 'Operating System', 'Computer Networks']
+const weakAreasFallback = ['COA', 'Digital Electronics']
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently'
@@ -35,6 +35,86 @@ function formatTimeAgo(timestamp) {
   return `${diffDays}d ago`
 }
 
+function formatTotalTimeSpent(attempts = []) {
+  const totalSeconds = attempts.reduce((sum, a) => sum + (Number(a.time_taken_seconds || a.timeTakenSeconds) || 0), 0)
+  if (totalSeconds <= 0) return '0m'
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  return `${Math.max(1, minutes)}m`
+}
+
+function calculateStudyStreak(attempts = [], snapshots = []) {
+  const activeDays = new Set()
+  attempts.forEach((a) => {
+    const ts = a.created_at || a.timestamp
+    if (ts) {
+      try {
+        const d = new Date(ts).toISOString().split('T')[0]
+        activeDays.add(d)
+      } catch {
+        // ignore
+      }
+    }
+  })
+  snapshots.forEach((s) => {
+    if (s.date) activeDays.add(s.date)
+  })
+
+  if (activeDays.size === 0) return 0
+
+  const sorted = Array.from(activeDays).sort().reverse()
+  const todayStr = new Date().toISOString().split('T')[0]
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+  if (sorted[0] !== todayStr && sorted[0] !== yesterdayStr) {
+    return 0
+  }
+
+  let streak = 0
+  let checkDate = new Date(sorted[0])
+  while (true) {
+    const dateStr = checkDate.toISOString().split('T')[0]
+    if (activeDays.has(dateStr)) {
+      streak += 1
+      checkDate.setDate(checkDate.getDate() - 1)
+    } else {
+      break
+    }
+  }
+  return streak
+}
+
+function generateSparkline(values = [], maxVal = 100) {
+  if (!values || values.length === 0) {
+    return {
+      path: 'M0,18 Q30,18,60,18 T100,18',
+    }
+  }
+  if (values.length === 1) {
+    const y = Math.round(20 - Math.min(16, Math.max(2, (Number(values[0] || 0) / maxVal) * 16)))
+    return {
+      path: `M0,${y} Q30,${y},60,${y} T100,${y}`,
+    }
+  }
+  const step = 100 / (values.length - 1)
+  const points = values.map((v, i) => {
+    const x = Math.round(i * step)
+    const y = Math.round(20 - Math.min(16, Math.max(2, (Number(v || 0) / maxVal) * 16)))
+    return { x, y }
+  })
+  let path = `M${points[0].x},${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1]
+    const curr = points[i]
+    const cpx = Math.round((prev.x + curr.x) / 2)
+    path += ` Q${cpx},${prev.y},${curr.x},${curr.y}`
+  }
+  return { path }
+}
+
 // ── Dynamic Readiness Levels ─────────────────────────────
 const READINESS_LEVELS = {
   beginner: {
@@ -42,44 +122,32 @@ const READINESS_LEVELS = {
     max: 39,
     label: 'Beginner',
     message: "Let's build your foundation.",
-    ringGradient: ['#FF5A5F', '#F1621B'],
-    glow: 'rgba(240, 68, 56, 0.4)',
-    accent: '#FF6B6B',
-    badgeClass: 'badge-beginner',
-    cardAccent: 'rgba(240, 68, 56, 0.14)',
+    conicColor: '#F04438',
+    textColor: '#F04438',
   },
   improving: {
     min: 40,
     max: 69,
     label: 'Improving',
-    message: 'Keep going!',
-    ringGradient: ['#F1621B', '#FFB020'],
-    glow: 'rgba(241, 98, 27, 0.4)',
-    accent: '#FF8A3D',
-    badgeClass: 'badge-improving',
-    cardAccent: 'rgba(241, 98, 27, 0.14)',
+    message: 'Keep going! Consistent daily practice.',
+    conicColor: '#2d6a4f',
+    textColor: '#1b4332',
   },
   competitive: {
     min: 70,
     max: 84,
     label: 'Competitive',
     message: 'Approaching exam-ready.',
-    ringGradient: ['#0E9494', '#12B76A'],
-    glow: 'rgba(14, 148, 148, 0.4)',
-    accent: '#3EE088',
-    badgeClass: 'badge-competitive',
-    cardAccent: 'rgba(14, 148, 148, 0.14)',
+    conicColor: '#0E9494',
+    textColor: '#0E9494',
   },
   examReady: {
     min: 85,
     max: 100,
     label: 'Exam Ready',
     message: 'Excellent momentum!',
-    ringGradient: ['#12B76A', '#34D399'],
-    glow: 'rgba(18, 183, 106, 0.4)',
-    accent: '#3EE088',
-    badgeClass: 'badge-exam-ready',
-    cardAccent: 'rgba(18, 183, 106, 0.14)',
+    conicColor: '#12B76A',
+    textColor: '#12B76A',
   },
 }
 
@@ -112,16 +180,6 @@ function useAnimatedNumber(target, duration = 1200) {
 
   return value
 }
-
-// Color tone mapping for dashboard subject cards
-const DASH_TONE_MAP = [
-  { iconClass: 'icon-red', accent: '#F04438', accentBg: '#FDEDEC', ringTrack: '#FDEDEC' },
-  { iconClass: 'icon-blue', accent: '#2E5CE6', accentBg: '#EEF2FF', ringTrack: '#E7EDFD' },
-  { iconClass: 'icon-green', accent: '#12B76A', accentBg: '#E9F9F1', ringTrack: '#DFF7EA' },
-  { iconClass: 'icon-purple', accent: '#7C3AED', accentBg: '#F1EDFC', ringTrack: '#EFE6FC' },
-  { iconClass: 'icon-orange', accent: '#F1621B', accentBg: '#FFF1E6', ringTrack: '#FFE9D9' },
-  { iconClass: 'icon-teal', accent: '#0E9494', accentBg: '#E6F7F7', ringTrack: '#DDF4F4' },
-]
 
 const drawerSections = [
   {
@@ -158,88 +216,6 @@ const drawerSections = [
   },
 ]
 
-function ReadinessRing({ size = 96, radius = 38, strokeWidth = 8, progress, gradient, glow, trackColor = '#1E293B', children }) {
-  const [animatedProgress, setAnimatedProgress] = useState(0)
-  const animatedRef = useRef(0)
-  const gradientId = useMemo(() => `readiness-grad-${Math.random().toString(36).slice(2, 9)}`, [])
-  const circumference = 2 * Math.PI * radius
-
-  useEffect(() => {
-    let raf
-    const start = performance.now()
-    const from = animatedRef.current
-    const to = progress
-    const duration = 1400
-
-    const tick = (now) => {
-      const elapsed = now - start
-      const t = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      const current = from + (to - from) * eased
-      setAnimatedProgress(current)
-      animatedRef.current = current
-      if (t < 1) raf = requestAnimationFrame(tick)
-    }
-
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [progress])
-
-  const dashOffset = circumference - (animatedProgress / 100) * circumference
-
-  return (
-    <div className="readiness-ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <defs>
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={gradient[0]} />
-            <stop offset="100%" stopColor={gradient[1]} />
-          </linearGradient>
-        </defs>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <circle
-          className="readiness-ring-progress"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={`url(#${gradientId})`}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
-        />
-      </svg>
-      <div className="readiness-ring-value">{children}</div>
-    </div>
-  )
-}
-
-function DrawerItem({ icon, label, badge, active, disabled, onClick }) {
-  return (
-    <button
-      type="button"
-      className={`drawer-item${active ? ' active' : ''}${disabled ? ' disabled' : ''}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <span className="d-icon" aria-hidden="true">
-        <AppIcon name={icon} size={18} />
-      </span>
-      {label}
-      {badge ? <span className="d-badge">{badge}</span> : null}
-    </button>
-  )
-}
-
 function DashboardPage({
   courseId,
   onNavigateSubjects = () => {},
@@ -254,7 +230,8 @@ function DashboardPage({
   const registry = useContentRegistry()
   const courseRegistry = useCourseRegistry(activeWorkspaceId)
   const { isAdmin } = useRoleStore()
-  const { effectiveMember, isSuperAdmin, isViewingAs } = useMemberStore()
+  const { effectiveMember } = useMemberStore()
+  const userProgressState = useUserProgressStore()
   const [persistentAttempts, setPersistentAttempts] = useState([])
 
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
@@ -284,6 +261,7 @@ function DashboardPage({
   }, [effectiveMember?.id, effectiveCourseId])
 
   const userAnalytics = useUserAnalytics(effectiveMember?.id, effectiveCourseId, 50)
+  const progressList = userProgressState.progressList || []
 
   // Past attempts history merging persistent Supabase/local attempts with testSession
   const pastAttempts = useMemo(() => {
@@ -292,6 +270,7 @@ function DashboardPage({
       return persistentAttempts.map((a) => ({
         id: a.id,
         timestamp: new Date(a.created_at || Date.now()).getTime(),
+        created_at: a.created_at,
         subjectKey: a.subject_id,
         subjectTitle: a.subject_title || a.subject_id,
         chapterId: a.chapter_id,
@@ -300,6 +279,7 @@ function DashboardPage({
         correct: a.correct_count,
         attempted: a.attempted_count,
         total: a.total_questions,
+        time_taken_seconds: a.time_taken_seconds || a.timeTakenSeconds || 0,
       }))
     }
     if (memoryAttempts.length === 0) {
@@ -323,7 +303,7 @@ function DashboardPage({
 
     if (attempts.length > 0) {
       return attempts.map((att) => {
-        const sub = registry.subjectCatalog[att.subjectKey] || null
+        const sub = courseRegistry.subjectCatalog[att.subjectKey] || registry.subjectCatalog[att.subjectKey] || null
         const subjectTitle = att.subjectTitle || sub?.title || att.subjectKey || 'Subject'
         const chapterTitle = att.chapterTitle || 'MCQ Practice Session'
         const icon = sub?.icon || 'computerNetworks'
@@ -339,33 +319,16 @@ function DashboardPage({
           attempted: att.attempted !== undefined ? att.attempted : (att.total || 0),
           total: att.total || 0,
           timestamp: att.timestamp,
-          timeAgo: formatTimeAgo(att.timestamp),
+          timeAgo: formatTimeAgo(att.timestamp || (att.created_at ? new Date(att.created_at).getTime() : Date.now())),
           isReal: true,
         }
       })
     }
 
-    // Default fallback from subject catalog
-    const firstSubKey = Object.keys(registry.subjectCatalog)[0] || 'computer-networks'
-    const firstSub = registry.subjectCatalog[firstSubKey]
-    return [
-      {
-        id: 'default-1',
-        subjectKey: firstSubKey,
-        subjectTitle: firstSub?.title || 'Computer Networks',
-        chapterTitle: firstSub?.chapters?.[0]?.title || 'Routing Algorithms',
-        icon: firstSub?.icon || 'computerNetworks',
-        accuracy: 72,
-        correct: 14,
-        attempted: 18,
-        total: 20,
-        timeAgo: 'Recommended',
-        isReal: false,
-      },
-    ]
-  }, [pastAttempts, registry.subjectCatalog])
+    return []
+  }, [pastAttempts, courseRegistry.subjectCatalog, registry.subjectCatalog])
 
-  const topRecentAttempt = recentAttemptsList[0]
+  const topRecentAttempt = recentAttemptsList[0] || null
 
   // Subject last attempt / access timestamp lookup map
   const subjectLastAttemptMap = useMemo(() => {
@@ -427,7 +390,7 @@ function DashboardPage({
     return map
   }, [pastAttempts])
 
-  // Dynamic Exam Readiness Index calculated across ALL subjects (existing + future newly added subjects)
+  // Dynamic Exam Readiness Index calculated across ALL subjects
   const readinessScore = useMemo(() => {
     const list = courseRegistry.subjectsList || []
     if (list.length === 0) {
@@ -438,7 +401,6 @@ function DashboardPage({
       return 0
     }
 
-    // 1. Calculate overall coverage across all existing & newly added subjects
     let totalProgress = 0
     let totalMastery = 0
     let totalAttemptedSubCount = 0
@@ -455,7 +417,6 @@ function DashboardPage({
 
     const avgCoverage = Math.round(totalProgress / list.length)
 
-    // 2. Real quiz accuracy from student response history
     let avgQuizAccuracy = 0
     if (pastAttempts.length > 0) {
       const totalAcc = pastAttempts.reduce((sum, a) => sum + (Number(a.accuracy) || 0), 0)
@@ -464,20 +425,18 @@ function DashboardPage({
       avgQuizAccuracy = Math.round(totalMastery / totalAttemptedSubCount)
     }
 
-    // If student has answered quizzes, blend coverage (40%) and actual accuracy (60%)
     if (pastAttempts.length > 0 || totalAttemptedSubCount > 0) {
       const blended = Math.round(avgCoverage * 0.4 + avgQuizAccuracy * 0.6)
       return Math.max(5, Math.min(100, blended))
     }
 
-    // If brand new or getting started, reflects actual coverage % (default 40% if demo / unattempted)
-    return Math.max(0, Math.min(100, avgCoverage > 0 ? avgCoverage : 40))
+    return Math.max(0, Math.min(100, avgCoverage))
   }, [courseRegistry.subjectsList, pastAttempts, subjectPerformanceMap])
 
   const readinessLevel = getReadinessLevel(readinessScore)
   const animatedScore = useAnimatedNumber(readinessScore)
 
-  // Dynamic Projected Score (out of 100) reflecting student real quiz response & readiness
+  // Dynamic Projected Score (out of 100)
   const projectedScore = useMemo(() => {
     if (readinessScore <= 0 && pastAttempts.length === 0) return 0
     if (pastAttempts.length > 0) {
@@ -496,8 +455,7 @@ function DashboardPage({
       return courseRegistry.mcqCount
     }
     const list = courseRegistry.subjectsList || []
-    const sum = list.reduce((acc, s) => acc + (s.counts?.mcqs || s.totalMcqs || 0), 0)
-    return sum > 0 ? sum : 909
+    return list.reduce((acc, s) => acc + (s.counts?.mcqs || s.totalMcqs || 0), 0)
   }, [courseRegistry])
 
   const totalFlashcards = useMemo(() => {
@@ -510,11 +468,15 @@ function DashboardPage({
 
   const completionRate = readinessScore
 
-  // Derive ALL subject cards from courseRegistry, sorted by recent attempt and reflecting real MCQ accuracy
+  // Real Study Streak calculation
+  const studyStreakDays = useMemo(() => {
+    return calculateStudyStreak(pastAttempts, userAnalytics.snapshots || [])
+  }, [pastAttempts, userAnalytics.snapshots])
+
+  // Derive ALL subject cards from courseRegistry
   const subjectCards = useMemo(() => {
     const list = [...(courseRegistry.subjectsList || [])]
     
-    // Sort by most recently attempted first
     list.sort((a, b) => {
       const timeA = subjectLastAttemptMap[a.subjectKey] || 0
       const timeB = subjectLastAttemptMap[b.subjectKey] || 0
@@ -523,7 +485,6 @@ function DashboardPage({
     })
 
     return list.map((s, i) => {
-      const tone = DASH_TONE_MAP[i % DASH_TONE_MAP.length]
       const perf = subjectPerformanceMap[s.subjectKey] || null
       const lastTs = perf?.lastAttemptTimestamp || subjectLastAttemptMap[s.subjectKey]
 
@@ -531,21 +492,16 @@ function DashboardPage({
       const coveragePercent = typeof s.coveragePercent === 'number' ? s.coveragePercent : (s.progress || 0)
       const masteryPercent = typeof s.masteryPercent === 'number' ? s.masteryPercent : (s.accuracy || 0)
       const coverageLevel = s.coverageLevel
-      const ringColor = coverageLevel?.color || tone.accent
 
       return {
         subjectKey: s.subjectKey,
         title: s.title,
         icon: s.icon,
-        accent: tone.accent,
-        accentBg: tone.accentBg,
-        iconClass: tone.iconClass,
         progress: coveragePercent,
         accuracy: masteryPercent,
         coveragePercent,
         masteryPercent,
         coverageLevel,
-        ringColor,
         hasAttempts,
         attemptsCount: perf?.attemptsCount || 0,
         totalCorrect: perf?.totalCorrect || s.masteredMcqs || 0,
@@ -561,14 +517,13 @@ function DashboardPage({
     })
   }, [courseRegistry, subjectLastAttemptMap, subjectPerformanceMap])
 
-  // Dynamic Strong / Weak areas derived from all subjects in courseRegistry
+  // Dynamic Strong / Weak areas
   const { dynamicStrongAreas, dynamicWeakAreas } = useMemo(() => {
     const list = courseRegistry.subjectsList || []
     if (list.length === 0) {
-      return { dynamicStrongAreas: strongAreas, dynamicWeakAreas: weakAreas }
+      return { dynamicStrongAreas: strongAreasFallback, dynamicWeakAreas: weakAreasFallback }
     }
 
-    // Rank all subjects dynamically based on accuracy, coverage, and student attempts
     const evaluated = list.map((s) => {
       const perf = subjectPerformanceMap[s.subjectKey]
       const hasAttempts = Boolean(s.hasAttempts || s.attemptedMcqs > 0 || (perf && perf.attemptsCount > 0))
@@ -588,13 +543,9 @@ function DashboardPage({
       }
     })
 
-    // Sort descending by rankScore
     const sorted = [...evaluated].sort((a, b) => b.rankScore - a.rankScore)
-
-    // Strong areas: top 3 subjects
     const strong = sorted.slice(0, 3).map((s) => s.title)
 
-    // Weak areas: subjects with low accuracy (<55%) or lowest rank, excluding strong areas
     const lowAccuracySubs = sorted.filter((s) => s.hasAttempts && s.accuracy < 55)
     let weak = []
     if (lowAccuracySubs.length > 0) {
@@ -607,18 +558,18 @@ function DashboardPage({
 
     const filteredWeak = weak.filter((w) => !strong.includes(w)).slice(0, 2)
     return {
-      dynamicStrongAreas: strong.length > 0 ? strong : strongAreas,
-      dynamicWeakAreas: filteredWeak.length > 0 ? filteredWeak : (sorted.length > 1 ? [sorted[sorted.length - 1].title] : weakAreas),
+      dynamicStrongAreas: strong.length > 0 ? strong : strongAreasFallback,
+      dynamicWeakAreas: filteredWeak.length > 0 ? filteredWeak : (sorted.length > 1 ? [sorted[sorted.length - 1].title] : weakAreasFallback),
     }
   }, [courseRegistry.subjectsList, subjectPerformanceMap])
 
   // Dynamic Activity Items
   const dynamicActivityItems = useMemo(() => {
     if (pastAttempts.length > 0) {
-      return pastAttempts.slice(-3).reverse().map((att, idx) => {
+      return pastAttempts.slice(-4).reverse().map((att, idx) => {
         const sub = courseRegistry.subjectCatalog[att.subjectKey]
-        const subjectTitle = sub?.title || att.subjectTitle || att.subjectKey || 'Subject Practice'
-        const chapterTitle = att.chapterTitle || 'MCQ Practice Session'
+        const subjectTitle = sub?.title || att.subjectTitle || att.subjectKey || 'Practice Session'
+        const chapterTitle = att.chapterTitle || 'MCQ Practice'
         const acc = att.accuracy !== undefined ? att.accuracy : 0
         const isGood = acc >= 50
         const total = att.total || att.attempted || 10
@@ -628,66 +579,119 @@ function DashboardPage({
           id: att.id || `act-${idx}`,
           subjectKey: att.subjectKey,
           icon: isGood ? 'check' : 'cross',
-          iconClass: isGood ? 'icon-green' : 'icon-red',
+          iconType: isGood ? 'good' : 'bad',
           title: `${subjectTitle}: ${chapterTitle}`,
           statText: `${correct}/${total} Correct`,
           accuracyText: `${acc}% Accuracy`,
           accuracyVal: acc,
-          timeAgo: formatTimeAgo(att.timestamp),
+          timeAgo: formatTimeAgo(att.timestamp || (att.created_at ? new Date(att.created_at).getTime() : null)),
         }
       })
     }
 
-    // Default canonical mockup items with 10 questions representation
-    return [
-      {
-        id: 'mock-1',
-        icon: 'check',
-        iconClass: 'icon-green',
-        title: 'Chapter 01: Introduction to Computer Networks & Network Models',
-        statText: '10/10 Correct',
-        accuracyText: '100% Accuracy',
-        accuracyVal: 100,
-        timeAgo: '4h ago',
-      },
-      {
-        id: 'mock-2',
-        icon: 'cross',
-        iconClass: 'icon-red',
-        title: 'COA: Instruction Cycle',
-        statText: '3/10 Correct',
-        accuracyText: '30% Accuracy',
-        accuracyVal: 30,
-        timeAgo: '1d ago',
-      },
-      {
-        id: 'mock-3',
-        icon: 'bookmark',
-        iconClass: 'icon-purple',
-        title: 'Flashcards Reviewed',
-        statText: '',
-        accuracyText: '',
-        extraSub: '20 Flashcards',
-        accuracyVal: 100,
-        timeAgo: '2d ago',
-      },
-    ]
+    return []
   }, [pastAttempts, courseRegistry])
+
+  // Daily Focus real metrics
+  const dailyFocus = useMemo(() => {
+    const flashcardsDue = totalFlashcards || 0
+    const incorrectQuestions = userAnalytics.incorrectCount || progressList.filter((p) => p.status === 'INCORRECT').length || 0
+
+    let forgottenTopics = 0
+    const list = courseRegistry.subjectsList || []
+    list.forEach((sub) => {
+      const chs = sub.chapters || []
+      chs.forEach((ch) => {
+        if (ch.hasAttempts && ch.masteryPercent < 50) {
+          forgottenTopics += 1
+        } else if (ch.revisionRequirement) {
+          forgottenTopics += 1
+        }
+      })
+    })
+
+    const todayStr = new Date().toISOString().split('T')[0]
+    const todayAttempts = pastAttempts.filter((a) => {
+      const d = (a.created_at || a.timestamp) ? new Date(a.created_at || a.timestamp).toISOString().split('T')[0] : null
+      return d === todayStr
+    })
+
+    const todayMcqsSolved = todayAttempts.reduce((sum, a) => sum + (Number(a.attempted || a.total || 0)), 0)
+    const mcqDailyTarget = 30
+    const mcqPercent = Math.min(100, Math.round((todayMcqsSolved / mcqDailyTarget) * 100))
+
+    const todayFlashcardsSolved = todayAttempts.reduce((sum, a) => sum + (Number(a.flashcardsReviewed || 0)), 0)
+    const flashcardDailyTarget = 10
+    const flashcardPercent = Math.min(100, Math.round((todayFlashcardsSolved / flashcardDailyTarget) * 100))
+
+    const todayMocks = todayAttempts.filter((a) => a.isMockTest || a.type === 'mock').length
+    const mockDailyTarget = 1
+    const mockPercent = Math.min(100, Math.round((todayMocks / mockDailyTarget) * 100))
+
+    return {
+      flashcardsDue,
+      incorrectQuestions,
+      forgottenTopics,
+      mcqPercent,
+      flashcardPercent,
+      mockPercent,
+    }
+  }, [totalFlashcards, userAnalytics.incorrectCount, progressList, courseRegistry.subjectsList, pastAttempts])
 
   // Metrics for Performance Overview
   const totalQuestionsAttempted = useMemo(() => {
     if (pastAttempts.length > 0) {
-      return pastAttempts.reduce((sum, a) => sum + (a.attempted || a.total || 0), 0)
+      return pastAttempts.reduce((sum, a) => sum + (Number(a.attempted || a.total || 0)), 0)
     }
-    return 20
-  }, [pastAttempts])
+    return userAnalytics.totalQuestionsAttempted || 0
+  }, [pastAttempts, userAnalytics.totalQuestionsAttempted])
 
   const averageAccuracy = useMemo(() => {
     if (pastAttempts.length > 0) {
-      const sum = pastAttempts.reduce((s, a) => s + (a.accuracy || 0), 0)
+      const sum = pastAttempts.reduce((s, a) => s + (Number(a.accuracy || 0)), 0)
       return Math.round(sum / pastAttempts.length)
     }
-    return 100
+    return userAnalytics.accuracy || 0
+  }, [pastAttempts, userAnalytics.accuracy])
+
+  const totalTimeSpentFormatted = useMemo(() => {
+    return formatTotalTimeSpent(pastAttempts)
+  }, [pastAttempts])
+
+  // Sparklines calculated strictly from real history points
+  const accuracySparkline = useMemo(() => {
+    const historyAccuracies = (userAnalytics.trendHistory || []).map((t) => t.accuracy)
+    if (historyAccuracies.length > 0) {
+      return generateSparkline(historyAccuracies, 100)
+    }
+    if (pastAttempts.length > 0) {
+      const points = pastAttempts.slice(-7).map((a) => a.accuracy || 0)
+      return generateSparkline(points, 100)
+    }
+    return generateSparkline([averageAccuracy], 100)
+  }, [userAnalytics.trendHistory, pastAttempts, averageAccuracy])
+
+  const questionsSparkline = useMemo(() => {
+    const historyQuestions = (userAnalytics.trendHistory || []).map((t) => t.questions)
+    if (historyQuestions.length > 0) {
+      const maxQ = Math.max(...historyQuestions, 10)
+      return generateSparkline(historyQuestions, maxQ)
+    }
+    if (pastAttempts.length > 0) {
+      const points = pastAttempts.slice(-7).map((a) => a.attempted || a.total || 0)
+      const maxQ = Math.max(...points, 10)
+      return generateSparkline(points, maxQ)
+    }
+    return generateSparkline([totalQuestionsAttempted], Math.max(totalQuestionsAttempted, 10))
+  }, [userAnalytics.trendHistory, pastAttempts, totalQuestionsAttempted])
+
+  const timeSparkline = useMemo(() => {
+    if (pastAttempts.length > 0) {
+      const points = pastAttempts.slice(-7).map((a) => Math.round((Number(a.time_taken_seconds || 0) / 60)))
+      const maxT = Math.max(...points, 10)
+      return generateSparkline(points, maxT)
+    }
+    return generateSparkline([1], 10)
   }, [pastAttempts])
 
   const handleCourseSelect = (id) => {
@@ -702,10 +706,10 @@ function DashboardPage({
     }
   }, [drawerOpen])
 
-  const courseDisplayName = (activeCourse?.name || 'BPSC 4.0 COMPUTER SCIENCE').toUpperCase()
+  const daysUntilExam = activeCourse?.examDays || 84
 
   return (
-    <div className="app-shell">
+    <div className="mobile-dash-page">
       <div
         className={`drawer-overlay${drawerOpen ? ' open' : ''}`}
         onClick={() => setDrawerOpen(false)}
@@ -719,7 +723,7 @@ function DashboardPage({
           name: effectiveMember?.display_name || 'Student',
           warrior: `${effectiveMember?.warrior_name || 'WARRIOR'} • ${effectiveMember?.public_user_id || 'NEX-WAR-001'}`,
           sub: `${activeCourse?.name || 'Assigned Course'}`,
-          streak: '14 Day Streak',
+          streak: `${studyStreakDays} Day Streak`,
         }}
         sections={drawerSections}
         onItemClick={(item) => {
@@ -748,258 +752,57 @@ function DashboardPage({
           }
         }}
       >
-        <main className="dash-content">
-          {/* 1 & 2. UNIFIED DARK HERO CONTAINER (Matching Mockup) */}
-          <section className="dash-readiness-card unified-readiness-container">
-            {/* Top Header Bar inside Dark Hero */}
-            <header className="dash-header dark-header">
-              <div className="dash-header-left">
-                <button
-                  type="button"
-                  className="dash-menu-btn"
-                  onClick={() => setDrawerOpen(true)}
-                  aria-label="Open navigation menu"
-                >
-                  <AppIcon name="menu" size={20} />
-                </button>
-                <div className="dash-greeting-box">
-                  <div className="dash-greeting-title">Good Evening, {effectiveMember?.display_name?.split(' ')[0] || effectiveMember?.warrior_name || 'Warrior'} 👋</div>
-                  <div className="dash-greeting-sub">{courseDisplayName}</div>
-                </div>
-              </div>
+        {/* TOP MOBILE HEADER BAR */}
+        <header className="mobile-top-header">
+          <div className="header-inner-row">
+            {/* Hamburger Button */}
+            <button
+              type="button"
+              className="header-icon-btn"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open Navigation Menu"
+            >
+              <svg className="h-btn-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+              </svg>
+            </button>
 
-              <div className="dash-header-right">
-                <StudentCourseSelector onSelect={handleCourseSelect} />
-                <div className="dash-bell-btn" role="button" tabIndex={0} aria-label="Notifications">
-                  <AppIcon name="notifications" size={20} />
-                  <span className="dash-bell-badge">3</span>
-                </div>
-                {isAdmin && (
-                  <div className="dashboard-role-switch">
-                    <RoleSwitch onSwitchToAdmin={onNavigateAdmin} onSwitchToStudent={() => navigate('')} />
-                  </div>
-                )}
-              </div>
-            </header>
-
-            <div className="readiness-hr-divider" />
-
-            {/* Top Summary Stats */}
-            <div className="exam-summary-grid">
-              {/* Col 1: Exam in */}
-              <div className="summary-stat-item">
-                <div className="summary-icon-circle">
-                  <AppIcon name="calendar" size={18} />
-                </div>
-                <div className="summary-stat-info">
-                  <span className="summary-stat-label">Exam in</span>
-                  <span className="summary-stat-val">84</span>
-                  <span className="summary-stat-sub">Days</span>
-                </div>
-              </div>
-
-              <div className="summary-stat-divider" />
-
-              {/* Col 2: Today's Goal */}
-              <div className="summary-stat-item goal-item">
-                <div className="summary-icon-circle">
-                  <AppIcon name="goal" size={18} />
-                </div>
-                <div className="summary-stat-info">
-                  <span className="summary-stat-label">Today's Goal</span>
-                  <div className="summary-goal-lines">
-                    <span className="summary-goal-line"><b>{formatCompactNumber(totalMcqs)}</b> MCQs</span>
-                    <span className="summary-goal-line subtle"><b>{formatCompactNumber(totalFlashcards)}</b> Flashcards</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="summary-stat-divider" />
-
-              {/* Col 3: Study Streak */}
-              <div className="summary-stat-item">
-                <div className="summary-icon-circle">
-                  <AppIcon name="streak" size={18} />
-                </div>
-                <div className="summary-stat-info">
-                  <span className="summary-stat-label">Study Streak</span>
-                  <span className="summary-stat-val">14</span>
-                  <span className="summary-stat-sub">Days</span>
-                </div>
-              </div>
+            {/* Course Track Dropdown Pill */}
+            <div className="header-course-selector-col">
+              <StudentCourseSelector onSelect={handleCourseSelect} />
             </div>
 
-            {/* Integrated Completion Progress */}
-            <div className="summary-progress-wrap">
-              <span className="summary-progress-pct"><b>{completionRate}%</b> Completed</span>
-              <div className="summary-progress-track">
-                <div
-                  className="summary-progress-fill"
-                  style={{ width: `${completionRate}%` }}
-                />
-              </div>
+            {/* Notification Bell Button */}
+            <div className="header-bell-wrapper">
+              <button
+                type="button"
+                className="header-icon-btn"
+                aria-label="Notifications"
+              >
+                <svg className="h-btn-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                </svg>
+              </button>
+              {/* Optional unread notification dot/badge */}
+              {pastAttempts.length > 0 && (
+                <span className="header-bell-badge">3</span>
+              )}
             </div>
 
-            <div className="readiness-hr-divider" />
-
-            {/* EXAM READINESS SECTION */}
-            <div className="readiness-card-header">
-              <span className="readiness-card-title">EXAM READINESS</span>
-            </div>
-
-            <div className="readiness-main-row">
-              {/* Circular Indicator */}
-              <div className="readiness-ring-col">
-                <ReadinessRing
-                  size={92}
-                  radius={38}
-                  strokeWidth={8}
-                  progress={readinessScore}
-                  gradient={readinessLevel.ringGradient}
-                  glow={readinessLevel.glow}
-                  trackColor="#1E293B"
-                >
-                  <div className="readiness-ring-content">
-                    <span className="readiness-ring-pct">{animatedScore}%</span>
-                    <span className="readiness-ring-sub">Readiness</span>
-                  </div>
-                </ReadinessRing>
+            {/* Admin Role Switch if Admin */}
+            {isAdmin && (
+              <div className="header-role-switch-wrap">
+                <RoleSwitch onSwitchToAdmin={onNavigateAdmin} onSwitchToStudent={() => navigate('')} />
               </div>
+            )}
+          </div>
+        </header>
 
-              {/* Status Message */}
-              <div className="readiness-status-col">
-                <span className="readiness-level-name">{readinessLevel.label}</span>
-                <span className="readiness-level-sub">{readinessLevel.message}</span>
-              </div>
-
-              {/* Projected Score */}
-              <div className="readiness-projected-col">
-                <span className="projected-label">Projected Score</span>
-                <div className="projected-score-val">
-                  <b>{animatedProjectedScore}</b> <span>/ 100</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="readiness-hr-divider" />
-
-            {/* Strong Areas vs Weak Areas */}
-            <div className="readiness-areas-row">
-              <div className="areas-col">
-                <div className="areas-header strong-header">Strong Areas</div>
-                <div className="areas-list">
-                  {dynamicStrongAreas.map((area) => (
-                    <div className="area-item" key={area}>
-                      <span className="area-icon check-icon"><AppIcon name="check" size={10} /></span>
-                      <span className="area-name">{area}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="areas-col">
-                <div className="areas-header weak-header">Weak Areas</div>
-                <div className="areas-list">
-                  {dynamicWeakAreas.map((area) => (
-                    <div className="area-item" key={area}>
-                      <span className="area-icon cross-icon"><AppIcon name="cross" size={10} /></span>
-                      <span className="area-name">{area}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. QUICK ACTION SECTION (2 × 2 Grid) */}
-          <section className="quick-actions-grid">
-            {/* Card 1: Today's Revision */}
-            <div className="quick-card card-green" onClick={onNavigateSubjects} role="button" tabIndex={0}>
-              <div className="quick-card-top">
-                <div className="quick-icon-box icon-green">
-                  <AppIcon name="computer" size={16} />
-                </div>
-              </div>
-              <div className="quick-card-title">Today's Revision</div>
-              <div className="quick-card-metric num-green">45</div>
-              <div className="quick-card-sub">Flashcards Due</div>
-              <div className="quick-card-action act-green">Review Now →</div>
-            </div>
-
-            {/* Card 2: Incorrect Qs */}
-            <div className="quick-card card-red" onClick={onNavigatePractice} role="button" tabIndex={0}>
-              <div className="quick-card-top">
-                <div className="quick-icon-box icon-red">
-                  <AppIcon name="cross" size={14} />
-                </div>
-              </div>
-              <div className="quick-card-title">Incorrect Qs</div>
-              <div className="quick-card-metric num-red">12</div>
-              <div className="quick-card-sub">Questions</div>
-              <div className="quick-card-action act-red">Review Now →</div>
-            </div>
-
-            {/* Card 3: Forgotten Topics */}
-            <div className="quick-card card-purple" onClick={onNavigateSubjects} role="button" tabIndex={0}>
-              <div className="quick-card-top">
-                <div className="quick-icon-box icon-purple">
-                  <AppIcon name="bookmark" size={15} />
-                </div>
-              </div>
-              <div className="quick-card-title">Forgotten Topics</div>
-              <div className="quick-card-metric num-purple">6</div>
-              <div className="quick-card-sub">Topics</div>
-              <div className="quick-card-action act-purple">Review Now →</div>
-            </div>
-
-            {/* Card 4: Daily Mission */}
-            <div className="quick-card card-blue daily-mission-card">
-              <div className="quick-card-top mission-top">
-                <div className="quick-icon-box icon-blue">
-                  <AppIcon name="target" size={15} />
-                </div>
-                <span className="mission-card-title">Daily Mission</span>
-              </div>
-              <div className="mission-rows-wrap">
-                <div className="mission-row">
-                  <div className="mission-row-header">
-                    <span className="mission-check done"><AppIcon name="check" size={8} /></span>
-                    <span className="mission-name">MCQs</span>
-                    <span className="mission-pct">65%</span>
-                  </div>
-                  <div className="mission-mini-track">
-                    <div className="mission-mini-fill fill-green" style={{ width: '65%' }} />
-                  </div>
-                </div>
-
-                <div className="mission-row">
-                  <div className="mission-row-header">
-                    <span className="mission-check done"><AppIcon name="check" size={8} /></span>
-                    <span className="mission-name">Flashcards</span>
-                    <span className="mission-pct">75%</span>
-                  </div>
-                  <div className="mission-mini-track">
-                    <div className="mission-mini-fill fill-green" style={{ width: '75%' }} />
-                  </div>
-                </div>
-
-                <div className="mission-row">
-                  <div className="mission-row-header">
-                    <span className="mission-check empty" />
-                    <span className="mission-name">Mock Test</span>
-                    <span className="mission-pct">0%</span>
-                  </div>
-                  <div className="mission-mini-track">
-                    <div className="mission-mini-fill fill-gray" style={{ width: '0%' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 4. CONTINUE PRACTICE BANNER CTA */}
+        {/* MAIN SCROLLABLE DASHBOARD FEED */}
+        <main className="mobile-dash-feed">
+          {/* 1. CONTINUE PRACTICE BANNER */}
           <section
-            className="continue-practice-banner"
+            className="continue-practice-cta-card"
             onClick={() => {
               if (topRecentAttempt?.subjectKey) {
                 onOpenSubjectDetail(topRecentAttempt.subjectKey)
@@ -1012,143 +815,509 @@ function DashboardPage({
             role="button"
             tabIndex={0}
           >
-            <div className="continue-banner-left">
-              <div className="continue-banner-icon">
-                <AppIcon name="target" size={20} />
+            <div className="continue-cta-left">
+              <div className="continue-cta-icon-box">
+                <svg className="continue-cta-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+                  <path d="M12 8v4l3 3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+                </svg>
               </div>
-              <div className="continue-banner-text">
-                <div className="continue-banner-title">Continue Practice</div>
-                <div className="continue-banner-sub">Resume your personalized session</div>
+              <div className="continue-cta-info">
+                <h2 className="continue-cta-title">
+                  {topRecentAttempt ? 'Continue Practice' : 'Begin Practice'}
+                </h2>
+                <p className="continue-cta-sub">
+                  {topRecentAttempt
+                    ? `Resume ${topRecentAttempt.subjectTitle}: ${topRecentAttempt.chapterTitle}`
+                    : `Start with ${courseRegistry.subjectsList?.[0]?.title || 'Core Syllabus'}`}
+                </p>
               </div>
             </div>
-            <div className="continue-banner-arrow">
-              <AppIcon name="arrowForward" size={16} />
-            </div>
+
+            <button
+              type="button"
+              className="continue-cta-circle-btn"
+              aria-label="Resume session"
+            >
+              <svg className="continue-arrow-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+              </svg>
+            </button>
+            <div className="continue-cta-glow" />
           </section>
 
-          {/* 5. YOUR SUBJECTS SECTION (2-Column Grid on Mobile) */}
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Your Subjects</h2>
-            <button type="button" className="dash-view-all-btn" onClick={onNavigateSubjects}>
-              View All ›
-            </button>
-          </div>
-
-          {effectiveCourseId && courseRegistry.subjectsList.length === 0 ? (
-            <EmptyCourseState courseName={activeCourse?.name} />
-          ) : (
-            <section className="dash-subjects-grid">
-              {subjectCards.map((subject) => (
-                <SubjectCard key={subject.title} subject={subject} onSelect={onOpenSubjectDetail} />
-              ))}
-            </section>
-          )}
-
-          {/* 6. PERFORMANCE OVERVIEW SECTION */}
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Performance Overview</h2>
-            <div className="dash-period-dropdown">
-              <span>This Week</span>
-              <AppIcon name="chevronDown" size={14} />
-            </div>
-          </div>
-
-          <section className="dash-perf-grid">
-            {/* Card 1: Accuracy */}
-            <div className="dash-perf-card">
-              <div className="perf-card-top">
-                <AppIcon name="trendingUp" size={13} color="#12B76A" />
-                <span className="perf-label">Accuracy</span>
-              </div>
-              <div className="perf-card-metric-row">
-                <span className="perf-metric-val">{averageAccuracy}%</span>
-                <span className="perf-trend-badge green">↑ 12%</span>
-              </div>
-              <div className="perf-sparkline">
-                <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="sparkline-svg green">
-                  <path d="M0,18 Q15,8 30,16 T60,10 T90,14 L100,6" fill="none" stroke="#12B76A" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M0,18 Q15,8 30,16 T60,10 T90,14 L100,6 L100,24 L0,24 Z" fill="rgba(18, 183, 106, 0.12)" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Card 2: Questions Attempted */}
-            <div className="dash-perf-card">
-              <div className="perf-card-top">
-                <AppIcon name="refresh" size={13} color="#2E5CE6" />
-                <span className="perf-label">Questions</span>
-              </div>
-              <div className="perf-card-metric-row">
-                <span className="perf-metric-val">{totalQuestionsAttempted}</span>
-                <span className="perf-trend-badge green">↑ 5</span>
-              </div>
-              <div className="perf-sparkline">
-                <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="sparkline-svg blue">
-                  <path d="M0,16 Q20,20 40,12 T75,15 L100,8" fill="none" stroke="#2E5CE6" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M0,16 Q20,20 40,12 T75,15 L100,8 L100,24 L0,24 Z" fill="rgba(46, 92, 230, 0.12)" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Card 3: Time Spent */}
-            <div className="dash-perf-card">
-              <div className="perf-card-top">
-                <AppIcon name="clock" size={13} color="#7C3AED" />
-                <span className="perf-label">Time Spent</span>
-              </div>
-              <div className="perf-card-metric-row">
-                <span className="perf-metric-val">1h 45m</span>
-                <span className="perf-trend-badge green">↑ 20m</span>
-              </div>
-              <div className="perf-sparkline">
-                <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="sparkline-svg purple">
-                  <path d="M0,18 Q18,10 35,17 T70,9 L100,12" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M0,18 Q18,10 35,17 T70,9 L100,12 L100,24 L0,24 Z" fill="rgba(124, 58, 237, 0.12)" />
-                </svg>
-              </div>
-            </div>
-          </section>
-
-          {/* 7. RECENT ACTIVITY SECTION */}
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Recent Activity</h2>
-            <button type="button" className="dash-view-all-btn" onClick={onNavigatePractice}>
-              View All ›
-            </button>
-          </div>
-
-          <section className="dash-activity-card">
-            {dynamicActivityItems.map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="dash-activity-item"
-                onClick={() => {
-                  if (item.subjectKey) onOpenSubjectDetail(item.subjectKey)
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                <div className={`activity-icon-badge ${item.iconClass || 'icon-green'}`}>
-                  <AppIcon name={item.icon || 'check'} size={12} />
+          {/* 2. EXAM READINESS & MILESTONES CARD */}
+          <section className="exam-readiness-overview-card">
+            {/* Top 3 Milestones */}
+            <div className="milestones-top-row">
+              {/* Milestone 1: Exam in */}
+              <div className="milestone-item">
+                <div className="milestone-icon-box">
+                  <svg className="milestone-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                  </svg>
                 </div>
-                <div className="activity-info-box">
-                  <div className="activity-item-title" title={item.title}>{item.title}</div>
-                  <div className="activity-item-sub">
-                    {item.statText && <span className="activity-stat">{item.statText}</span>}
-                    {item.accuracyText && (
-                      <span className={`activity-acc ${item.accuracyVal >= 50 ? 'acc-good' : 'acc-bad'}`}>
-                        {' • '}{item.accuracyText}
-                      </span>
-                    )}
-                    {item.extraSub && <span className="activity-extra">{item.extraSub}</span>}
+                <div className="milestone-info">
+                  <div className="milestone-lbl">EXAM IN</div>
+                  <div className="milestone-val">
+                    {daysUntilExam} <span className="milestone-unit">Days</span>
                   </div>
                 </div>
-                <div className="activity-item-right">
-                  <span className="activity-timestamp">{item.timeAgo}</span>
-                  <AppIcon name="chevronRight" size={14} className="activity-chevron-icon" />
+              </div>
+
+              {/* Milestone 2: Today's Goal */}
+              <div className="milestone-item border-l">
+                <div className="milestone-icon-box">
+                  <svg className="milestone-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="3" strokeWidth="2" />
+                  </svg>
+                </div>
+                <div className="milestone-info">
+                  <div className="milestone-lbl">TODAY'S GOAL</div>
+                  <div className="milestone-val">
+                    {formatCompactNumber(totalMcqs)} <span className="milestone-unit font-bold">MCQs</span>
+                  </div>
+                  <div className="milestone-extra">{formatCompactNumber(totalFlashcards)} Flashcards</div>
                 </div>
               </div>
-            ))}
+
+              {/* Milestone 3: Study Streak */}
+              <div className="milestone-item border-l">
+                <div className="milestone-icon-box">
+                  <svg className="milestone-svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path clipRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.316.492-.533 1.05-.724 1.577a23.36 23.36 0 00-.77 2.658c-.417.062-.834.17-1.233.332C6.18 8.1 5 9.77 5 11.5 5 14.538 7.462 17 10.5 17c3.038 0 5.5-2.462 5.5-5.5 0-1.89-1.01-3.616-2.585-4.664a1 1 0 00-.594-.213c-.026 0-.051.002-.077.006a1 1 0 00-.814.733c-.157.653-.418 1.258-.77 1.8a1 1 0 01-1.62-.27c-.244-.45-.373-.974-.373-1.5 0-1.282.518-2.443 1.228-3.339.294-.37.382-.84.226-1.29a1 1 0 00-.226-.31z" fillRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="milestone-info">
+                  <div className="milestone-lbl">STREAK</div>
+                  <div className="milestone-val">
+                    {studyStreakDays} <span className="milestone-unit">Days</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Overall Completion Progress Bar */}
+            <div className="milestone-progress-section">
+              <div className="milestone-progress-header">
+                <span className="progress-status-text">{completionRate}% Completed</span>
+                <span className="progress-target-text">Target: 100% by Exam Day</span>
+              </div>
+              <div className="milestone-progress-track">
+                <div
+                  className="milestone-progress-fill"
+                  style={{ width: `${completionRate}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Exam Readiness Box */}
+            <div className="exam-readiness-box">
+              <h3 className="readiness-box-header">EXAM READINESS</h3>
+              <div className="readiness-box-inner">
+                {/* Radial Gauge & Status */}
+                <div className="readiness-box-left">
+                  <div
+                    className="readiness-conic-gauge"
+                    style={{
+                      background: `conic-gradient(#2d6a4f 0% ${readinessScore}%, #E2E8F0 ${readinessScore}% 100%)`,
+                    }}
+                  >
+                    <div className="readiness-conic-inner">
+                      <span className="readiness-conic-pct">{animatedScore}%</span>
+                      <span className="readiness-conic-lbl">Ready</span>
+                    </div>
+                  </div>
+                  <div className="readiness-box-msg-col">
+                    <div className="readiness-level-title">{readinessLevel.label}</div>
+                    <div className="readiness-level-msg">{readinessLevel.message}</div>
+                  </div>
+                </div>
+
+                {/* Projected Score Pill */}
+                <div className="projected-score-pill">
+                  <div className="projected-pill-lbl">PROJECTED</div>
+                  <div className="projected-pill-val">
+                    {animatedProjectedScore} <span className="projected-pill-max">/ 100</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Strong Areas vs Weak Areas */}
+            <div className="areas-matrix-row">
+              {/* Strong Areas */}
+              <div className="areas-list-col">
+                <div className="areas-title-wrap">
+                  <div className="areas-dot dot-green" />
+                  <h4 className="areas-title text-green">Strong Areas</h4>
+                </div>
+                <ul className="areas-pill-list">
+                  {dynamicStrongAreas.map((area) => (
+                    <li className="area-pill-item green" key={area}>
+                      <span className="area-pill-icon green">✓</span>
+                      <span className="area-pill-text">{area}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Weak Areas */}
+              <div className="areas-list-col border-t-sm">
+                <div className="areas-title-wrap">
+                  <div className="areas-dot dot-red" />
+                  <h4 className="areas-title text-red">Weak Areas</h4>
+                </div>
+                <ul className="areas-pill-list">
+                  {dynamicWeakAreas.map((area) => (
+                    <li className="area-pill-item red" key={area}>
+                      <span className="area-pill-icon red">✕</span>
+                      <span className="area-pill-text">{area}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. DAILY FOCUS & QUICK REVIEW (2x2 Grid) */}
+          <section className="daily-focus-grid-section">
+            <div className="daily-focus-header">
+              <div className="daily-focus-header-left">
+                <h3 className="daily-focus-title">Daily Focus &amp; Quick Review</h3>
+                <span className="daily-focus-badge">High Yield</span>
+              </div>
+              <span className="daily-focus-sub">Spaced repetition</span>
+            </div>
+
+            {/* 2x2 Clean Mobile Grid */}
+            <div className="daily-focus-2x2-grid">
+              {/* Card 1: Today's Revision */}
+              <div className="focus-card card-revision">
+                <div className="focus-card-top-row">
+                  <div className="focus-icon-box bg-forest">
+                    <svg className="focus-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <rect height="12" rx="2" strokeWidth="2" width="18" x="3" y="4" />
+                      <path d="M7 20h10" strokeLinecap="round" strokeWidth="2" />
+                    </svg>
+                  </div>
+                  <span className="focus-badge badge-forest">Due</span>
+                </div>
+                <div className="focus-card-body">
+                  <div className="focus-card-name">Today's<br />Revision</div>
+                  <div className="focus-card-metric text-forest">{dailyFocus.flashcardsDue}</div>
+                  <div className="focus-card-unit">Flashcards Due</div>
+                </div>
+                <button
+                  type="button"
+                  className="focus-card-btn btn-forest"
+                  onClick={onNavigateSubjects}
+                >
+                  <span>Review Now</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              {/* Card 2: Incorrect Qs */}
+              <div className="focus-card card-incorrect">
+                <div className="focus-card-top-row">
+                  <div className="focus-icon-box bg-rose">
+                    <svg className="focus-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                    </svg>
+                  </div>
+                  <span className="focus-badge badge-rose">Alert</span>
+                </div>
+                <div className="focus-card-body">
+                  <div className="focus-card-name">Incorrect<br />Qs</div>
+                  <div className="focus-card-metric text-rose">{dailyFocus.incorrectQuestions}</div>
+                  <div className="focus-card-unit">Questions</div>
+                </div>
+                <button
+                  type="button"
+                  className="focus-card-btn btn-rose"
+                  onClick={onNavigatePractice}
+                >
+                  <span>Review Now</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              {/* Card 3: Forgotten Topics */}
+              <div className="focus-card card-forgotten">
+                <div className="focus-card-top-row">
+                  <div className="focus-icon-box bg-purple">
+                    <svg className="focus-svg" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+                    </svg>
+                  </div>
+                  <span className="focus-badge badge-purple">Memory</span>
+                </div>
+                <div className="focus-card-body">
+                  <div className="focus-card-name">Forgotten<br />Topics</div>
+                  <div className="focus-card-metric text-purple">{dailyFocus.forgottenTopics}</div>
+                  <div className="focus-card-unit">Topics</div>
+                </div>
+                <button
+                  type="button"
+                  className="focus-card-btn btn-purple"
+                  onClick={onNavigateSubjects}
+                >
+                  <span>Review Now</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              {/* Card 4: Daily Mission */}
+              <div className="focus-card card-mission">
+                <div>
+                  <div className="mission-title-row">
+                    <div className="mission-icon-box">
+                      <svg className="mission-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="8" strokeWidth="2" />
+                        <circle cx="12" cy="12" r="3" strokeWidth="2" />
+                      </svg>
+                    </div>
+                    <span className="mission-title-text">Daily Mission</span>
+                  </div>
+
+                  <div className="mission-items-wrap">
+                    {/* MCQs */}
+                    <div className="mission-progress-item">
+                      <div className="mission-item-header">
+                        <span className="mission-item-name">
+                          <span className="mission-check-symbol">✔</span> MCQs
+                        </span>
+                        <span className="mission-item-pct">{dailyFocus.mcqPercent}%</span>
+                      </div>
+                      <div className="mission-track-line">
+                        <div
+                          className="mission-fill-line fill-forest"
+                          style={{ width: `${dailyFocus.mcqPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Flashcards */}
+                    <div className="mission-progress-item">
+                      <div className="mission-item-header">
+                        <span className="mission-item-name">
+                          <span className="mission-check-symbol">✔</span> Cards
+                        </span>
+                        <span className="mission-item-pct">{dailyFocus.flashcardPercent}%</span>
+                      </div>
+                      <div className="mission-track-line">
+                        <div
+                          className="mission-fill-line fill-forest"
+                          style={{ width: `${dailyFocus.flashcardPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Mock Test */}
+                    <div className="mission-progress-item">
+                      <div className="mission-item-header">
+                        <span className="mission-item-name muted">
+                          <span className="mission-circle-symbol">○</span> Mock
+                        </span>
+                        <span className="mission-item-pct muted">{dailyFocus.mockPercent}%</span>
+                      </div>
+                      <div className="mission-track-line">
+                        <div
+                          className="mission-fill-line fill-forest"
+                          style={{ width: `${dailyFocus.mockPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. SUBJECTS & MODULES SECTION */}
+          <section className="subjects-modules-section">
+            <div className="subjects-section-header">
+              <div className="subjects-header-left">
+                <div className="subjects-header-dot" />
+                <h3 className="subjects-header-title">Subjects &amp; Modules</h3>
+                <span className="subjects-header-badge">{subjectCards.length} Active</span>
+              </div>
+              <button
+                type="button"
+                className="subjects-view-all-btn"
+                onClick={onNavigateSubjects}
+              >
+                Core Syllabus
+              </button>
+            </div>
+
+            {effectiveCourseId && courseRegistry.subjectsList.length === 0 ? (
+              <EmptyCourseState courseName={activeCourse?.name} />
+            ) : (
+              <div className="subjects-2col-grid">
+                {subjectCards.map((subject) => (
+                  <SubjectCard
+                    key={subject.title}
+                    subject={subject}
+                    onSelect={onOpenSubjectDetail}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* 5. PERFORMANCE OVERVIEW SECTION */}
+          <section className="performance-analytics-card">
+            <div className="perf-header-row">
+              <h3 className="perf-section-title">Performance Overview</h3>
+              <button type="button" className="perf-filter-pill">
+                <span>This Week</span>
+                <svg className="perf-chevron-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="perf-stats-3col-grid">
+              {/* Metric 1: Accuracy */}
+              <div className="perf-stat-card">
+                <div>
+                  <div className="perf-stat-label-row">
+                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                    <span className="perf-stat-label">Accuracy</span>
+                  </div>
+                  <div className="perf-stat-number">{averageAccuracy}%</div>
+                  {averageAccuracy > 0 && (
+                    <div className="perf-stat-trend-tag">↑ Real</div>
+                  )}
+                </div>
+                <div className="perf-sparkline-box">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#40916c" viewBox="0 0 100 25">
+                    <path d={accuracySparkline.path} strokeLinecap="round" strokeWidth="2.5" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Metric 2: Questions */}
+              <div className="perf-stat-card">
+                <div>
+                  <div className="perf-stat-label-row">
+                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                    <span className="perf-stat-label">Questions</span>
+                  </div>
+                  <div className="perf-stat-number">{formatCompactNumber(totalQuestionsAttempted)}</div>
+                  {totalQuestionsAttempted > 0 && (
+                    <div className="perf-stat-trend-tag">↑ Solved</div>
+                  )}
+                </div>
+                <div className="perf-sparkline-box">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#40916c" viewBox="0 0 100 25">
+                    <path d={questionsSparkline.path} strokeLinecap="round" strokeWidth="2.5" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Metric 3: Time Spent */}
+              <div className="perf-stat-card">
+                <div>
+                  <div className="perf-stat-label-row">
+                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                      <path d="M12 7v5l3 3" strokeWidth="2" />
+                    </svg>
+                    <span className="perf-stat-label">Time</span>
+                  </div>
+                  <div className="perf-stat-number leading-tight">{totalTimeSpentFormatted}</div>
+                  {pastAttempts.length > 0 && (
+                    <div className="perf-stat-trend-tag">Active</div>
+                  )}
+                </div>
+                <div className="perf-sparkline-box">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#2d6a4f" viewBox="0 0 100 25">
+                    <path d={timeSparkline.path} strokeLinecap="round" strokeWidth="2.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 6. RECENT ACTIVITY FEED */}
+          <section className="recent-activity-card">
+            <div className="activity-header-row">
+              <h3 className="activity-section-title">Recent Activity</h3>
+              <button
+                type="button"
+                className="activity-view-all-link"
+                onClick={onNavigatePractice}
+              >
+                View All &gt;
+              </button>
+            </div>
+
+            <div className="activity-feed-list">
+              {dynamicActivityItems.length === 0 ? (
+                <div className="activity-empty-state">
+                  <span className="activity-empty-icon">📝</span>
+                  <span className="activity-empty-text">No practice activity yet. Complete a quiz to track your history!</span>
+                </div>
+              ) : (
+                dynamicActivityItems.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="activity-feed-item"
+                    onClick={() => {
+                      if (item.subjectKey) onOpenSubjectDetail(item.subjectKey)
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="activity-item-left">
+                      <div className={`activity-icon-sq ${item.iconType === 'good' ? 'bg-green' : 'bg-red'}`}>
+                        {item.iconType === 'good' ? (
+                          <svg className="act-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                          </svg>
+                        ) : (
+                          <svg className="act-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="activity-item-info">
+                        <h4 className="activity-item-title" title={item.title}>
+                          {item.title}
+                        </h4>
+                        <div className="activity-item-meta">
+                          <span className="activity-item-stat">{item.statText}</span>
+                          <span className="activity-item-bullet">•</span>
+                          <span className={`activity-item-acc ${item.accuracyVal >= 50 ? 'acc-green' : 'acc-red'}`}>
+                            {item.accuracyText}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="activity-item-time">{item.timeAgo}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* 7. EXAM STRATEGY TIP CARD */}
+          <section className="exam-strategy-card">
+            <div className="strategy-icon-box">💡</div>
+            <p className="strategy-text">
+              <strong className="strategy-bold">Exam Strategy:</strong>{' '}
+              {dynamicWeakAreas.length > 0
+                ? `Practice 50+ ${dynamicWeakAreas.join(' and ')} MCQs today to convert weak areas into strengths.`
+                : 'Consistent daily practice and regular chapter revisions maximize retention and exam confidence.'}
+            </p>
           </section>
         </main>
       </MobileLayout>

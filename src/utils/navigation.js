@@ -43,6 +43,7 @@ function loadSavedSession() {
         mode: parsed.mode || 'practice',
         result: parsed.result || null,
         timeTakenSeconds: parsed.timeTakenSeconds || 0,
+        attemptHistoryData: parsed.attemptHistoryData || [],
       }
     }
   } catch {
@@ -66,6 +67,7 @@ export const testSession = {
   mode: saved?.mode || 'practice', // 'practice' | 'review'
   result: saved?.result || null,
   timeTakenSeconds: saved?.timeTakenSeconds || 0,
+  attemptHistoryData: [],
   questions: null,
 
   save() {
@@ -98,6 +100,7 @@ export const testSession = {
     this.result = null
     this.questions = null
     this.timeTakenSeconds = 0
+    this.attemptHistoryData = []
     try {
       sessionStorage.removeItem(SESSION_STORAGE_KEY)
     } catch {

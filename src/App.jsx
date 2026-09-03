@@ -78,6 +78,10 @@ function App() {
   const { effectiveMember, isSuperAdmin, isViewingAs } = useMemberStore()
 
   const handleLogout = () => {
+    testSession.reset()
+    Object.keys(subjectTabs).forEach((key) => {
+      delete subjectTabs[key]
+    })
     clearMemberSession()
     clearUserProgressStore()
     clearAnalyticsStore()

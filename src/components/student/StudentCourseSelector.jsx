@@ -1,7 +1,6 @@
 /**
  * StudentCourseSelector.jsx
- * Premium, polished Course Switcher for Student Dashboard and Header.
- * Displays active track, quick dropdown with exam profile badges, and smooth animations.
+ * Forest Green styled Course Track Switcher matching htmlresource design.
  */
 
 import { useState, useRef, useEffect } from 'react'
@@ -19,9 +18,8 @@ function StudentCourseSelector({ onSelect }) {
   // Filter out archived/deleted courses
   const allNonDeleted = workspaces.filter((w) => w.status !== 'archived' && w.status !== 'deleted')
   
-  // Layer 1 Security: Only show courses the member is assigned & allowed to access
+  // Security: Only show courses the member is assigned & allowed to access
   const visibleCourses = permissionService.filterAllowedCourses(effectiveMember, allNonDeleted)
-
   const activeCourse = visibleCourses.find((w) => w.id === activeWorkspaceId) || visibleCourses[0] || null
 
   // Ensure active workspace points to an allowed course
@@ -45,39 +43,46 @@ function StudentCourseSelector({ onSelect }) {
     setOpen(false)
   }
 
+  const courseDisplayName = (activeCourse?.name || 'SELECT COURSE').toUpperCase()
+
   return (
-    <div className="student-course-selector" ref={ref}>
+    <div className="student-course-selector-wrap" ref={ref}>
       <button
         type="button"
-        className={`student-course-selector-trigger${open ? ' open' : ''}`}
+        className={`course-track-pill${open ? ' open' : ''}`}
         onClick={() => setOpen(!open)}
         title={activeCourse?.name || 'Switch Course Track'}
         aria-expanded={open}
       >
-        <span className="student-course-badge-icon">
-          <span>🎓</span>
-        </span>
-        <div className="student-course-info-wrap">
-          <span className="student-course-track-lbl">COURSE TRACK</span>
-          <span className="student-course-name">{activeCourse?.name || 'Select Course'}</span>
+        <div className="course-pill-left">
+          <div className="course-pill-icon-box">
+            <svg className="course-pill-svg" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
+            </svg>
+          </div>
+          <div className="course-pill-text-col">
+            <span className="course-pill-label">COURSE TRACK</span>
+            <span className="course-pill-title" title={courseDisplayName}>
+              {courseDisplayName}
+            </span>
+          </div>
         </div>
-        <span className={`student-course-chevron${open ? ' rotate' : ''}`}>
-          <AppIcon name="chevronDown" size={14} />
-        </span>
+        <svg className={`course-pill-chevron${open ? ' rotate' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+        </svg>
       </button>
 
       {open && (
-        <div className="student-course-dropdown">
-          <div className="student-course-dropdown-header">
-            <div className="student-course-dropdown-title">Switch Active Course</div>
-            <div className="student-course-dropdown-count">{visibleCourses.length} Enrolled</div>
+        <div className="student-course-dropdown-menu">
+          <div className="course-dropdown-header">
+            <span className="course-dropdown-title">Switch Active Course</span>
+            <span className="course-dropdown-badge">{visibleCourses.length} Enrolled</span>
           </div>
 
-          <div className="student-course-options-list">
+          <div className="course-dropdown-list">
             {visibleCourses.length === 0 ? (
-              <div className="student-course-empty">
-                <span>⚠️</span>
-                <span>No assigned courses found for your account.</span>
+              <div className="course-dropdown-empty">
+                <span>⚠️ No assigned courses found.</span>
               </div>
             ) : (
               visibleCourses.map((course) => {
@@ -88,23 +93,23 @@ function StudentCourseSelector({ onSelect }) {
                   <button
                     key={course.id}
                     type="button"
-                    className={`student-course-option${isSelected ? ' active' : ''}`}
+                    className={`course-dropdown-item${isSelected ? ' active' : ''}`}
                     onClick={() => handleSelect(course.id)}
                   >
-                    <div className="student-course-opt-left">
-                      <div className="student-course-opt-icon">
-                        <span>📚</span>
+                    <div className="course-opt-left">
+                      <div className="course-opt-icon">
+                        <span>🎓</span>
                       </div>
-                      <div className="student-course-opt-details">
-                        <div className="student-course-option-name">{course.name}</div>
-                        <div className="student-course-option-meta">
-                          {course.level || 'Standard'} • {subjectCount > 0 ? `${subjectCount} Subjects` : 'All Topics'}
+                      <div className="course-opt-info">
+                        <div className="course-opt-name">{course.name}</div>
+                        <div className="course-opt-meta">
+                          {course.level || 'Standard'} • {subjectCount > 0 ? `${subjectCount} Subjects` : 'All Core Topics'}
                         </div>
                       </div>
                     </div>
 
                     {isSelected && (
-                      <span className="student-course-check">
+                      <span className="course-opt-check">
                         <AppIcon name="check" size={14} />
                       </span>
                     )}
