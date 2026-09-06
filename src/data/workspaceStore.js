@@ -18,7 +18,7 @@ let listeners = []
 let version = 0
 
 // ── Bootstrap Engine ──────────────────────────────────────────────
-function bootstrapCourse({ name, icon, themeColor, description, status, examProfile, level }) {
+function bootstrapCourse({ name, icon, themeColor, description, status, examProfile, level, examDate }) {
   const now = today()
   const courseStatus = status || 'active'
   const isPublished = courseStatus === 'draft' ? false : true
@@ -34,6 +34,8 @@ function bootstrapCourse({ name, icon, themeColor, description, status, examProf
     published: isPublished,
     examProfile: detectedProfile,
     level: level || (detectedProfile === 'BPSC_PRELIMS' ? 'Competitive Examination' : 'General'),
+    examDate: examDate || '2026-11-20',
+    showExamCountdown: true,
     version: 'v1.0',
     createdAt: now,
     lastUpdated: now,
@@ -110,6 +112,7 @@ function getSeedWorkspaces() {
       published: true,
       examProfile: 'BPSC_PRELIMS',
       level: 'Competitive Examination',
+      examDate: '2026-11-20',
       version: 'v2.3',
       createdAt: '2026-07-01',
       lastUpdated: '2026-08-06',
@@ -142,6 +145,7 @@ function getSeedWorkspaces() {
       published: true,
       examProfile: 'BPSC_PRELIMS',
       level: 'Competitive Examination',
+      examDate: '2026-12-15',
       version: 'v1.0',
       createdAt: '2026-08-23',
       lastUpdated: '2026-08-23',

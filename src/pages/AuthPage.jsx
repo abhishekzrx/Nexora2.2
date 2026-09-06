@@ -1,110 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import AppIcon from '../components/ui/AppIcon'
 import '../styles/auth.css'
-import { memberService, SEED_MEMBERS } from '../services/memberService'
+import { memberService } from '../services/memberService'
 import { setActiveMember } from '../data/memberStore'
 import { clearUserProgressStore } from '../data/progressStore'
 import { clearAnalyticsStore } from '../data/analyticsStore'
 
 const QUICK_PROFILES = [
-  { id: 'adminalpha', name: 'Super Admin', course: 'All Courses', icon: '👑' },
-  { id: 'MEMBER01', name: 'Rahul', course: 'BPSC Prelims + CS', icon: '👤' },
-  { id: 'MEMBER02', name: 'Priya', course: 'BPSC Prelims', icon: '👤' },
-  { id: 'MEMBER03', name: 'Amit', course: 'BPSC CS', icon: '👤' },
+  { id: 'adminalpha', name: 'Super Admin', role: 'SUPER_ADMIN', icon: '👑' },
+  { id: 'MEMBER01', name: 'Rahul', role: 'Student (BPSC CS)', icon: '👤' },
+  { id: 'MEMBER02', name: 'Priya', role: 'Student (BPSC Prelims)', icon: '👤' },
+  { id: 'MEMBER03', name: 'Amit', role: 'Student (BPSC CS)', icon: '👤' },
 ]
-
-const LOGIN_FLASH_DELAY = 1150
-const SIGNUP_FLASH_DELAY = 900
-
-function AlphaMark({ className = '' }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 96 96"
-      role="img"
-      aria-label="Alpha logo"
-      shapeRendering="geometricPrecision"
-    >
-      <defs>
-        <linearGradient id="alphaLiquidGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-          <stop offset="0%" stopColor="#FF3D00" />
-          <stop offset="40%" stopColor="#FF7A18" />
-          <stop offset="80%" stopColor="#FFA040" />
-          <stop offset="100%" stopColor="#FFE082" />
-        </linearGradient>
-      </defs>
-
-      {/* Razor-Sharp Geometric Triangle Base */}
-      <path
-        d="M48 10L86 78H10L48 10Z"
-        fill="url(#alphaLiquidGrad)"
-        stroke="url(#alphaLiquidGrad)"
-        strokeWidth="4"
-        strokeLinejoin="miter"
-        strokeMiterlimit="10"
-      />
-      {/* Razor-Sharp Inner Chevron */}
-      <path
-        d="M33 58L48 34L63 58"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="7"
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        strokeMiterlimit="10"
-      />
-    </svg>
-  )
-}
-
-function EnhancedField({
-  label,
-  id,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  iconName = 'profile',
-  autoComplete = 'off',
-  showTogglePassword = false,
-  isPasswordVisible = false,
-  onTogglePassword,
-}) {
-  return (
-    <div className="authFieldGroup">
-      <label className="authFieldLabel" htmlFor={id}>
-        {label}
-      </label>
-      <div className="authInputWrapper">
-        <span className="authInputIcon" aria-hidden="true">
-          <AppIcon name={iconName} size={19} />
-        </span>
-        <input
-          id={id}
-          className="authInputField"
-          type={showTogglePassword ? (isPasswordVisible ? 'text' : 'password') : type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          spellCheck="false"
-          autoCapitalize="off"
-        />
-        {showTogglePassword && (
-          <button
-            type="button"
-            className="authPasswordToggle"
-            onClick={onTogglePassword}
-            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
-            tabIndex={-1}
-          >
-            <AppIcon name={isPasswordVisible ? 'visibilityOff' : 'visibility'} size={19} />
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export default function AuthPage({
   mode = 'login',
@@ -113,341 +20,434 @@ export default function AuthPage({
   onLoginSuccess,
   onSignupSuccess,
 }) {
-  const [loginStudentId, setLoginStudentId] = useState('adminalpha')
-  const [loginPassword, setLoginPassword] = useState('Alpha@123')
+  const [username, setUsername] = useState('adminalpha')
+  const [password, setPassword] = useState('Alpha@123')
   const [showPassword, setShowPassword] = useState(false)
+
+  // Signup fields
   const [signupName, setSignupName] = useState('')
-  const [signupStudentId, setSignupStudentId] = useState('')
+  const [signupUsername, setSignupUsername] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
-  const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
+  const [signupConfirm, setSignupConfirm] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
-  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false)
-  const [loginError, setLoginError] = useState('')
-  const [signupError, setSignupError] = useState('')
-  const [signupMessage, setSignupMessage] = useState('')
-  const [isSigningIn, setIsSigningIn] = useState(false)
 
-  const loginTimerRef = useRef(null)
-  const signupTimerRef = useRef(null)
+  // Status & UI state
+  const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInputFocused, setIsInputFocused] = useState(false)
+
+  const timerRef = useRef(null)
 
   useEffect(() => {
     return () => {
-      window.clearTimeout(loginTimerRef.current)
-      window.clearTimeout(signupTimerRef.current)
+      if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])
 
   useEffect(() => {
-    setLoginError('')
-    setSignupError('')
-    setSignupMessage('')
-    setIsSigningIn(false)
+    setErrorMessage('')
+    setSuccessMessage('')
+    setIsLoading(false)
 
     if (mode === 'login') {
-      setLoginStudentId('adminalpha')
-      setLoginPassword('Alpha@123')
-      return
+      setUsername('adminalpha')
+      setPassword('Alpha@123')
+    } else {
+      setSignupName('')
+      setSignupUsername('')
+      setSignupEmail('')
+      setSignupPassword('')
+      setSignupConfirm('')
     }
-
-    setSignupName('')
-    setSignupStudentId('')
-    setSignupEmail('')
-    setSignupPassword('')
-    setSignupConfirmPassword('')
   }, [mode])
 
-  const handleLoginSubmit = async (event) => {
-    event.preventDefault()
+  // Handle Quick Profile Fill
+  const handleSelectQuickProfile = (profileId) => {
+    setUsername(profileId)
+    setPassword('Alpha@123')
+    setErrorMessage('')
+  }
 
-    if (isSigningIn) {
-      return
-    }
+  // Handle Login Submit
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault()
+    if (isLoading) return
 
-    const trimmedUser = loginStudentId.trim()
-    const trimmedPassword = loginPassword.trim()
+    const trimmedUser = username.trim()
+    const trimmedPassword = password.trim()
 
     if (!trimmedUser) {
-      setLoginError('Please enter your Username, Public ID, or Warrior Name.')
+      setErrorMessage('Please enter your email or username.')
       return
     }
 
     if (!trimmedPassword) {
-      setLoginError('Please enter your password.')
+      setErrorMessage('Please enter your password.')
       return
     }
 
-    // Lookup member in memberService
-    const cleanLookup = trimmedUser.toLowerCase() === 'student01' ? 'adminalpha' : trimmedUser
-    const memberRes = await memberService.getMemberById(cleanLookup)
+    setIsLoading(true)
+    setErrorMessage('')
 
-    if (!memberRes.success || !memberRes.data) {
-      setLoginError(`Account "${trimmedUser}" not found. Try adminalpha or MEMBER01.`)
-      return
+    try {
+      const cleanLookup = trimmedUser.toLowerCase() === 'student01' ? 'adminalpha' : trimmedUser
+      const memberRes = await memberService.getMemberById(cleanLookup)
+
+      if (!memberRes.success || !memberRes.data) {
+        setIsLoading(false)
+        setErrorMessage(`Account "${trimmedUser}" not found. Try adminalpha or MEMBER01.`)
+        return
+      }
+
+      const member = memberRes.data
+
+      if (member.status === 'ARCHIVED') {
+        setIsLoading(false)
+        setErrorMessage('This account is archived and inactive. Contact Super Admin.')
+        return
+      }
+
+      if (member.status === 'DISABLED') {
+        setIsLoading(false)
+        setErrorMessage('This account is currently disabled. Contact Super Admin.')
+        return
+      }
+
+      // Clear user stores before binding new user
+      clearUserProgressStore()
+      clearAnalyticsStore()
+
+      // Bind member session
+      setActiveMember(member)
+
+      timerRef.current = setTimeout(() => {
+        setIsLoading(false)
+        onLoginSuccess?.()
+      }, 950)
+    } catch (err) {
+      setIsLoading(false)
+      setErrorMessage(err.message || 'Login failed. Please try again.')
     }
-
-    const member = memberRes.data
-
-    if (member.status === 'ARCHIVED') {
-      setLoginError('This account is archived and inactive. Please contact Super Admin (adminalpha) to restore access.')
-      return
-    }
-
-    if (member.status === 'DISABLED') {
-      setLoginError('This account is currently disabled. Please contact Super Admin (adminalpha).')
-      return
-    }
-
-    // Isolate caches: clear previous user stores before binding new user
-    clearUserProgressStore()
-    clearAnalyticsStore()
-
-    // Bind authenticated member session
-    setActiveMember(member)
-    setLoginError('')
-    setIsSigningIn(true)
-
-    loginTimerRef.current = window.setTimeout(() => {
-      onLoginSuccess?.()
-    }, LOGIN_FLASH_DELAY)
   }
 
-  const handleSignupSubmit = (event) => {
-    event.preventDefault()
+  // Handle Signup Submit
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault()
+    if (isLoading) return
 
     const trimmedName = signupName.trim()
-    const trimmedStudentId = signupStudentId.trim()
+    const trimmedUser = signupUsername.trim().toUpperCase()
     const trimmedEmail = signupEmail.trim()
-    const trimmedPassword = signupPassword.trim()
-    const trimmedConfirm = signupConfirmPassword.trim()
+    const trimmedPass = signupPassword.trim()
+    const trimmedConfirm = signupConfirm.trim()
 
     if (!trimmedName) {
-      setSignupError('Please enter your full name.')
+      setErrorMessage('Please enter your full name.')
       return
     }
 
-    if (!trimmedStudentId) {
-      setSignupError('Please choose a student ID.')
+    if (!trimmedUser) {
+      setErrorMessage('Please choose a username.')
       return
     }
 
     if (!trimmedEmail) {
-      setSignupError('Please enter your email address.')
+      setErrorMessage('Please enter your email address.')
       return
     }
 
-    if (!trimmedPassword || trimmedPassword.length < 6) {
-      setSignupError('Password must be at least 6 characters long.')
+    if (!trimmedPass || trimmedPass.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.')
       return
     }
 
-    if (trimmedPassword !== trimmedConfirm) {
-      setSignupError('Passwords do not match.')
+    if (trimmedPass !== trimmedConfirm) {
+      setErrorMessage('Passwords do not match.')
       return
     }
 
-    setSignupError('')
-    setSignupMessage('Creating your student profile...')
+    setIsLoading(true)
+    setErrorMessage('')
 
-    signupTimerRef.current = window.setTimeout(async () => {
-      await memberService.createMember({
-        username: trimmedStudentId,
+    try {
+      const createRes = await memberService.createMember({
+        username: trimmedUser,
         display_name: trimmedName,
         email: trimmedEmail,
         assigned_courses: ['bpsc_prelims'],
+        role: 'MEMBER',
+        status: 'ACTIVE',
       })
-      setSignupMessage('Account created successfully! Switching to login...')
-      onSignupSuccess?.({
-        name: trimmedName,
-        studentId: trimmedStudentId,
-        email: trimmedEmail,
-      })
-    }, SIGNUP_FLASH_DELAY)
+
+      if (!createRes.success) {
+        setIsLoading(false)
+        setErrorMessage(createRes.error || 'Failed to create account.')
+        return
+      }
+
+      setIsLoading(false)
+      setSuccessMessage(`Account "${trimmedUser}" created! Redirecting to login...`)
+
+      timerRef.current = setTimeout(() => {
+        onSignupSuccess?.()
+        onGoLogin?.()
+      }, 1200)
+    } catch (err) {
+      setIsLoading(false)
+      setErrorMessage(err.message || 'Failed to register account.')
+    }
   }
 
-  const isLogin = mode === 'login'
+  const isSignup = mode === 'signup'
 
   return (
-    <div className="authPageRoot">
-      <div className={`authShell${isSigningIn ? ' authShell--authenticating' : ''}`}>
-        {/* Heartbeat transition state during signin */}
-        {isSigningIn ? (
-          <div className="authTransitionStage" role="status" aria-label="Authenticating student access">
-            <div className="authTransitionLogoWrap">
-              <AlphaMark className="authLogo authLogo--heartbeat authLogo--transition" />
-            </div>
+    <div className="alpha-auth-root">
+      <div className="alpha-scene">
+        <div className="alpha-card">
+          {/* Floating Logo with Glow & Heartbeat */}
+          <div
+            className={`logo-wrap${isInputFocused ? ' active' : ''}`}
+            id="logoWrap"
+            title="Nexora Alpha Portal"
+          >
+            <div className="logo-glow"></div>
+            <img className="logo-img" src="/alpha-logo.png" alt="Alpha" />
           </div>
-        ) : (
-          <div className="authCard">
-            <div className="authHeader">
-              <span className="authLogoStandalone" aria-hidden="true">
-                <AlphaMark className="authLogo" />
-              </span>
+
+          <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
+          <p className="subtext">
+            {isSignup ? 'Join Nexora to begin your exam journey' : 'Sign in to continue'}
+          </p>
+
+          {/* Feedback messages */}
+          {errorMessage && (
+            <div className="alpha-error-banner" role="alert">
+              <AppIcon name="close" size={14} />
+              <span>{errorMessage}</span>
             </div>
+          )}
 
-            {/* Quick Profile Switcher */}
-            {isLogin && (
-              <div className="authQuickProfilesSection">
-                <div className="authQuickProfilesLabel">
-                  Quick Select Profile:
-                </div>
-                <div className="authQuickProfilesGrid">
-                  {QUICK_PROFILES.map((prof) => {
-                    const isSelected = loginStudentId.toUpperCase() === prof.id.toUpperCase()
-                    return (
-                      <button
-                        key={prof.id}
-                        type="button"
-                        className={`authProfileChip${isSelected ? ' authProfileChip--selected' : ''}`}
-                        onClick={() => {
-                          setLoginStudentId(prof.id)
-                          setLoginPassword('Alpha@123')
-                          setLoginError('')
-                        }}
-                      >
-                        <div className="authProfileChipHeader">
-                          <span className="authProfileChipIcon">{prof.icon}</span>
-                          <span className="authProfileChipName">{prof.name}</span>
-                        </div>
-                        <span className="authProfileChipCourse">{prof.course}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+          {successMessage && (
+            <div className="alpha-success-banner" role="alert">
+              <AppIcon name="check" size={14} />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
-            {isLogin ? (
-              <form className="authForm" onSubmit={handleLoginSubmit} noValidate>
-                <EnhancedField
-                  id="auth-student-id"
-                  label="Username, Public ID or Warrior Name"
-                  placeholder="e.g. adminalpha or MEMBER01"
-                  value={loginStudentId}
-                  onChange={(e) => setLoginStudentId(e.target.value)}
-                  iconName="profile"
-                  autoComplete="username"
-                />
-
-                <EnhancedField
-                  id="auth-password"
-                  label="Password"
-                  placeholder="Enter your password"
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  iconName="lock"
-                  autoComplete="current-password"
-                  showTogglePassword
-                  isPasswordVisible={showPassword}
-                  onTogglePassword={() => setShowPassword((prev) => !prev)}
-                />
-
-                {loginError && (
-                  <div className="authInlineError" role="alert">
-                    <span className="authInlineErrorIcon">
-                      <AppIcon name="warning" size={16} />
-                    </span>
-                    <span>{loginError}</span>
+          {/* Form */}
+          <form
+            className="alpha-form"
+            onSubmit={isSignup ? handleSignupSubmit : handleLoginSubmit}
+          >
+            {!isSignup ? (
+              <>
+                {/* Email or Username */}
+                <div className="field">
+                  <label htmlFor="username">Email or username</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      autoComplete="username"
+                      placeholder="e.g. adminalpha or MEMBER01"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
                   </div>
-                )}
+                </div>
 
-                <button type="submit" className="authSubmitBtn" disabled={isSigningIn}>
-                  Sign in
-                </button>
-              </form>
+                {/* Password */}
+                <div className="field">
+                  <label htmlFor="password">Password</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="field-toggle-btn"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      <AppIcon name={showPassword ? 'visibilityOff' : 'visibility'} size={17} />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
-              <form className="authForm" onSubmit={handleSignupSubmit} noValidate>
-                <EnhancedField
-                  id="auth-signup-name"
-                  label="Full Name"
-                  placeholder="Enter your full name"
-                  value={signupName}
-                  onChange={(e) => setSignupName(e.target.value)}
-                  iconName="profile"
-                />
-
-                <EnhancedField
-                  id="auth-signup-id"
-                  label="Student ID"
-                  placeholder="Choose a student ID (e.g. STUDENT02)"
-                  value={signupStudentId}
-                  onChange={(e) => setSignupStudentId(e.target.value)}
-                  iconName="profile"
-                />
-
-                <EnhancedField
-                  id="auth-signup-email"
-                  label="Email Address"
-                  placeholder="name@student.nexora.io"
-                  type="email"
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  iconName="mail"
-                />
-
-                <EnhancedField
-                  id="auth-signup-password"
-                  label="Create Password"
-                  placeholder="Minimum 6 characters"
-                  type="password"
-                  value={signupPassword}
-                  onChange={(e) => setSignupPassword(e.target.value)}
-                  iconName="lock"
-                  showTogglePassword
-                  isPasswordVisible={showSignupPassword}
-                  onTogglePassword={() => setShowSignupPassword((prev) => !prev)}
-                />
-
-                <EnhancedField
-                  id="auth-signup-confirm"
-                  label="Confirm Password"
-                  placeholder="Re-enter your password"
-                  type="password"
-                  value={signupConfirmPassword}
-                  onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                  iconName="lock"
-                  showTogglePassword
-                  isPasswordVisible={showSignupConfirmPassword}
-                  onTogglePassword={() => setShowSignupConfirmPassword((prev) => !prev)}
-                />
-
-                {signupError && (
-                  <div className="authInlineError" role="alert">
-                    <span className="authInlineErrorIcon">
-                      <AppIcon name="warning" size={16} />
-                    </span>
-                    <span>{signupError}</span>
+              <>
+                {/* Full Name */}
+                <div className="field">
+                  <label htmlFor="signupName">Full Name</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="signupName"
+                      type="text"
+                      placeholder="e.g. Abhishek Kumar"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
                   </div>
-                )}
+                </div>
 
-                {signupMessage && <div className="authInlineSuccess">{signupMessage}</div>}
+                {/* Username */}
+                <div className="field">
+                  <label htmlFor="signupUsername">Username / ID</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="signupUsername"
+                      type="text"
+                      placeholder="e.g. MEMBER06"
+                      value={signupUsername}
+                      onChange={(e) => setSignupUsername(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
+                  </div>
+                </div>
 
-                <button type="submit" className="authSubmitBtn">
-                  Create Student Profile
-                </button>
-              </form>
+                {/* Email */}
+                <div className="field">
+                  <label htmlFor="signupEmail">Email address</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="signupEmail"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="field">
+                  <label htmlFor="signupPassword">Password</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="signupPassword"
+                      type={showSignupPassword ? 'text' : 'password'}
+                      placeholder="Min 6 characters"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="field-toggle-btn"
+                      onClick={() => setShowSignupPassword((prev) => !prev)}
+                      aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      <AppIcon name={showSignupPassword ? 'visibilityOff' : 'visibility'} size={17} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div className="field">
+                  <label htmlFor="signupConfirm">Confirm Password</label>
+                  <div className="field-input-wrap">
+                    <input
+                      id="signupConfirm"
+                      type="password"
+                      placeholder="Re-enter password"
+                      value={signupConfirm}
+                      onChange={(e) => setSignupConfirm(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
-            <div className="authSwitchPrompt">
-              {isLogin ? (
-                <>
-                  <span>New student at Nexora?</span>{' '}
-                  <button type="button" className="authSwitchLink" onClick={onGoSignup}>
-                    Create account
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span>Already have a student account?</span>{' '}
-                  <button type="button" className="authSwitchLink" onClick={onGoLogin}>
-                    Sign in
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className={`submit${isLoading ? ' loading' : ''}`}
+              id="submitBtn"
+              disabled={isLoading}
+            >
+              <span className="btn-text">{isSignup ? 'Create Account' : 'Log in'}</span>
+              <span className="spinner"></span>
+            </button>
+          </form>
+
+          {/* Mode Switch (Sign in / Sign up) */}
+          <div className="alpha-mode-switch">
+            {!isSignup ? (
+              <span>
+                Don't have an account?
+                <button
+                  type="button"
+                  className="alpha-switch-btn"
+                  onClick={onGoSignup}
+                >
+                  Sign up
+                </button>
+              </span>
+            ) : (
+              <span>
+                Already have an account?
+                <button
+                  type="button"
+                  className="alpha-switch-btn"
+                  onClick={onGoLogin}
+                >
+                  Log in
+                </button>
+              </span>
+            )}
           </div>
-        )}
+
+          {/* Quick Demo Access Bar */}
+          {!isSignup && (
+            <div className="alpha-demo-section">
+              <span className="alpha-demo-title">Quick Demo Login</span>
+              <div className="alpha-demo-chips">
+                {QUICK_PROFILES.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`alpha-chip-btn${username === p.id ? ' active' : ''}`}
+                    onClick={() => handleSelectQuickProfile(p.id)}
+                    title={`Click to fill ${p.name} (${p.id})`}
+                  >
+                    <span>{p.icon}</span>
+                    <span>{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

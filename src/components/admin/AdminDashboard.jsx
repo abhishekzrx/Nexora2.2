@@ -242,7 +242,7 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
       />
 
       <div className="admin-dashboard-main">
-        {activeSection !== 'mcq-manager' && (
+        {activeSection !== 'mcq-manager' && activeSection !== 'courses' && (
           <div className="admin-dashboard-header">
             <div>
               <h1 className="admin-dashboard-greeting">

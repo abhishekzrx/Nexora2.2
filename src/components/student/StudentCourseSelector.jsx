@@ -8,6 +8,7 @@ import AppIcon from '../ui/AppIcon'
 import { useWorkspaceStore, setActiveWorkspace } from '../../data/workspaceStore'
 import { useMemberStore } from '../../data/memberStore'
 import { permissionService } from '../../services/permissionService'
+import { calculateExamCountdown } from '../../utils/dateUtils'
 
 function StudentCourseSelector({ onSelect }) {
   const [open, setOpen] = useState(false)
@@ -88,6 +89,8 @@ function StudentCourseSelector({ onSelect }) {
               visibleCourses.map((course) => {
                 const isSelected = course.id === (activeCourse?.id || activeWorkspaceId)
                 const subjectCount = course.subjects?.length || 0
+                const isCountdownVisible = course.showExamCountdown !== false
+                const countdown = calculateExamCountdown(isCountdownVisible ? course.examDate : null)
 
                 return (
                   <button
@@ -104,6 +107,11 @@ function StudentCourseSelector({ onSelect }) {
                         <div className="course-opt-name">{course.name}</div>
                         <div className="course-opt-meta">
                           {course.level || 'Standard'} • {subjectCount > 0 ? `${subjectCount} Subjects` : 'All Core Topics'}
+                          {isCountdownVisible && countdown.daysRemaining !== null && (
+                            <span style={{ marginLeft: '6px', fontWeight: '800', color: countdown.badgeColor }}>
+                              • ⏳ {countdown.daysRemaining > 0 ? `${countdown.daysRemaining}d left` : countdown.statusText}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

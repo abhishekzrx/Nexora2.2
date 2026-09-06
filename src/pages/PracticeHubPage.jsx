@@ -19,6 +19,7 @@ import { hydrateUserAnalytics, useUserAnalytics } from '../data/analyticsStore'
 import { hydrateUserProgressFromSupabase, useUserProgressStore } from '../data/progressStore'
 import { formatCompactNumber, formatInteger } from '../services/mcqAnalyticsService'
 import { testSession } from '../utils/navigation'
+import { calculateExamCountdown } from '../utils/dateUtils'
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently'
@@ -378,112 +379,136 @@ function PracticeHubPage({
               1. DOPAMINE BOOST: TWO MOST RECENT PRODUCT ACTIVITIES
              ══════════════════════════════════════════════════════════ */}
           <section className="dopamine-activities-section">
-            <div className="section-title-row">
-              <div className="title-with-pill">
-                <span className="section-dot" />
-                <h2 className="section-heading">Your Learning Momentum</h2>
-              </div>
-              <span className="section-subtitle">Real-time engagement</span>
-            </div>
-
-            <div className="dopamine-cards-grid">
-              {/* Card 1: Recent MCQ Practice & High-Score Booster */}
-              <div className="dopamine-card card-mcq-momentum">
-                <div className="dopamine-card-glow mcq-glow" />
-                <div className="dopamine-card-header">
-                  <div className="dopamine-icon-box bg-orange-gradient">
-                    <svg className="d-card-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-                    </svg>
+            {(() => {
+              const isCountdownVisible = activeCourse?.showExamCountdown !== false
+              const examCountdown = calculateExamCountdown(isCountdownVisible ? activeCourse?.examDate : null)
+              return (
+                <div className="section-title-row">
+                  <div className="title-with-pill">
+                    <span className="section-dot" />
+                    <h2 className="section-heading">Your Learning Momentum</h2>
                   </div>
-                  <div className="dopamine-badge-wrap">
+                  {isCountdownVisible && examCountdown.daysRemaining !== null ? (
+                    <span className="section-subtitle-exam" style={{ fontSize: '11.5px', fontWeight: '800', color: examCountdown.badgeColor, background: '#FFF7ED', border: '1px solid #FED7AA', padding: '3px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      📅 {examCountdown.statusText}
+                    </span>
+                  ) : (
+                    <span className="section-subtitle">Real-time engagement stack</span>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="dopamine-cards-stack">
+              {/* Stack Card 1: Recent MCQ Practice & High-Score Booster */}
+              <div className="dopamine-card card-mcq-momentum stack-card">
+                <div className="dopamine-card-glow mcq-glow" />
+                
+                <div className="stack-card-header">
+                  <div className="stack-header-left">
+                    <div className="dopamine-icon-box bg-orange-gradient">
+                      <svg className="d-card-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+                      </svg>
+                    </div>
+                    <div className="stack-title-col">
+                      <span className="dopamine-kicker">RECENT MCQ PRACTICE</span>
+                      <h3 className="dopamine-title stack-title" title={`${topRecentMcqAttempt?.subjectTitle || courseRegistry.subjectsList?.[0]?.title || 'Course'}: ${topRecentMcqAttempt?.chapterTitle || courseRegistry.subjectsList?.[0]?.chapters?.[0]?.name || 'MCQ Practice Session'}`}>
+                        {topRecentMcqAttempt
+                          ? `${topRecentMcqAttempt.subjectTitle}: ${topRecentMcqAttempt.chapterTitle}`
+                          : `${courseRegistry.subjectsList?.[0]?.title || activeCourse?.name || 'Core Course'}: ${courseRegistry.subjectsList?.[0]?.chapters?.[0]?.name || 'MCQ Practice Session'}`}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="stack-header-right">
+                    <span className="stack-time-tag">
+                      {topRecentMcqAttempt?.timeAgo || 'Available Now'}
+                    </span>
                     <span className="dopamine-pill pill-mcq">
-                      {topRecentMcqAttempt ? '🔥 ACTIVE RECALL' : '🚀 READY TO BLAST'}
+                      {topRecentMcqAttempt ? '🔥 ACTIVE RECALL' : '🚀 SMART SPRINT'}
                     </span>
                   </div>
                 </div>
 
-                <div className="dopamine-card-body">
-                  <div className="dopamine-kicker">RECENT MCQ PRACTICE</div>
-                  <h3 className="dopamine-title" title={topRecentMcqAttempt ? `${topRecentMcqAttempt.subjectTitle}: ${topRecentMcqAttempt.chapterTitle}` : 'Core Syllabus MCQ Sprint'}>
-                    {topRecentMcqAttempt
-                      ? `${topRecentMcqAttempt.subjectTitle}: ${topRecentMcqAttempt.chapterTitle}`
-                      : `${courseRegistry.subjectsList?.[0]?.title || 'Core Syllabus'} Practice`}
-                  </h3>
-
-                  {/* Dopamine Stat Badges */}
+                <div className="stack-card-body">
                   <div className="dopamine-stats-row">
                     <div className="d-stat-chip chip-orange">
                       <span className="d-chip-lbl">Accuracy</span>
-                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.accuracy}%` : '85% Target'}</span>
+                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.accuracy}%` : (courseStats.accuracy > 0 ? `${courseStats.accuracy}%` : '85% Target')}</span>
                     </div>
                     <div className="d-stat-chip chip-slate">
                       <span className="d-chip-lbl">Correct</span>
-                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.correct}/${topRecentMcqAttempt.total}` : '10 Qs'}</span>
+                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.correct}/${topRecentMcqAttempt.total}` : `0/${courseRegistry.subjectsList?.[0]?.counts?.mcqs || 10}`}</span>
                     </div>
                     <div className="d-stat-chip chip-amber">
                       <span className="d-chip-lbl">XP Earned</span>
-                      <span className="d-chip-val">+{topRecentMcqAttempt ? topRecentMcqAttempt.xpEarned : 100} XP</span>
+                      <span className="d-chip-val">+{topRecentMcqAttempt ? topRecentMcqAttempt.xpEarned : 50} XP</span>
                     </div>
                   </div>
 
-                  <p className="dopamine-microcopy">
-                    {topRecentMcqAttempt
-                      ? topRecentMcqAttempt.accuracy >= 75
-                        ? '🏆 High mastery level! One more quick run will secure peak retention.'
-                        : '🔥 Strong momentum! Practice 5 more questions to boost accuracy above 80%.'
-                      : '⚡ Kick off your daily sprint! Solve 10 high-yield questions to level up.'}
-                  </p>
-                </div>
+                  <div className="stack-footer-row">
+                    <p className="dopamine-microcopy stack-microcopy">
+                      {topRecentMcqAttempt
+                        ? topRecentMcqAttempt.accuracy >= 75
+                          ? '🏆 High mastery level! One more quick run will secure peak retention.'
+                          : '🔥 Strong momentum! Practice 5 more questions to boost accuracy above 80%.'
+                        : `⚡ Kick off your sprint for ${courseRegistry.subjectsList?.[0]?.title || 'your syllabus'}! Solve high-yield questions to level up.`}
+                    </p>
 
-                <div className="dopamine-card-footer">
-                  <button
-                    type="button"
-                    className="dopamine-action-btn btn-mcq"
-                    onClick={() => {
-                      if (topRecentMcqAttempt?.subjectKey) {
-                        onResume({
-                          subjectKey: topRecentMcqAttempt.subjectKey,
-                          chapterId: topRecentMcqAttempt.chapterId,
-                          chapterTitle: topRecentMcqAttempt.chapterTitle,
-                        })
-                      } else if (courseRegistry.subjectsList?.[0]?.subjectKey) {
-                        onStartPractice(courseRegistry.subjectsList[0].subjectKey)
-                      } else {
-                        onNavigateSubjects()
-                      }
-                    }}
-                  >
-                    <span>{topRecentMcqAttempt ? 'Resume MCQ Practice' : 'Start MCQ Sprint'}</span>
-                    <span className="btn-arrow">→</span>
-                  </button>
+                    <button
+                      type="button"
+                      className="dopamine-action-btn btn-mcq stack-action-btn"
+                      onClick={() => {
+                        if (topRecentMcqAttempt?.subjectKey) {
+                          onResume({
+                            subjectKey: topRecentMcqAttempt.subjectKey,
+                            chapterId: topRecentMcqAttempt.chapterId,
+                            chapterTitle: topRecentMcqAttempt.chapterTitle,
+                          })
+                        } else if (courseRegistry.subjectsList?.[0]?.subjectKey) {
+                          onStartPractice(courseRegistry.subjectsList[0].subjectKey)
+                        } else {
+                          onNavigateSubjects()
+                        }
+                      }}
+                    >
+                      <span>{topRecentMcqAttempt ? 'Resume MCQ Practice' : 'Start MCQ Sprint'}</span>
+                      <span className="btn-arrow">→</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Card 2: Recent Flashcard Active Recall Sprint */}
-              <div className="dopamine-card card-flashcard-momentum">
+              {/* Stack Card 2: Recent Flashcard Active Recall Sprint */}
+              <div className="dopamine-card card-flashcard-momentum stack-card">
                 <div className="dopamine-card-glow flashcard-glow" />
-                <div className="dopamine-card-header">
-                  <div className="dopamine-icon-box bg-purple-gradient">
-                    <svg className="d-card-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect height="12" rx="2" strokeWidth="2.2" width="18" x="3" y="4" />
-                      <path d="M7 20h10" strokeLinecap="round" strokeWidth="2.2" />
-                    </svg>
+                
+                <div className="stack-card-header">
+                  <div className="stack-header-left">
+                    <div className="dopamine-icon-box bg-purple-gradient">
+                      <svg className="d-card-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect height="12" rx="2" strokeWidth="2.2" width="18" x="3" y="4" />
+                        <path d="M7 20h10" strokeLinecap="round" strokeWidth="2.2" />
+                      </svg>
+                    </div>
+                    <div className="stack-title-col">
+                      <span className="dopamine-kicker">FLASHCARD REVISION</span>
+                      <h3 className="dopamine-title stack-title" title={topFlashcardActivity.subjectTitle}>
+                        {topFlashcardActivity.subjectTitle}: Spaced Active Recall Deck
+                      </h3>
+                    </div>
                   </div>
-                  <div className="dopamine-badge-wrap">
+
+                  <div className="stack-header-right">
+                    <span className="stack-time-tag">Daily Review</span>
                     <span className="dopamine-pill pill-flashcard">
                       🧠 RETENTION QUEUE
                     </span>
                   </div>
                 </div>
 
-                <div className="dopamine-card-body">
-                  <div className="dopamine-kicker">FLASHCARD REVISION</div>
-                  <h3 className="dopamine-title" title={topFlashcardActivity.subjectTitle}>
-                    {topFlashcardActivity.subjectTitle}: Spaced Recall
-                  </h3>
-
-                  {/* Dopamine Stat Badges */}
+                <div className="stack-card-body">
                   <div className="dopamine-stats-row">
                     <div className="d-stat-chip chip-purple">
                       <span className="d-chip-lbl">Cards Due</span>
@@ -491,34 +516,34 @@ function PracticeHubPage({
                     </div>
                     <div className="d-stat-chip chip-slate">
                       <span className="d-chip-lbl">Retention</span>
-                      <span className="d-chip-val">{topFlashcardActivity.retentionScore}%</span>
+                      <span className="d-chip-val">{courseStats.accuracy > 0 ? Math.min(99, Math.max(70, courseStats.accuracy + 8)) : topFlashcardActivity.retentionScore}%</span>
                     </div>
                     <div className="d-stat-chip chip-orange">
                       <span className="d-chip-lbl">Streak</span>
-                      <span className="d-chip-val">{courseStats.studyStreak} Days</span>
+                      <span className="d-chip-val">{courseStats.studyStreak || 1} Days</span>
                     </div>
                   </div>
 
-                  <p className="dopamine-microcopy">
-                    🧠 Active spaced repetition consolidation prevents memory decay and guarantees rapid recall on exam day.
-                  </p>
-                </div>
+                  <div className="stack-footer-row">
+                    <p className="dopamine-microcopy stack-microcopy">
+                      🧠 Active spaced repetition consolidation prevents memory decay and guarantees rapid recall on exam day.
+                    </p>
 
-                <div className="dopamine-card-footer">
-                  <button
-                    type="button"
-                    className="dopamine-action-btn btn-flashcard"
-                    onClick={() => {
-                      if (topFlashcardActivity.subjectKey) {
-                        onOpenFlashcards(topFlashcardActivity.subjectKey)
-                      } else {
-                        onNavigateSubjects()
-                      }
-                    }}
-                  >
-                    <span>Flip Flashcards Now</span>
-                    <span className="btn-arrow">→</span>
-                  </button>
+                    <button
+                      type="button"
+                      className="dopamine-action-btn btn-flashcard stack-action-btn"
+                      onClick={() => {
+                        if (topFlashcardActivity.subjectKey) {
+                          onOpenFlashcards(topFlashcardActivity.subjectKey)
+                        } else {
+                          onNavigateSubjects()
+                        }
+                      }}
+                    >
+                      <span>Flip Flashcards Now</span>
+                      <span className="btn-arrow">→</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

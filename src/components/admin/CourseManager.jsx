@@ -26,6 +26,7 @@ import { useAdminStore } from '../../data/adminStore'
 import { showToast, showConfirm, dismissConfirm } from '../../data/feedbackStore'
 import { courseService } from '../../services/courseService'
 import { subjectService } from '../../services/subjectService'
+import { calculateExamCountdown } from '../../utils/dateUtils'
 import IconPicker from './IconPicker'
 
 const COLOR_PRESETS = ['#F1621B', '#2E5CE6', '#12B76A', '#7C3AED', '#0E9494', '#E8491D', '#101828', '#667085']
@@ -56,6 +57,8 @@ function InlineForm({ onSubmit, onCancel }) {
   const [icon, setIcon] = useState('adminDashboard')
   const [themeColor, setThemeColor] = useState('#F1621B')
   const [status, setStatus] = useState('active')
+  const [examDate, setExamDate] = useState('')
+  const [showExamCountdown, setShowExamCountdown] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -64,7 +67,7 @@ function InlineForm({ onSubmit, onCancel }) {
     if (!name.trim()) return
     setIsSubmitting(true)
     setError('')
-    const res = await onSubmit({ name: name.trim(), description: description.trim(), icon, themeColor, status })
+    const res = await onSubmit({ name: name.trim(), description: description.trim(), icon, themeColor, status, examDate, showExamCountdown })
     setIsSubmitting(false)
     if (res && !res.success) {
       setError(res.error || 'Failed to create course in database.')
@@ -103,6 +106,33 @@ function InlineForm({ onSubmit, onCancel }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+
+        <div className="cm-field">
+          <label className="cm-label">Exam Target Date 📅</label>
+          <input
+            type="date"
+            className="cm-input"
+            value={examDate}
+            onChange={(e) => setExamDate(e.target.value)}
+          />
+          <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block' }}>
+            Used to calculate the live remaining days countdown shown to enrolled members.
+          </span>
+        </div>
+
+        <div className="cm-field" style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+          <label className="cm-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+            <input
+              type="checkbox"
+              checked={showExamCountdown}
+              onChange={(e) => setShowExamCountdown(e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: '#EA580C', cursor: 'pointer' }}
+            />
+            <span style={{ fontWeight: '700', fontSize: '12px', color: '#1E293B' }}>
+              {showExamCountdown ? '🔓 Show Exam Countdown to Enrolled Members' : '🔒 Lock / Hide Exam Countdown in Member Section'}
+            </span>
+          </label>
         </div>
 
         <div className="cm-field">
@@ -161,6 +191,8 @@ function EditCourseModal({ course, onSubmit, onClose }) {
   const [icon, setIcon] = useState(course?.icon || 'adminDashboard')
   const [themeColor, setThemeColor] = useState(course?.themeColor || '#F1621B')
   const [status, setStatus] = useState(course?.status || 'active')
+  const [examDate, setExamDate] = useState(course?.examDate || '')
+  const [showExamCountdown, setShowExamCountdown] = useState(course?.showExamCountdown !== false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -175,6 +207,8 @@ function EditCourseModal({ course, onSubmit, onClose }) {
       icon,
       themeColor,
       status,
+      examDate,
+      showExamCountdown,
       published: status !== 'draft' && status !== 'archived',
     })
     setIsSubmitting(false)
@@ -218,6 +252,38 @@ function EditCourseModal({ course, onSubmit, onClose }) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief course overview..."
             />
+          </div>
+
+          <div className="cm-field">
+            <label className="cm-label">Exam Target Date 📅</label>
+            <input
+              type="date"
+              className="cm-input"
+              value={examDate}
+              onChange={(e) => setExamDate(e.target.value)}
+            />
+            <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block' }}>
+              Used to calculate remaining date countdown from present day for members.
+            </span>
+          </div>
+
+          <div className="cm-field" style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+            <label className="cm-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={showExamCountdown}
+                onChange={(e) => setShowExamCountdown(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: '#EA580C', cursor: 'pointer' }}
+              />
+              <span style={{ fontWeight: '700', fontSize: '12px', color: '#1E293B' }}>
+                {showExamCountdown ? '🔓 Show Exam Countdown to Enrolled Members' : '🔒 Lock / Hide Exam Countdown in Member Section'}
+              </span>
+            </label>
+            <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block', paddingLeft: '24px' }}>
+              {showExamCountdown
+                ? 'Members will see remaining days countdown on their dashboard & practice hub.'
+                : 'Countdown UI is locked and hidden from members until unlocked from Admin Panel.'}
+            </span>
           </div>
 
           <div className="cm-field">
@@ -515,6 +581,8 @@ function CourseListItem({
     onOpenActionModal(course, actionType)
   }
 
+  const examInfo = calculateExamCountdown(course.examDate)
+
   return (
     <div
       className={`cm-course-row-item${isSelected ? ' selected' : ''}`}
@@ -527,10 +595,42 @@ function CourseListItem({
         >
           <AppIcon name={course.icon || 'folder'} size={15} />
         </span>
-        <span className="cm-row-course-name" title={course.name}>
-          {course.name}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+          <span className="cm-row-course-name" title={course.name}>
+            {course.name}
+          </span>
+          <span
+            className="cm-row-exam-badge"
+            style={{
+              fontSize: '11px',
+              color: course.examDate ? '#EA580C' : '#94A3B8',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>📅 {course.examDate ? `${examInfo.formattedDate} (${examInfo.statusText})` : 'null'}</span>
+            {course.showExamCountdown === false && (
+              <span
+                style={{
+                  background: '#FEF2F2',
+                  color: '#EF4444',
+                  padding: '0px 5px',
+                  borderRadius: '4px',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  border: '1px solid #FCA5A5',
+                }}
+                title="Exam countdown is locked and hidden from student section"
+              >
+                🔒 Hidden
+              </span>
+            )}
+          </span>
+        </div>
       </div>
+
 
       <div className="cm-row-right" onClick={(e) => e.stopPropagation()}>
         <StatusBadge status={course.status || 'draft'} locked={course.locked} />
@@ -643,6 +743,8 @@ function SelectedCourseAnalyticsPanel({ selectedCourse, stats, onSelectCourse, o
   const mcqStroke = (mcqPct / 100) * c
   const flashStroke = (flashcardPct / 100) * c
 
+  const examCountdown = calculateExamCountdown(selectedCourse.examDate)
+
   return (
     <div className="cm-analytics-panel">
       {/* Selected Course Header */}
@@ -659,9 +761,47 @@ function SelectedCourseAnalyticsPanel({ selectedCourse, stats, onSelectCourse, o
               <h3 className="cm-panel-title">{selectedCourse.name}</h3>
               <StatusBadge status={selectedCourse.status || 'draft'} />
             </div>
-            <div className="cm-panel-sub">
-              Updated {selectedCourse.updatedAt ? new Date(selectedCourse.updatedAt).toISOString().split('T')[0] : '2025-07-28'}
-            </div>
+              <span
+                className="cm-exam-countdown-pill"
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  background: selectedCourse.showExamCountdown !== false ? '#FFF7ED' : '#F1F5F9',
+                  color: selectedCourse.showExamCountdown !== false ? examCountdown.badgeColor : '#64748B',
+                  border: `1px solid ${selectedCourse.showExamCountdown !== false ? '#FED7AA' : '#CBD5E1'}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>📅 Exam: <strong>{examCountdown.formattedDate}</strong> ({examCountdown.statusText})</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = selectedCourse.showExamCountdown === false ? true : false
+                    courseService.updateCourse(selectedCourse.id, { showExamCountdown: nextVal })
+                    showToast(nextVal ? '🔓 Exam Countdown is now VISIBLE to members!' : '🔒 Exam Countdown is now LOCKED / HIDDEN from members.')
+                  }}
+                  style={{
+                    border: 'none',
+                    background: selectedCourse.showExamCountdown !== false ? '#FED7AA' : '#CBD5E1',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    color: '#1E293B',
+                    fontWeight: '800',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}
+                  title={selectedCourse.showExamCountdown !== false ? 'Lock/Hide Countdown in Member Section' : 'Unlock/Show Countdown in Member Section'}
+                >
+                  {selectedCourse.showExamCountdown !== false ? '🔓 Member View: ON' : '🔒 Member View: LOCKED'}
+                </button>
+              </span>
           </div>
         </div>
 
@@ -741,205 +881,171 @@ function SelectedCourseAnalyticsPanel({ selectedCourse, stats, onSelectCourse, o
             </div>
           </div>
 
-          {/* Content Breakdown Graph */}
-          <div className="cm-chart-block">
-            <h4 className="cm-block-title">Content Breakdown Graph</h4>
-            <div className="cm-bar-chart-container">
-              <svg viewBox="0 0 340 140" className="cm-bar-svg">
-                <line x1="30" y1="15" x2="330" y2="15" stroke="#EAECF0" strokeDasharray="3 3" />
-                <text x="22" y="18" textAnchor="end" className="cm-axis-text">100</text>
-                <line x1="30" y1="65" x2="330" y2="65" stroke="#EAECF0" strokeDasharray="3 3" />
-                <text x="22" y="68" textAnchor="end" className="cm-axis-text">50</text>
-                <line x1="30" y1="115" x2="330" y2="115" stroke="#EAECF0" />
-                <text x="22" y="118" textAnchor="end" className="cm-axis-text">0</text>
+          {/* Dual Graphs: Content Breakdown & Scale (Left) + Content Readiness & Health (Right) */}
+          <div className="cm-dual-graphs-grid">
+            {/* Graph 1: Content Breakdown & Scale */}
+            <div className="cm-graph-card">
+              <div className="cm-chart-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="cm-chart-icon-pill" style={{ background: '#FFF1E6', color: '#F1621B', width: '22px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AppIcon name="analyticsTab" size={12} />
+                  </span>
+                  <h4 className="cm-block-title" style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Content Breakdown & Scale</h4>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, background: '#F1F5F9', padding: '2px 7px', borderRadius: '6px' }}>
+                  Total: {stats.subjects + stats.chapters + stats.mcqs + stats.flashcards} Items
+                </span>
+              </div>
 
-                {/* Bars */}
-                {[
-                  { label: 'Subjects', val: stats.subjects, color: '#F1621B', x: 55 },
-                  { label: 'Chapters', val: stats.chapters, color: '#2E5CE6', x: 125 },
-                  { label: 'MCQs', val: stats.mcqs, color: '#12B76A', x: 195 },
-                  { label: 'Flashcards', val: stats.flashcards, color: '#7C3AED', x: 265 },
-                ].map((b) => {
-                  const h = Math.max(5, Math.round((b.val / Math.max(maxVal, 150)) * barMaxH))
-                  const y = 115 - h
-                  return (
-                    <g key={b.label}>
-                      <rect x={b.x} y={y} width="28" height={h} rx="4" fill={b.color} />
-                      <text x={b.x + 14} y={y - 5} textAnchor="middle" className="cm-val-badge">
-                        {b.val}
-                      </text>
-                      <text x={b.x + 14} y="132" textAnchor="middle" className="cm-label-text">
-                        {b.label}
-                      </text>
-                    </g>
-                  )
-                })}
-              </svg>
+              <div className="cm-bar-chart-container" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
+                <svg viewBox="0 0 360 145" className="cm-bar-svg" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                  <defs>
+                    <linearGradient id="gradSub" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#F1621B" />
+                      <stop offset="100%" stopColor="#EA580C" />
+                    </linearGradient>
+                    <linearGradient id="gradChap" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#1D4ED8" />
+                    </linearGradient>
+                    <linearGradient id="gradMcq" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#10B981" />
+                      <stop offset="100%" stopColor="#047857" />
+                    </linearGradient>
+                    <linearGradient id="gradFlash" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#8B5CF6" />
+                      <stop offset="100%" stopColor="#6D28D9" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Clean Subtle Reference Gridline */}
+                  <line x1="15" y1="115" x2="345" y2="115" stroke="#CBD5E1" strokeWidth="1" />
+
+                  {/* Bars */}
+                  {[
+                    { label: 'Subjects', val: stats.subjects, fill: 'url(#gradSub)', x: 25 },
+                    { label: 'Chapters', val: stats.chapters, fill: 'url(#gradChap)', x: 110 },
+                    { label: 'MCQs', val: stats.mcqs, fill: 'url(#gradMcq)', x: 195 },
+                    { label: 'Flashcards', val: stats.flashcards, fill: 'url(#gradFlash)', x: 280 },
+                  ].map((b) => {
+                    const h = Math.max(8, Math.round((b.val / Math.max(maxVal, 100)) * 80))
+                    const y = 115 - h
+                    return (
+                      <g key={b.label}>
+                        <rect x={b.x} y={y} width="52" height={h} rx="6" fill={b.fill} />
+                        <text x={b.x + 26} y={y - 6} textAnchor="middle" fill="#0F172A" fontSize="12.5" fontWeight="800">
+                          {b.val}
+                        </text>
+                        <text x={b.x + 26} y="132" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700">
+                          {b.label}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+              </div>
+            </div>
+
+            {/* Graph 2: Content Readiness & Health Index (High Visibility & Premium) */}
+            <div className="cm-graph-card cm-readiness-card-premium">
+              <div className="cm-chart-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="cm-chart-icon-pill" style={{ background: '#ECFDF5', color: '#10B981', width: '22px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AppIcon name="target" size={12} />
+                  </span>
+                  <h4 className="cm-block-title" style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Content Readiness</h4>
+                </div>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    background: readinessScore >= 75 ? '#ECFDF5' : readinessScore >= 40 ? '#FFF7ED' : '#F1F5F9',
+                    color: readinessScore >= 75 ? '#059669' : readinessScore >= 40 ? '#EA580C' : '#64748B',
+                    border: `1px solid ${readinessScore >= 75 ? '#A7F3D0' : readinessScore >= 40 ? '#FED7AA' : '#CBD5E1'}`,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  {readinessScore >= 75 ? '🟢 Ready for Exam' : readinessScore >= 40 ? '⚡ Steady Progress' : '🛠️ In Progress'}
+                </span>
+              </div>
+
+              <div className="cm-readiness-split-body">
+                {/* Left Side: Radial Gauge */}
+                <div className="cm-readiness-gauge-side">
+                  <div className="cm-gauge-box">
+                    <svg viewBox="0 0 140 80" className="cm-readiness-gauge-svg">
+                      <path d="M 15 72 A 55 55 0 0 1 125 72" fill="none" stroke="#E2E8F0" strokeWidth="12" strokeLinecap="round" />
+                      <path
+                        d="M 15 72 A 55 55 0 0 1 125 72"
+                        fill="none"
+                        stroke="url(#cmGradScore)"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray="172"
+                        strokeDashoffset={172 - (readinessScore / 100) * 172}
+                      />
+                      <defs>
+                        <linearGradient id="cmGradScore" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#F1621B" />
+                          <stop offset="60%" stopColor="#F59E0B" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="cm-gauge-center">
+                      <span className="cm-gauge-num">{readinessScore}%</span>
+                      <span className="cm-gauge-label">Score</span>
+                    </div>
+                  </div>
+                  <span className="cm-gauge-status-sub">
+                    {readinessScore >= 75 ? 'Optimal Coverage' : readinessScore >= 40 ? 'Moderate Health' : 'Building Content'}
+                  </span>
+                </div>
+
+                {/* Right Side: Milestone Checklist */}
+                <div className="cm-readiness-checklist-compact">
+                  {[
+                    { label: 'Subjects', val: stats.subjects, target: 4, pct: Math.min(100, Math.round((stats.subjects / 4) * 100)), color: '#F1621B' },
+                    { label: 'Chapters', val: stats.chapters, target: 25, pct: Math.min(100, Math.round((stats.chapters / 25) * 100)), color: '#3B82F6' },
+                    { label: 'MCQs', val: stats.mcqs, target: 500, pct: Math.min(100, Math.round((stats.mcqs / 500) * 100)), color: '#10B981' },
+                    { label: 'Flashcards', val: stats.flashcards, target: 200, pct: Math.min(100, Math.round((stats.flashcards / 200) * 100)), color: '#8B5CF6' },
+                  ].map((row) => (
+                    <div key={row.label} className="cm-prog-check-row">
+                      <div className="cm-prog-check-info">
+                        <span className="cm-prog-check-lbl">{row.label}</span>
+                        <span className="cm-prog-check-val"><strong>{row.val}</strong>/{row.target}</span>
+                      </div>
+                      <div className="cm-prog-track">
+                        <div
+                          className="cm-prog-fill"
+                          style={{
+                            width: `${row.pct}%`,
+                            background: row.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Insight Callout */}
+              <div className="cm-readiness-banner-clean">
+                <AppIcon name="target" size={13} />
+                <span>
+                  {readinessScore >= 75
+                    ? `🎯 High Coverage: ${stats.subjects} subjects & ${stats.mcqs} MCQs ready for student practice.`
+                    : `⚡ Active Progress: Course is ${readinessScore}% ready with ${stats.chapters} chapters mapped.`}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Tab 2: Distribution */}
-      {activeTab === 'distribution' && (
-        <div className="cm-tab-content">
-          <div className="cm-donut-wrapper">
-            <div className="cm-donut-svg-block">
-              <svg viewBox="0 0 120 120" className="cm-donut-svg">
-                <circle
-                  cx="60"
-                  cy="60"
-                  r={r}
-                  fill="transparent"
-                  stroke="#12B76A"
-                  strokeWidth="12"
-                  strokeDasharray={`${chStroke} ${c - chStroke}`}
-                  strokeDashoffset="0"
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r={r}
-                  fill="transparent"
-                  stroke="#2E5CE6"
-                  strokeWidth="12"
-                  strokeDasharray={`${mcqStroke} ${c - mcqStroke}`}
-                  strokeDashoffset={`-${chStroke}`}
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r={r}
-                  fill="transparent"
-                  stroke="#7C3AED"
-                  strokeWidth="12"
-                  strokeDasharray={`${flashStroke} ${c - flashStroke}`}
-                  strokeDashoffset={`-${chStroke + mcqStroke}`}
-                />
-              </svg>
-              <div className="cm-donut-center">
-                <span className="cm-donut-num">{totalContent}</span>
-                <span className="cm-donut-label">Total Content</span>
-              </div>
-            </div>
-
-            <div className="cm-donut-legend-list">
-              <div className="cm-legend-row">
-                <span className="cm-legend-dot" style={{ background: '#12B76A' }} />
-                <span className="cm-legend-name">Chapters</span>
-                <span className="cm-legend-count">{stats.chapters}</span>
-                <span className="cm-legend-pct">{chapterPct}%</span>
-              </div>
-              <div className="cm-legend-row">
-                <span className="cm-legend-dot" style={{ background: '#2E5CE6' }} />
-                <span className="cm-legend-name">MCQs</span>
-                <span className="cm-legend-count">{stats.mcqs}</span>
-                <span className="cm-legend-pct">{mcqPct}%</span>
-              </div>
-              <div className="cm-legend-row">
-                <span className="cm-legend-dot" style={{ background: '#7C3AED' }} />
-                <span className="cm-legend-name">Flashcards</span>
-                <span className="cm-legend-count">{stats.flashcards}</span>
-                <span className="cm-legend-pct">{flashcardPct}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Activity */}
-      {activeTab === 'activity' && (
-        <div className="cm-tab-content">
-          <div className="cm-activity-list">
-            <div className="cm-activity-item">
-              <span className="cm-act-icon" style={{ background: '#E9F9F1', color: '#12B76A' }}>
-                <AppIcon name="help" size={13} />
-              </span>
-              <div>
-                <div className="cm-act-title">{stats.mcqs} MCQs active</div>
-                <div className="cm-act-sub">Available in question repository</div>
-              </div>
-            </div>
-            <div className="cm-activity-item">
-              <span className="cm-act-icon" style={{ background: '#EEF2FF', color: '#2E5CE6' }}>
-                <AppIcon name="document" size={13} />
-              </span>
-              <div>
-                <div className="cm-act-title">{stats.chapters} Chapters published</div>
-                <div className="cm-act-sub">Organized across {stats.subjects} subjects</div>
-              </div>
-            </div>
-            <div className="cm-activity-item">
-              <span className="cm-act-icon" style={{ background: '#F1EDFC', color: '#7C3AED' }}>
-                <AppIcon name="flashcardsTab" size={13} />
-              </span>
-              <div>
-                <div className="cm-act-title">{stats.flashcards} Flashcards generated</div>
-                <div className="cm-act-sub">Ready for review</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Content Readiness */}
-      <div className="cm-readiness-section">
-        <h4 className="cm-block-title">Content Readiness</h4>
-        <div className="cm-readiness-body">
-          <div className="cm-gauge-box">
-            <svg viewBox="0 0 140 75" className="cm-readiness-gauge-svg">
-              <path d="M 12 70 A 58 58 0 0 1 128 70" fill="none" stroke="#EAECF0" strokeWidth="12" strokeLinecap="round" />
-              <path
-                d="M 12 70 A 58 58 0 0 1 128 70"
-                fill="none"
-                stroke="url(#cmGrad)"
-                strokeWidth="12"
-                strokeLinecap="round"
-                strokeDasharray="182"
-                strokeDashoffset={182 - (readinessScore / 100) * 182}
-              />
-              <defs>
-                <linearGradient id="cmGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#F1621B" />
-                  <stop offset="100%" stopColor="#12B76A" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="cm-gauge-center">
-              <span className="cm-gauge-num">{readinessScore}%</span>
-              <span className="cm-gauge-label">Ready</span>
-            </div>
-          </div>
-
-          <div className="cm-readiness-checklist">
-            <div className="cm-check-row">
-              <span className="cm-check-mark">✓</span>
-              <span className="cm-check-name">Subjects</span>
-              <span className="cm-check-val">{stats.subjects}/4</span>
-            </div>
-            <div className="cm-check-row">
-              <span className="cm-check-mark">✓</span>
-              <span className="cm-check-name">Chapters</span>
-              <span className="cm-check-val">{stats.chapters}/25</span>
-            </div>
-            <div className="cm-check-row">
-              <span className="cm-check-mark alert">⚠</span>
-              <span className="cm-check-name">MCQs</span>
-              <span className="cm-check-val">{stats.mcqs}/500</span>
-            </div>
-            <div className="cm-check-row">
-              <span className="cm-check-mark">✓</span>
-              <span className="cm-check-name">Flashcards</span>
-              <span className="cm-check-val">{stats.flashcards}/200</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="cm-readiness-banner">
-          <AppIcon name="target" size={14} />
-          <span>⚡ Great progress! Course is {readinessScore}% ready.</span>
-        </div>
-      </div>
 
       {/* Footer */}
       <div className="cm-panel-footer">
@@ -1265,10 +1371,20 @@ function CourseManager({ courseName: _courseName }) {
 
   return (
     <div className="cm-workspace-shell">
-      {/* Two-Column Main Workspace Grid (Left 60%, Right 40%) */}
+      {/* Two-Column Main Workspace Grid (Left 36%, Right 64%) */}
       <div className="cm-main-workspace-grid">
-        {/* LEFT WORKSPACE (60% width): 8 Stat Cards + Search/Filter Toolbar + Course List */}
+        {/* LEFT WORKSPACE (36% width): Header + 8 Stat Cards + Search/Filter Toolbar + Course List */}
         <div className="cm-course-list-col">
+          {/* Top Left Header (Course Dashboard & Courses Management title matching 36% column width) */}
+          <div className="cm-left-col-header">
+            <h2 className="cm-left-greeting">
+              Course Dashboard: {selectedCourse?.name || _courseName || 'CLASS 10 ENG'}
+            </h2>
+            <div className="cm-left-sub">
+              Courses Management
+            </div>
+          </div>
+
           {/* 8 Stat Cards Grid (2 rows x 4 columns) */}
           <div className="cm-stats-grid-8">
             <div className="cm-stat-card-compact" style={{ '--card-accent': '#F1621B' }}>

@@ -6,6 +6,7 @@
 import { apiService } from './apiService.js'
 import {
   createWorkspace,
+  updateWorkspace,
   updateWorkspaceMetadata,
   deleteWorkspace as deleteWorkspaceFromStore,
 } from '../data/workspaceStore.js'
@@ -22,6 +23,8 @@ function mapRowToCourse(row) {
     published: row.published !== undefined ? Boolean(row.published) : true,
     version: row.version || 'v1.0',
     order: row.order || 1,
+    examDate: row.exam_date || row.examDate || '',
+    showExamCountdown: row.show_exam_countdown !== undefined ? Boolean(row.show_exam_countdown) : (row.showExamCountdown !== undefined ? Boolean(row.showExamCountdown) : true),
     subjectsCount: row.subjects_count || 0,
     chaptersCount: row.chapters_count || 0,
     mcqsCount: row.mcqs_count || 0,
@@ -39,6 +42,8 @@ function mapCourseToPayload(payload) {
     theme_color: payload.themeColor || '#F1621B',
     published: payload.published !== undefined ? Boolean(payload.published) : true,
     version: payload.version || 'v1.0',
+    exam_date: payload.examDate || '',
+    show_exam_countdown: payload.showExamCountdown !== undefined ? Boolean(payload.showExamCountdown) : true,
   }
 }
 
@@ -64,8 +69,14 @@ export const courseService = {
   async createCourse(payload) {
     if (!payload?.name) return { success: false, error: 'Course name is required' }
 
-    const dbPayload = mapCourseToPayload(payload)
-    const res = await apiService.post('/courses', dbPayload)
+    let dbPayload = mapCourseToPayload(payload)
+    let res = await apiService.post('/courses', dbPayload)
+
+    // Fallback: If Supabase table is missing 'exam_date' or 'show_exam_countdown' column, retry without them
+    if (!res.success && res.error && (res.error.includes('exam_date') || res.error.includes('show_exam_countdown') || res.error.includes('schema cache'))) {
+      const { exam_date, show_exam_countdown, ...safePayload } = dbPayload
+      res = await apiService.post('/courses', safePayload)
+    }
 
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to create course in database' }
@@ -74,13 +85,17 @@ export const courseService = {
     const rawRecord = Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : res.data
     const mapped = mapRowToCourse(rawRecord) || mapRowToCourse(dbPayload)
 
-    createWorkspace(mapped)
+    createWorkspace({ ...mapped, examDate: payload.examDate || '', showExamCountdown: payload.showExamCountdown !== false })
 
     return { success: true, data: mapped }
   },
 
   async updateCourse(courseId, patch) {
     if (!courseId) return { success: false, error: 'Course ID is required' }
+
+    // 1. Update workspaceStore and localStorage immediately for instant local UI reactivity
+    updateWorkspace(courseId, patch)
+
     const dbPatch = {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
@@ -90,9 +105,21 @@ export const courseService = {
       ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
       ...(patch.version !== undefined ? { version: patch.version } : {}),
       ...(patch.order !== undefined ? { order: Number(patch.order) } : {}),
+      ...(patch.examDate !== undefined ? { exam_date: patch.examDate } : {}),
+      ...(patch.showExamCountdown !== undefined ? { show_exam_countdown: Boolean(patch.showExamCountdown) } : {}),
     }
 
-    const res = await apiService.patch(`/courses?id=eq.${encodeURIComponent(courseId)}`, dbPatch)
+    let res = await apiService.patch(`/courses?id=eq.${encodeURIComponent(courseId)}`, dbPatch)
+
+    // 2. Fallback: If Supabase table is missing columns, retry DB patch without them
+    if (!res.success && res.error && (res.error.includes('exam_date') || res.error.includes('show_exam_countdown') || res.error.includes('schema cache'))) {
+      const { exam_date, show_exam_countdown, ...safePatch } = dbPatch
+      if (Object.keys(safePatch).length > 0) {
+        res = await apiService.patch(`/courses?id=eq.${encodeURIComponent(courseId)}`, safePatch)
+      } else {
+        res = { success: true, data: [] }
+      }
+    }
 
     if (!res.success) {
       return { success: false, error: res.error || 'Failed to update course in database' }

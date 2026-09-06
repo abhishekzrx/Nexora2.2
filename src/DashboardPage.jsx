@@ -18,6 +18,7 @@ import { permissionService } from './services/permissionService'
 import { userAnalyticsService } from './services/userAnalyticsService'
 import { hydrateUserAnalytics, useUserAnalytics } from './data/analyticsStore'
 import { hydrateUserProgressFromSupabase, useUserProgressStore } from './data/progressStore'
+import { calculateExamCountdown } from './utils/dateUtils'
 
 const strongAreasFallback = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreasFallback = ['COA', 'Digital Electronics']
@@ -698,6 +699,11 @@ function DashboardPage({
     setActiveWorkspace(id)
   }
 
+  const isExamCountdownVisible = activeCourse?.showExamCountdown !== false
+  const examCountdown = useMemo(() => {
+    return calculateExamCountdown(isExamCountdownVisible ? activeCourse?.examDate : null)
+  }, [isExamCountdownVisible, activeCourse?.examDate])
+
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''
 
@@ -749,8 +755,11 @@ function DashboardPage({
             onNavigateSubjects()
           } else if (item.label === 'Practice') {
             onNavigatePractice()
+          } else if (item.label === 'Notes') {
+            onNavigateNotes ? onNavigateNotes() : navigate('notes')
           }
         }}
+        onOpenDrawer={() => setDrawerOpen(true)}
       >
         {/* TOP MOBILE HEADER BAR */}
         <header className="mobile-top-header">
@@ -860,8 +869,21 @@ function DashboardPage({
                 <div className="milestone-info">
                   <div className="milestone-lbl">EXAM IN</div>
                   <div className="milestone-val">
-                    {daysUntilExam} <span className="milestone-unit">Days</span>
+                    {!isExamCountdownVisible ? (
+                      <span className="milestone-unit" style={{ fontSize: '13px', color: '#EF4444', fontWeight: '800' }}>🔒 Locked</span>
+                    ) : examCountdown.daysRemaining !== null ? (
+                      <>
+                        {examCountdown.daysRemaining} <span className="milestone-unit">Days</span>
+                      </>
+                    ) : (
+                      <span className="milestone-unit" style={{ fontSize: '12px', color: '#64748B', fontWeight: '700' }}>Unscheduled</span>
+                    )}
                   </div>
+                  {isExamCountdownVisible && examCountdown.formattedDate !== 'Unscheduled' && (
+                    <div className="milestone-extra" style={{ fontSize: '10px', color: examCountdown.badgeColor, fontWeight: '700' }}>
+                      {examCountdown.formattedDate}
+                    </div>
+                  )}
                 </div>
               </div>
 

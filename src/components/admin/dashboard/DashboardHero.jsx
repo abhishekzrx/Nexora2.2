@@ -3,9 +3,12 @@
  * Premium EdTech Course Overview Header with high-readability Readiness Ring & Course Meta.
  */
 import AppIcon from '../../ui/AppIcon'
+import { calculateExamCountdown } from '../../../utils/dateUtils'
 
 export default function DashboardHero({ analytics, activeCourse }) {
   const readiness = analytics?.overallReadiness || 0
+  const isCountdownVisible = activeCourse?.showExamCountdown !== false
+  const examCountdown = calculateExamCountdown(isCountdownVisible ? activeCourse?.examDate : null)
 
   return (
     <div className="dashboard-hero-card edutech-hero-card">
@@ -13,6 +16,11 @@ export default function DashboardHero({ analytics, activeCourse }) {
         <div className="hero-course-tag">
           <span className="live-pulse-dot" />
           <span className="course-status-lbl">Active Workspace</span>
+          {isCountdownVisible && examCountdown.daysRemaining !== null && (
+            <span className="hero-countdown-pill" style={{ marginLeft: '10px', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.9)', color: examCountdown.badgeColor, border: '1px solid currentColor' }}>
+              ⏳ {examCountdown.statusText}
+            </span>
+          )}
         </div>
         <h1 className="hero-course-name">{analytics?.courseName || 'Active Course'}</h1>
 
@@ -20,10 +28,14 @@ export default function DashboardHero({ analytics, activeCourse }) {
           <span className="hero-meta-item">
             <AppIcon name="folder" size={13} /> Code: <strong>{activeCourse?.id || 'DEFAULT'}</strong>
           </span>
-          <span className="hero-meta-divider">•</span>
-          <span className="hero-meta-item">
-            <AppIcon name="document" size={13} /> Status: <strong>{readiness >= 75 ? 'Production Ready' : 'In Development'}</strong>
-          </span>
+          {isCountdownVisible && examCountdown.daysRemaining !== null && (
+            <>
+              <span className="hero-meta-divider">•</span>
+              <span className="hero-meta-item">
+                <AppIcon name="document" size={13} /> Target Exam: <strong>{examCountdown.formattedDate}</strong>
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -58,6 +70,12 @@ export default function DashboardHero({ analytics, activeCourse }) {
         </div>
 
         <div className="hero-stats-chips">
+          {isCountdownVisible && examCountdown.daysRemaining !== null && (
+            <div className="hero-stat-chip highlight-exam" title={`Exam Date: ${examCountdown.formattedDate}`} style={{ background: '#FFF7ED', borderColor: '#FED7AA' }}>
+              <span className="chip-val" style={{ color: examCountdown.badgeColor }}>{examCountdown.daysRemaining > 0 ? `${examCountdown.daysRemaining}d` : '0d'}</span>
+              <span className="chip-lbl" style={{ color: '#C2410C' }}>Days Left</span>
+            </div>
+          )}
           <div className="hero-stat-chip">
             <span className="chip-val">{analytics?.totalSubjects || 0}</span>
             <span className="chip-lbl">Subjects</span>
@@ -69,10 +87,6 @@ export default function DashboardHero({ analytics, activeCourse }) {
           <div className="hero-stat-chip highlight-mcq">
             <span className="chip-val">{analytics?.totalMcqs || 0}</span>
             <span className="chip-lbl">MCQs</span>
-          </div>
-          <div className="hero-stat-chip highlight-flash">
-            <span className="chip-val">{analytics?.totalFlashcards || 0}</span>
-            <span className="chip-lbl">Flashcards</span>
           </div>
         </div>
       </div>
