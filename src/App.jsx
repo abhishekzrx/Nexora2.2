@@ -268,12 +268,22 @@ function App() {
     if (name === 'practice') {
       return (
         <PracticeHubPage
+          courseId={activeWorkspaceId}
           onNavigateHome={() => navigate('')}
           onNavigateSubjects={() => navigate('subjects')}
           onOpenSubject={(key) => navigate(`subject/${key}`)}
+          onOpenFlashcards={(key) => {
+            if (key) {
+              subjectTabs[key] = 'flashcards'
+              navigate(`subject/${key}`)
+            } else {
+              navigate('subjects')
+            }
+          }}
           onResume={(session) => {
+            if (!session) return
             testSession.subjectKey = session.subjectKey
-            testSession.chapter = session.chapterId ? { id: session.chapterId, name: session.chapterName } : null
+            testSession.chapter = session.chapterId ? { id: session.chapterId, name: session.chapterName || session.chapterTitle } : null
             testSession.mode = 'practice'
             testSession.save()
             if (session.chapterId) {
@@ -282,7 +292,23 @@ function App() {
               navigate(`subject/${session.subjectKey}/mcq`)
             }
           }}
-          onStartPractice={() => navigate('subjects')}
+          onStartPractice={(modeOrKey, chapterId) => {
+            if (typeof modeOrKey === 'string' && modeOrKey !== 'random' && modeOrKey !== 'weak' && modeOrKey !== 'revision' && modeOrKey !== 'flashcards') {
+              testSession.subjectKey = modeOrKey
+              testSession.chapter = chapterId ? { id: chapterId } : null
+              testSession.mode = 'practice'
+              testSession.save()
+              if (chapterId) {
+                navigate(`subject/${modeOrKey}/chapter/${chapterId}/mcq`)
+              } else {
+                navigate(`subject/${modeOrKey}/mcq`)
+              }
+            } else {
+              navigate('subjects')
+            }
+          }}
+          onNavigateAdmin={handleSwitchToAdmin}
+          onLogout={handleLogout}
         />
       )
     }
