@@ -4,18 +4,49 @@
  * Calms down vibrant colors to a balanced, professional, elegant dark slate palette.
  */
 
-/* ── Container ─────────────────────────────────────────────────────── */
+/* ── Container with Premium Smooth Scroll Behavior ─────────────────── */
 .mm-container {
-  padding: 24px;
-  max-width: 1400px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 20px 28px 80px;
+  max-width: 1440px;
+  width: 100%;
   margin: 0 auto;
   color: #F8FAFC;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.4);
+}
+
+.mm-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mm-container::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+}
+
+.mm-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  border: 2px solid rgba(15, 23, 42, 0.4);
+}
+
+.mm-container::-webkit-scrollbar-thumb:hover {
+  background: #EA580C;
 }
 
 @media (max-width: 768px) {
   .mm-container {
-    padding: 16px 12px;
+    padding: 16px 12px 70px;
   }
 }
 
@@ -220,17 +251,29 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
   scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 .mm-course-pills::-webkit-scrollbar {
-  height: 4px;
+  height: 5px;
+}
+
+.mm-course-pills::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 4px;
 }
 
 .mm-course-pills::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(148, 163, 184, 0.3);
   border-radius: 4px;
+}
+
+.mm-course-pills::-webkit-scrollbar-thumb:hover {
+  background: #EA580C;
 }
 
 .mm-pill {
@@ -736,7 +779,28 @@
   box-sizing: border-box;
   max-height: 90vh;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.4);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.mm-modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mm-modal-card::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 6px;
+}
+
+.mm-modal-card::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+}
+
+.mm-modal-card::-webkit-scrollbar-thumb:hover {
+  background: #EA580C;
 }
 
 .mm-modal-card.wide {

@@ -207,6 +207,12 @@
   max-width: 100%;
 }
 
+.admin-dashboard-main.admin-dashboard-main-members,
+.admin-dashboard-main:has(.mm-container) {
+  padding: 0;
+  overflow: hidden;
+}
+
 .admin-dashboard-header {
   display: flex;
   align-items: center;

@@ -241,8 +241,8 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
         onLogout={onLogout}
       />
 
-      <div className="admin-dashboard-main">
-        {activeSection !== 'mcq-manager' && activeSection !== 'courses' && (
+      <div className={`admin-dashboard-main${activeSection === 'members' ? ' admin-dashboard-main-members' : ''}`}>
+        {activeSection !== 'mcq-manager' && activeSection !== 'courses' && activeSection !== 'members' && (
           <div className="admin-dashboard-header">
             <div>
               <h1 className="admin-dashboard-greeting">

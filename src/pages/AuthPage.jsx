@@ -6,13 +6,6 @@ import { setActiveMember } from '../data/memberStore'
 import { clearUserProgressStore } from '../data/progressStore'
 import { clearAnalyticsStore } from '../data/analyticsStore'
 
-const QUICK_PROFILES = [
-  { id: 'adminalpha', name: 'Super Admin', role: 'SUPER_ADMIN', icon: '👑' },
-  { id: 'MEMBER01', name: 'Rahul', role: 'Student (BPSC CS)', icon: '👤' },
-  { id: 'MEMBER02', name: 'Priya', role: 'Student (BPSC Prelims)', icon: '👤' },
-  { id: 'MEMBER03', name: 'Amit', role: 'Student (BPSC CS)', icon: '👤' },
-]
-
 export default function AuthPage({
   mode = 'login',
   onGoLogin,
@@ -62,13 +55,6 @@ export default function AuthPage({
       setSignupConfirm('')
     }
   }, [mode])
-
-  // Handle Quick Profile Fill
-  const handleSelectQuickProfile = (profileId) => {
-    setUsername(profileId)
-    setPassword('Alpha@123')
-    setErrorMessage('')
-  }
 
   // Handle Login Submit
   const handleLoginSubmit = async (e) => {
@@ -400,20 +386,9 @@ export default function AuthPage({
             </button>
           </form>
 
-          {/* Mode Switch (Sign in / Sign up) */}
-          <div className="alpha-mode-switch">
-            {!isSignup ? (
-              <span>
-                Don't have an account?
-                <button
-                  type="button"
-                  className="alpha-switch-btn"
-                  onClick={onGoSignup}
-                >
-                  Sign up
-                </button>
-              </span>
-            ) : (
+          {/* Mode Switch (Sign up mode only) */}
+          {isSignup && (
+            <div className="alpha-mode-switch">
               <span>
                 Already have an account?
                 <button
@@ -424,27 +399,6 @@ export default function AuthPage({
                   Log in
                 </button>
               </span>
-            )}
-          </div>
-
-          {/* Quick Demo Access Bar */}
-          {!isSignup && (
-            <div className="alpha-demo-section">
-              <span className="alpha-demo-title">Quick Demo Login</span>
-              <div className="alpha-demo-chips">
-                {QUICK_PROFILES.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`alpha-chip-btn${username === p.id ? ' active' : ''}`}
-                    onClick={() => handleSelectQuickProfile(p.id)}
-                    title={`Click to fill ${p.name} (${p.id})`}
-                  >
-                    <span>{p.icon}</span>
-                    <span>{p.name}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           )}
         </div>
