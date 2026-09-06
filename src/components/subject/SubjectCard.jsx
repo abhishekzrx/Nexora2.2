@@ -52,7 +52,7 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
   // Status badge logic matching theme
   let statusBadgeText = 'Getting Started'
   let ctaText = 'Start'
-  let themeVariant = 'forest' // 'forest' | 'amber' | 'rose' | 'gray'
+  let themeVariant = 'orange' // 'orange' | 'amber' | 'rose' | 'gray'
 
   if (totalChapters === 0 && totalMcqs === 0) {
     statusBadgeText = 'Preparing'
@@ -61,7 +61,7 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
   } else if (masteryPercent >= 75 || coveragePercent >= 75) {
     statusBadgeText = 'Strong'
     ctaText = 'Revise'
-    themeVariant = 'forest'
+    themeVariant = 'orange'
   } else if (hasAttempts && masteryPercent < 40) {
     statusBadgeText = 'Weak Area'
     ctaText = 'Start'
@@ -69,7 +69,7 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
   } else if (hasAttempts || coveragePercent > 0) {
     statusBadgeText = 'In Progress'
     ctaText = 'Resume'
-    themeVariant = 'forest'
+    themeVariant = 'orange'
   } else if (coveragePercent < 20) {
     statusBadgeText = 'Needs Focus'
     ctaText = 'Practice'

@@ -121,33 +121,33 @@ const READINESS_LEVELS = {
     min: 0,
     max: 39,
     label: 'Beginner',
-    message: "Let's build your foundation.",
-    conicColor: '#F04438',
-    textColor: '#F04438',
+    message: "Let's build your foundation with daily practice.",
+    conicColor: '#F97316',
+    textColor: '#C2410C',
   },
   improving: {
     min: 40,
     max: 69,
     label: 'Improving',
-    message: 'Keep going! Consistent daily practice.',
-    conicColor: '#2d6a4f',
-    textColor: '#1b4332',
+    message: 'Good momentum! Consistent practice leads to mastery.',
+    conicColor: '#EA580C',
+    textColor: '#9A3412',
   },
   competitive: {
     min: 70,
     max: 84,
     label: 'Competitive',
-    message: 'Approaching exam-ready.',
-    conicColor: '#0E9494',
-    textColor: '#0E9494',
+    message: 'Strong knowledge base! Fine-tuning for top rank.',
+    conicColor: '#F59E0B',
+    textColor: '#B45309',
   },
   examReady: {
     min: 85,
     max: 100,
     label: 'Exam Ready',
-    message: 'Excellent momentum!',
-    conicColor: '#12B76A',
-    textColor: '#12B76A',
+    message: 'Peak performance! Ready to conquer the exam.',
+    conicColor: '#16A34A',
+    textColor: '#15803D',
   },
 }
 
@@ -921,7 +921,7 @@ function DashboardPage({
                   <div
                     className="readiness-conic-gauge"
                     style={{
-                      background: `conic-gradient(#2d6a4f 0% ${readinessScore}%, #E2E8F0 ${readinessScore}% 100%)`,
+                      background: `conic-gradient(${readinessLevel.conicColor || '#EA580C'} 0% ${readinessScore}%, #FED7AA ${readinessScore}% 100%)`,
                     }}
                   >
                     <div className="readiness-conic-inner">
@@ -996,22 +996,22 @@ function DashboardPage({
               {/* Card 1: Today's Revision */}
               <div className="focus-card card-revision">
                 <div className="focus-card-top-row">
-                  <div className="focus-icon-box bg-forest">
+                  <div className="focus-icon-box bg-orange">
                     <svg className="focus-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <rect height="12" rx="2" strokeWidth="2" width="18" x="3" y="4" />
                       <path d="M7 20h10" strokeLinecap="round" strokeWidth="2" />
                     </svg>
                   </div>
-                  <span className="focus-badge badge-forest">Due</span>
+                  <span className="focus-badge badge-orange">Due</span>
                 </div>
                 <div className="focus-card-body">
                   <div className="focus-card-name">Today's<br />Revision</div>
-                  <div className="focus-card-metric text-forest">{dailyFocus.flashcardsDue}</div>
+                  <div className="focus-card-metric text-orange">{dailyFocus.flashcardsDue}</div>
                   <div className="focus-card-unit">Flashcards Due</div>
                 </div>
                 <button
                   type="button"
-                  className="focus-card-btn btn-forest"
+                  className="focus-card-btn btn-orange"
                   onClick={onNavigateSubjects}
                 >
                   <span>Review Now</span>
@@ -1093,7 +1093,7 @@ function DashboardPage({
                       </div>
                       <div className="mission-track-line">
                         <div
-                          className="mission-fill-line fill-forest"
+                          className="mission-fill-line fill-orange"
                           style={{ width: `${dailyFocus.mcqPercent}%` }}
                         />
                       </div>
@@ -1109,7 +1109,7 @@ function DashboardPage({
                       </div>
                       <div className="mission-track-line">
                         <div
-                          className="mission-fill-line fill-forest"
+                          className="mission-fill-line fill-orange"
                           style={{ width: `${dailyFocus.flashcardPercent}%` }}
                         />
                       </div>
@@ -1125,7 +1125,7 @@ function DashboardPage({
                       </div>
                       <div className="mission-track-line">
                         <div
-                          className="mission-fill-line fill-forest"
+                          className="mission-fill-line fill-orange"
                           style={{ width: `${dailyFocus.mockPercent}%` }}
                         />
                       </div>
@@ -1185,8 +1185,8 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
                     </svg>
                     <span className="perf-stat-label">Accuracy</span>
                   </div>
@@ -1196,7 +1196,7 @@ function DashboardPage({
                   )}
                 </div>
                 <div className="perf-sparkline-box">
-                  <svg className="perf-sparkline-svg" fill="none" stroke="#40916c" viewBox="0 0 100 25">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#EA580C" viewBox="0 0 100 25">
                     <path d={accuracySparkline.path} strokeLinecap="round" strokeWidth="2.5" />
                   </svg>
                 </div>
@@ -1206,8 +1206,8 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
                     </svg>
                     <span className="perf-stat-label">Questions</span>
                   </div>
@@ -1217,7 +1217,7 @@ function DashboardPage({
                   )}
                 </div>
                 <div className="perf-sparkline-box">
-                  <svg className="perf-sparkline-svg" fill="none" stroke="#40916c" viewBox="0 0 100 25">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#EA580C" viewBox="0 0 100 25">
                     <path d={questionsSparkline.path} strokeLinecap="round" strokeWidth="2.5" />
                   </svg>
                 </div>
@@ -1227,9 +1227,9 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                      <path d="M12 7v5l3 3" strokeWidth="2" />
+                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" strokeWidth="2.2" />
+                      <path d="M12 7v5l3 3" strokeWidth="2.2" />
                     </svg>
                     <span className="perf-stat-label">Time</span>
                   </div>
@@ -1239,7 +1239,7 @@ function DashboardPage({
                   )}
                 </div>
                 <div className="perf-sparkline-box">
-                  <svg className="perf-sparkline-svg" fill="none" stroke="#2d6a4f" viewBox="0 0 100 25">
+                  <svg className="perf-sparkline-svg" fill="none" stroke="#C2410C" viewBox="0 0 100 25">
                     <path d={timeSparkline.path} strokeLinecap="round" strokeWidth="2.5" />
                   </svg>
                 </div>
