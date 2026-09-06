@@ -22,14 +22,52 @@ import { showToast } from '../../data/feedbackStore'
 import { formatPriority, BPSC_PRIORITY_MAP } from '../../data/bpscPrelimsChapters'
 
 const CHAPTER_COUNT_PRESETS = [4, 6, 8, 10, 12, 15, 20]
-const EXAM_PRESETS = [
-  'BPSC (Bihar Public Service Commission)',
-  'UPSC / State PCS',
-  'SSC CGL / CHSL',
-  'CBSE Class 11 & 12',
-  'GATE / Computer Science Engineering',
-  'General Competitive Examination',
+
+export const EXAM_STANDARD_GROUPS = [
+  {
+    category: 'Teacher Recruitment / Eligibility',
+    options: [
+      'BPSC Computer Teacher',
+      'Bihar Teacher Recruitment – Computer Science',
+      'CTET / Teacher Eligibility Standard',
+      'State TET / Teacher Eligibility Standard',
+    ],
+  },
+  {
+    category: 'School / Board Level',
+    options: [
+      'CBSE Class 11–12',
+      'CBSE Class 9–10',
+      'State Board Class 11–12',
+      'State Board Class 9–10',
+    ],
+  },
+  {
+    category: 'Competitive / Government Exams',
+    options: [
+      'BPSC General Competitive',
+      'State PCS',
+      'SSC CGL',
+      'UPSC',
+      'General Competitive Exam',
+    ],
+  },
+  {
+    category: 'Technical / Professional',
+    options: [
+      'GATE – Computer Science',
+      'Technical Competitive Exam',
+    ],
+  },
+  {
+    category: 'Flexible / Custom',
+    options: [
+      'Custom / User Defined',
+    ],
+  },
 ]
+
+export const EXAM_PRESETS = EXAM_STANDARD_GROUPS.flatMap((g) => g.options)
 
 const SAMPLE_JSON_DEMO = `[
   {
@@ -105,7 +143,7 @@ export default function QuickAddChapterModal({
   const [numChapters, setNumChapters] = useState(8)
   const [startingNumber, setStartingNumber] = useState(nextAvailableChapterNumber)
   const [codePrefix, setCodePrefix] = useState('')
-  const [examTarget, setExamTarget] = useState('BPSC (Bihar Public Service Commission)')
+  const [examTarget, setExamTarget] = useState('BPSC Computer Teacher')
   const [syllabusScope, setSyllabusScope] = useState('')
   const [customInstructions, setCustomInstructions] = useState('')
 
@@ -572,8 +610,14 @@ export default function QuickAddChapterModal({
                           value={examTarget}
                           onChange={(e) => setExamTarget(e.target.value)}
                         >
-                          {EXAM_PRESETS.map((ex) => (
-                            <option key={ex} value={ex}>{ex}</option>
+                          {EXAM_STANDARD_GROUPS.map((group) => (
+                            <optgroup key={group.category} label={group.category}>
+                              {group.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </optgroup>
                           ))}
                         </select>
                       </div>
