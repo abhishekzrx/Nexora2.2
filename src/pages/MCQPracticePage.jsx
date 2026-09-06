@@ -189,7 +189,7 @@ const QuestionPanel = memo(function QuestionPanel({
 
 /**
  * Sidebar
- * Memoized — the question grid and legend never re-render on navigation.
+ * Question Palette for Desktop and Tablet screens with embedded stats & submit.
  */
 const Sidebar = memo(function Sidebar({
   totalGridSize = 20,
@@ -200,7 +200,15 @@ const Sidebar = memo(function Sidebar({
   onGoTo,
   onUnavailableClick,
   theme,
+  onSubmit,
+  onBack,
+  reviewMode,
+  isEvaluating,
 }) {
+  const answeredCount = Object.keys(answers).length
+  const markedCount = marked.size
+  const unansweredCount = Math.max(0, availableCount - answeredCount)
+
   const getQuestionClass = (index) => {
     if (index >= availableCount) return ' unavailable'
     if (answers[index] !== undefined) return ' answered'
@@ -210,10 +218,21 @@ const Sidebar = memo(function Sidebar({
 
   return (
     <aside className={`sidebar theme-${theme}`}>
-      <h2>Questions ({availableCount}/{totalGridSize})</h2>
+      <div className="sidebar-header">
+        <h2>
+          <span>Question Map</span>
+          <span className="sidebar-count-badge">{availableCount} Qs</span>
+        </h2>
+        <div className="sidebar-stats-compact">
+          <span className="stat-pill pill-answered">✓ {answeredCount} Done</span>
+          {markedCount > 0 && <span className="stat-pill pill-marked">⚑ {markedCount} Marked</span>}
+          <span className="stat-pill pill-unanswered">{unansweredCount} Left</span>
+        </div>
+      </div>
+
       <div className="legend">
         <div className="legend-item"><span className="legend-dot dot-answered" />Answered</div>
-        <div className="legend-item"><span className="legend-dot dot-notanswered" />Not Answered</div>
+        <div className="legend-item"><span className="legend-dot dot-notanswered" />Unanswered</div>
         <div className="legend-item"><span className="legend-dot dot-marked" />Marked</div>
         <div className="legend-item"><span className="legend-dot dot-unavailable" />Unavailable</div>
       </div>
@@ -271,9 +290,147 @@ const Sidebar = memo(function Sidebar({
           ))}
         </select>
       </div>
+
+      <div className="sidebar-submit-wrap">
+        <button
+          type="button"
+          className="sidebar-submit-btn"
+          onClick={reviewMode ? onBack : onSubmit}
+          disabled={isEvaluating}
+        >
+          <AppIcon name={reviewMode ? 'back' : 'send'} size={15} />
+          {reviewMode ? 'Back to Results' : 'Submit Test'}
+        </button>
+      </div>
     </aside>
   )
 })
+
+/**
+ * MobileQuestionRibbon
+ * Horizontally scrolling question bar specifically for Mobile viewport
+ */
+const MobileQuestionRibbon = memo(function MobileQuestionRibbon({
+  totalGridSize = 20,
+  availableCount = 5,
+  currentIndex,
+  answers,
+  marked,
+  onGoTo,
+  onOpenMap,
+}) {
+  const getQuestionClass = (index) => {
+    if (index >= availableCount) return ' unavailable'
+    if (answers[index] !== undefined) return ' answered'
+    if (marked.has(index)) return ' marked'
+    return ''
+  }
+
+  return (
+    <div className="mobile-q-ribbon">
+      <div className="mobile-q-ribbon-inner">
+        <button
+          type="button"
+          className="mobile-q-map-btn"
+          onClick={onOpenMap}
+          aria-label="Open Question Map"
+        >
+          <AppIcon name="gridView" size={14} />
+          Map ({availableCount})
+        </button>
+        {Array.from({ length: availableCount }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`mobile-q-chip${getQuestionClass(i)}${i === currentIndex ? ' current' : ''}`}
+            onClick={() => onGoTo(i)}
+            aria-label={`Jump to question ${i + 1}`}
+          >
+            {i + 1}
+            {marked.has(i) ? (
+              <span style={{ position: 'absolute', top: 2, right: 3, fontSize: 7, color: 'var(--orange)' }}>
+                ●
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+})
+
+/**
+ * MobilePaletteModal
+ * Bottom sheet modal for quick question jump on mobile
+ */
+function MobilePaletteModal({
+  isOpen,
+  onClose,
+  totalGridSize,
+  availableCount,
+  currentIndex,
+  answers,
+  marked,
+  onGoTo,
+}) {
+  if (!isOpen) return null
+
+  const getQuestionClass = (index) => {
+    if (index >= availableCount) return ' unavailable'
+    if (answers[index] !== undefined) return ' answered'
+    if (marked.has(index)) return ' marked'
+    return ''
+  }
+
+  return (
+    <div className="mcq-palette-modal-backdrop" onClick={onClose}>
+      <div className="mcq-palette-drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="mcq-palette-drawer-header">
+          <div className="mcq-palette-drawer-title">
+            Question Map ({availableCount} Questions)
+          </div>
+          <button type="button" className="mcq-palette-drawer-close" onClick={onClose} aria-label="Close">
+            <AppIcon name="close" size={16} />
+          </button>
+        </div>
+
+        <div className="legend">
+          <div className="legend-item"><span className="legend-dot dot-answered" />Answered</div>
+          <div className="legend-item"><span className="legend-dot dot-notanswered" />Unanswered</div>
+          <div className="legend-item"><span className="legend-dot dot-marked" />Marked</div>
+          <div className="legend-item"><span className="legend-dot dot-unavailable" />Unavailable</div>
+        </div>
+
+        <div className="qgrid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, maxHeight: '42vh', overflowY: 'auto' }}>
+          {Array.from({ length: totalGridSize }, (_, i) => {
+            const isAvailable = i < availableCount
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`qbtn${getQuestionClass(i)}${i === currentIndex ? ' current' : ''}`}
+                onClick={() => {
+                  if (isAvailable) {
+                    onGoTo(i)
+                    onClose()
+                  }
+                }}
+                disabled={!isAvailable}
+              >
+                {i + 1}
+                {marked.has(i) ? (
+                  <span className="flag-mini">
+                    <AppIcon name="flag" size={7} />
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
  * SummaryBar
@@ -599,6 +756,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
   const [theme, setTheme] = useState(getInitialTheme)
   const [examMode, setExamMode] = useState(false)
   const [isMobile, setIsMobile] = useState(getIsMobile)
+  const [showMobilePalette, setShowMobilePalette] = useState(false)
 
   // ── Question transition state ──────────────────────────────
   const [displayed, setDisplayed] = useState(0)
@@ -650,11 +808,11 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
   const [evalStep, setEvalStep] = useState(0)
 
   const evalStages = useMemo(() => [
-    'Analyzing your answers',
-    'Calculating accuracy',
-    'Reviewing your performance',
-    'Identifying learning patterns',
-    'Preparing results',
+    'Checking your responses...',
+    'Evaluating question accuracy & marks...',
+    'Analyzing concept mastery & insights...',
+    'Synchronizing with analytics engine...',
+    'Generating performance dashboard...',
   ], [])
 
   // Timer countdown — only runs while timerOn is true and not evaluating.
@@ -1006,7 +1164,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         clearInterval(interval)
         finalizeSubmission(questionList)
       }
-    }, 240)
+    }, 280)
   }
 
   // Locked content cannot be practiced
@@ -1154,26 +1312,16 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
             </div>
           ) : (
             <>
-              {/* Pool & Session Info Banner */}
-              <div className="pool-info-banner">
-                <div className="pool-info-pill">
-                  <span className="pill-dot pool-dot" />
-                  <strong>MCQ Pool:</strong> {totalPool} Questions ({masteredCount} Mastered)
-                </div>
-                <div className="pool-info-pill">
-                  <span className="pill-dot session-dot" />
-                  <strong>{isReviewModeState ? 'Review Session:' : 'Practice Session:'}</strong> {availableCount} Questions ({newCount} Unseen, {practicedCount} Re-attempt)
-                </div>
-              </div>
-
-              {/* Hide summary bar and sidebar in mobile exam mode */}
+              {/* Mobile Quick Ribbon */}
               {!(examMode && isMobile) && (
-                <SummaryBar
-                  totalQuestions={totalGridSize}
-                  answeredCount={answeredCount}
-                  markedCount={markedCount}
-                  notVisitedCount={notVisitedCount}
-                  theme={theme}
+                <MobileQuestionRibbon
+                  totalGridSize={totalGridSize}
+                  availableCount={availableCount}
+                  currentIndex={currentIndex}
+                  answers={answers}
+                  marked={marked}
+                  onGoTo={goTo}
+                  onOpenMap={() => setShowMobilePalette(true)}
                 />
               )}
 
@@ -1188,6 +1336,10 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                     onGoTo={goTo}
                     onUnavailableClick={handleUnavailableClick}
                     theme={theme}
+                    onSubmit={handleSubmit}
+                    onBack={onBack}
+                    reviewMode={reviewMode}
+                    isEvaluating={isEvaluating}
                   />
                 )}
 
@@ -1212,24 +1364,32 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                   animDir={dir}
                 />
               </div>
+
+              {/* Mobile Palette Bottom Sheet Modal */}
+              <MobilePaletteModal
+                isOpen={showMobilePalette}
+                onClose={() => setShowMobilePalette(false)}
+                totalGridSize={totalGridSize}
+                availableCount={availableCount}
+                currentIndex={currentIndex}
+                answers={answers}
+                marked={marked}
+                onGoTo={goTo}
+              />
             </>
           )}
         </main>
 
-        {!(examMode && isMobile) && totalPool > 0 && (
+        {/* Mobile-only bottom submit bar */}
+        {isMobile && !(examMode && isMobile) && totalPool > 0 && (
           <div className="submit-bar">
             <div className="submit-left">
               <div className="submit-icon">
-                <AppIcon name={reviewMode ? 'reviewAnswers' : 'submit'} size={20} />
+                <AppIcon name={reviewMode ? 'reviewAnswers' : 'submit'} size={18} />
               </div>
               <div>
                 <div className="submit-title">
-                  {reviewMode ? 'Review complete' : `Session progress: ${answeredCount} of ${availableCount} answered`}
-                </div>
-                <div className="submit-sub">
-                  {reviewMode
-                    ? 'You can go back to your results at any time.'
-                    : 'Submit your test when ready to view detailed performance metrics.'}
+                  {reviewMode ? 'Review complete' : `${answeredCount} of ${availableCount} answered`}
                 </div>
               </div>
             </div>
@@ -1239,7 +1399,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
               onClick={reviewMode ? onBack : handleSubmit}
               disabled={isEvaluating}
             >
-              <AppIcon name={reviewMode ? 'back' : 'send'} size={16} />
+              <AppIcon name={reviewMode ? 'back' : 'send'} size={15} />
               {reviewMode ? 'Back to Results' : 'Submit Test'}
             </button>
           </div>

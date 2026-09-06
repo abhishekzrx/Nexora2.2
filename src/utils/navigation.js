@@ -44,6 +44,7 @@ function loadSavedSession() {
         result: parsed.result || null,
         timeTakenSeconds: parsed.timeTakenSeconds || 0,
         attemptHistoryData: parsed.attemptHistoryData || [],
+        questions: parsed.questions || null,
       }
     }
   } catch {
@@ -67,8 +68,8 @@ export const testSession = {
   mode: saved?.mode || 'practice', // 'practice' | 'review'
   result: saved?.result || null,
   timeTakenSeconds: saved?.timeTakenSeconds || 0,
-  attemptHistoryData: [],
-  questions: null,
+  attemptHistoryData: saved?.attemptHistoryData || [],
+  questions: saved?.questions || null,
 
   save() {
     try {
@@ -83,6 +84,8 @@ export const testSession = {
           mode: this.mode,
           result: this.result,
           timeTakenSeconds: this.timeTakenSeconds,
+          attemptHistoryData: this.attemptHistoryData,
+          questions: this.questions,
         })
       )
     } catch {
