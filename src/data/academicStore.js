@@ -109,12 +109,51 @@ let examinations = [
     order: 2,
     classes: [
       {
+        id: 'cbse-c9',
+        name: 'Class 9',
+        status: 'active',
+        locked: false,
+        archived: false,
+        order: 1,
+        subjects: [
+          {
+            id: 'cbse-c9-sci',
+            name: 'Science',
+            shortCode: 'SCI',
+            icon: 'physics',
+            status: 'active',
+            locked: false,
+            archived: false,
+            order: 1,
+            chapters: [
+              { id: 'cbse-c9-sci-1', name: 'Matter in Our Surroundings', number: 1, status: 'published', locked: false, difficulty: 'Easy', estMinutes: 45, lastUpdated: '2026-08-10', mcqs: 20, flashcards: 12, notes: 2 },
+              { id: 'cbse-c9-sci-2', name: 'Is Matter Around Us Pure', number: 2, status: 'published', locked: false, difficulty: 'Medium', estMinutes: 50, lastUpdated: '2026-08-11', mcqs: 18, flashcards: 10, notes: 1 },
+              { id: 'cbse-c9-sci-3', name: 'Atoms and Molecules', number: 3, status: 'published', locked: false, difficulty: 'Hard', estMinutes: 60, lastUpdated: '2026-08-12', mcqs: 25, flashcards: 15, notes: 2 },
+            ],
+          },
+          {
+            id: 'cbse-c9-math',
+            name: 'Mathematics',
+            shortCode: 'MATH',
+            icon: 'computer',
+            status: 'active',
+            locked: false,
+            archived: false,
+            order: 2,
+            chapters: [
+              { id: 'cbse-c9-math-1', name: 'Number Systems', number: 1, status: 'published', locked: false, difficulty: 'Easy', estMinutes: 40, lastUpdated: '2026-08-10', mcqs: 20, flashcards: 10, notes: 1 },
+              { id: 'cbse-c9-math-2', name: 'Polynomials', number: 2, status: 'published', locked: false, difficulty: 'Medium', estMinutes: 55, lastUpdated: '2026-08-11', mcqs: 22, flashcards: 12, notes: 2 },
+            ],
+          },
+        ],
+      },
+      {
         id: 'cbse-c10',
         name: 'Class 10',
         status: 'active',
         locked: false,
         archived: false,
-        order: 1,
+        order: 2,
         subjects: [
           {
             id: 'cbse-c10-ph',

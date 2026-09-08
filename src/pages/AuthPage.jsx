@@ -13,8 +13,8 @@ export default function AuthPage({
   onLoginSuccess,
   onSignupSuccess,
 }) {
-  const [username, setUsername] = useState('adminalpha')
-  const [password, setPassword] = useState('Alpha@123')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
   // Signup fields
@@ -45,8 +45,8 @@ export default function AuthPage({
     setIsLoading(false)
 
     if (mode === 'login') {
-      setUsername('adminalpha')
-      setPassword('Alpha@123')
+      setUsername('')
+      setPassword('')
     } else {
       setSignupName('')
       setSignupUsername('')
@@ -83,7 +83,7 @@ export default function AuthPage({
 
       if (!memberRes.success || !memberRes.data) {
         setIsLoading(false)
-        setErrorMessage(`Account "${trimmedUser}" not found. Try adminalpha or MEMBER01.`)
+        setErrorMessage(`Account "${trimmedUser}" not found. Please verify your credentials.`)
         return
       }
 
@@ -238,7 +238,7 @@ export default function AuthPage({
                       name="username"
                       type="text"
                       autoComplete="username"
-                      placeholder="e.g. adminalpha or MEMBER01"
+                      placeholder="Enter your email or username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       onFocus={() => setIsInputFocused(true)}

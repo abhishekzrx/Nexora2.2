@@ -131,6 +131,82 @@ export const SEED_MEMBERS = [
     updated_at: '2026-01-19T00:00:00.000Z',
     last_active_at: new Date().toISOString(),
   },
+  {
+    id: 'usr_member_06_ansh',
+    username: 'ansh09',
+    public_user_id: 'NEX-WAR-006',
+    warrior_name: 'THUNDERFANG',
+    display_name: 'Ansh',
+    email: 'ansh@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_courses: ['cbse-9', 'cbse-c9', 'cbse-class-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-01T00:00:00.000Z',
+    updated_at: '2026-02-01T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_07_abhinash',
+    username: 'abhinash09',
+    public_user_id: 'NEX-WAR-007',
+    warrior_name: 'BLAZELION',
+    display_name: 'Abhinash',
+    email: 'abhinash@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_courses: ['cbse-9', 'cbse-c9', 'cbse-class-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-02T00:00:00.000Z',
+    updated_at: '2026-02-02T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_08_sahil',
+    username: 'sahil09',
+    public_user_id: 'NEX-WAR-008',
+    warrior_name: 'FROSTDRAGON',
+    display_name: 'Sahil',
+    email: 'sahil@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_courses: ['cbse-9', 'cbse-c9', 'cbse-class-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-03T00:00:00.000Z',
+    updated_at: '2026-02-03T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_09_ankit',
+    username: 'ankit10',
+    public_user_id: 'NEX-WAR-009',
+    warrior_name: 'CYBERSHARK',
+    display_name: 'Ankit',
+    email: 'ankit@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_courses: ['cbse-10', 'cbse-c10', 'cbse-class-10'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-04T00:00:00.000Z',
+    updated_at: '2026-02-04T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
 ]
 
 let memoryMembers = [...SEED_MEMBERS]
@@ -142,6 +218,13 @@ function getLocalMembers() {
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((p) => p.id || p.username))
+          const missing = SEED_MEMBERS.filter((s) => !existingIds.has(s.id) && !existingIds.has(s.username))
+          if (missing.length > 0) {
+            const merged = [...parsed, ...missing]
+            saveLocalMembers(merged)
+            return merged
+          }
           memoryMembers = parsed
           return parsed
         }
@@ -199,9 +282,11 @@ export const memberService = {
     const found = all.find(
       (m) =>
         m.id === idOrUsername ||
-        String(m.username).toLowerCase() === clean ||
-        String(m.public_user_id).toLowerCase() === clean ||
-        String(m.warrior_name).toLowerCase() === clean
+        String(m.username || '').toLowerCase() === clean ||
+        String(m.email || '').toLowerCase() === clean ||
+        String(m.display_name || '').toLowerCase() === clean ||
+        String(m.public_user_id || '').toLowerCase() === clean ||
+        String(m.warrior_name || '').toLowerCase() === clean
     )
 
     if (found) return { success: true, data: found }
