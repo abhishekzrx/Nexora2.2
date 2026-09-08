@@ -23,12 +23,15 @@ export default function AuthPage({
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Signup fields (Optimized for 5-10 second fast creation)
+  // Signup fields (Academic Fast Registration)
   const [signupName, setSignupName] = useState('')
   const [signupCourseId, setSignupCourseId] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
+  const [signupUsername, setSignupUsername] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false)
 
   // Status & UI state
   const [errorMessage, setErrorMessage] = useState('')
@@ -60,20 +63,22 @@ export default function AuthPage({
     }
   }, [activeCourses, signupCourseId])
 
-  // Reset form messages on mode switch
+  // Auto-fill suggested username when name is entered if username hasn't been manually edited
+  const handleNameChange = (val) => {
+    setSignupName(val)
+    if (!signupUsername || signupUsername.startsWith('STU_')) {
+      const base = val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8)
+      if (base) {
+        setSignupUsername(`STU_${base}`)
+      }
+    }
+  }
+
+  // Reset error/success messages on mode switch
   useEffect(() => {
     setErrorMessage('')
     setSuccessMessage('')
     setIsLoading(false)
-
-    if (localMode === 'login') {
-      setUsername('')
-      setPassword('')
-    } else {
-      setSignupName('')
-      setSignupEmail('')
-      setSignupPassword('')
-    }
   }, [localMode])
 
   const handleSwitchToLogin = () => {
@@ -133,7 +138,7 @@ export default function AuthPage({
     }
   }
 
-  // Handle Signup Submit (Fast 5-10 second flow)
+  // Handle Signup Submit (Fast Academic Registration Flow)
   const handleSignupSubmit = async (e) => {
     e.preventDefault()
     if (isLoading) return
@@ -141,7 +146,9 @@ export default function AuthPage({
     const trimmedName = signupName.trim()
     const trimmedCourse = signupCourseId || (activeCourses[0]?.id || 'cbse-10')
     const trimmedEmail = signupEmail.trim().toLowerCase()
+    let trimmedUser = signupUsername.trim().toUpperCase()
     const trimmedPass = signupPassword.trim()
+    const trimmedConfirmPass = signupConfirmPassword.trim()
 
     if (!trimmedName) {
       setErrorMessage('Please enter your full name.')
@@ -149,7 +156,7 @@ export default function AuthPage({
     }
 
     if (!trimmedCourse) {
-      setErrorMessage('Please choose your academic class.')
+      setErrorMessage('Please choose your academic course / class.')
       return
     }
 
@@ -164,14 +171,20 @@ export default function AuthPage({
       return
     }
 
+    if (!trimmedUser) {
+      const base = trimmedName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) || 'STU'
+      trimmedUser = `${base}${Date.now().toString().slice(-4)}`
+    }
+
     if (!trimmedPass || trimmedPass.length < 6) {
       setErrorMessage('Password must be at least 6 characters.')
       return
     }
 
-    // Auto-derive unique username in background from name / email
-    const baseUsername = trimmedName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) || 'STU'
-    const generatedUsername = `${baseUsername}${Date.now().toString().slice(-4)}`
+    if (trimmedPass !== trimmedConfirmPass) {
+      setErrorMessage('Passwords do not match. Please re-enter.')
+      return
+    }
 
     setIsLoading(true)
     setErrorMessage('')
@@ -182,7 +195,7 @@ export default function AuthPage({
         name: trimmedName,
         courseId: trimmedCourse,
         email: trimmedEmail,
-        username: generatedUsername,
+        username: trimmedUser,
         password: trimmedPass,
       })
 
@@ -234,7 +247,7 @@ export default function AuthPage({
     <div className="alpha-auth-root">
       <div className="alpha-scene">
         <div className="alpha-card">
-          {/* Floating Logo with Glow & Heartbeat */}
+          {/* Logo inside the card at the top */}
           <div
             className={`logo-wrap${focusedField ? ' active' : ''}`}
             id="logoWrap"
@@ -243,13 +256,6 @@ export default function AuthPage({
             <div className="logo-glow"></div>
             <img className="logo-img" src="/alpha-logo.png" alt="Nexora Alpha" />
           </div>
-
-          <h1>{isSignup ? 'Create Account' : 'Welcome Back'}</h1>
-          <p className="subtext">
-            {isSignup
-              ? 'Get your student profile ready in 5–10 seconds'
-              : 'Sign in to access your course notes, MCQs & analytics'}
-          </p>
 
           {/* Feedback messages */}
           {errorMessage && (
@@ -322,11 +328,11 @@ export default function AuthPage({
               </>
             ) : (
               <>
-                {/* 1-Click Academic Class Selection */}
+                {/* 1. Academic Track / Class Dynamic Selection */}
                 <div className="alpha-class-section">
                   <div className="alpha-class-section-header">
-                    <span className="alpha-class-section-title">Select Your Class / Stream</span>
-                    <span className="alpha-class-section-badge">1-Click Choose</span>
+                    <span className="alpha-class-section-title">🎓 Academic Course / Class</span>
+                    <span className="alpha-class-section-badge">{activeCourses.length} Available</span>
                   </div>
                   <div className="alpha-class-grid">
                     {activeCourses.map((course) => {
@@ -363,7 +369,7 @@ export default function AuthPage({
                   </div>
                 </div>
 
-                {/* Full Name */}
+                {/* 2. Full Name */}
                 <div className="field">
                   <label htmlFor="signupName">Full Name</label>
                   <div className={`field-input-wrap${focusedField === 'signupName' ? ' focused' : ''}`}>
@@ -372,7 +378,7 @@ export default function AuthPage({
                       type="text"
                       placeholder="e.g. Abhishek Kumar"
                       value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
+                      onChange={(e) => handleNameChange(e.target.value)}
                       onFocus={() => setFocusedField('signupName')}
                       onBlur={() => setFocusedField(null)}
                       required
@@ -380,7 +386,7 @@ export default function AuthPage({
                   </div>
                 </div>
 
-                {/* Email Address */}
+                {/* 3. Email Address */}
                 <div className="field">
                   <label htmlFor="signupEmail">Email Address</label>
                   <div className={`field-input-wrap${focusedField === 'signupEmail' ? ' focused' : ''}`}>
@@ -397,29 +403,76 @@ export default function AuthPage({
                   </div>
                 </div>
 
-                {/* Password */}
+                {/* 4. Username */}
                 <div className="field">
-                  <label htmlFor="signupPassword">Password</label>
-                  <div className={`field-input-wrap${focusedField === 'signupPassword' ? ' focused' : ''}`}>
+                  <label htmlFor="signupUsername">
+                    <span>Username</span>
+                    <span className="field-label-hint">Auto-suggested</span>
+                  </label>
+                  <div className={`field-input-wrap${focusedField === 'signupUsername' ? ' focused' : ''}`}>
                     <input
-                      id="signupPassword"
-                      type={showSignupPassword ? 'text' : 'password'}
-                      placeholder="Min 6 characters"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      onFocus={() => setFocusedField('signupPassword')}
+                      id="signupUsername"
+                      type="text"
+                      placeholder="e.g. STU_ABHISHEK"
+                      value={signupUsername}
+                      onChange={(e) => setSignupUsername(e.target.value)}
+                      onFocus={() => setFocusedField('signupUsername')}
                       onBlur={() => setFocusedField(null)}
                       required
                     />
-                    <button
-                      type="button"
-                      className="field-toggle-btn"
-                      onClick={() => setShowSignupPassword((prev) => !prev)}
-                      aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={-1}
-                    >
-                      <AppIcon name={showSignupPassword ? 'visibilityOff' : 'visibility'} size={17} />
-                    </button>
+                  </div>
+                </div>
+
+                {/* 5. Password & 6. Confirm Password */}
+                <div className="field-grid-row">
+                  <div className="field">
+                    <label htmlFor="signupPassword">Password</label>
+                    <div className={`field-input-wrap${focusedField === 'signupPassword' ? ' focused' : ''}`}>
+                      <input
+                        id="signupPassword"
+                        type={showSignupPassword ? 'text' : 'password'}
+                        placeholder="Min 6 chars"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        onFocus={() => setFocusedField('signupPassword')}
+                        onBlur={() => setFocusedField(null)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="field-toggle-btn"
+                        onClick={() => setShowSignupPassword((prev) => !prev)}
+                        aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                        tabIndex={-1}
+                      >
+                        <AppIcon name={showSignupPassword ? 'visibilityOff' : 'visibility'} size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="signupConfirmPassword">Confirm Password</label>
+                    <div className={`field-input-wrap${focusedField === 'signupConfirmPassword' ? ' focused' : ''}`}>
+                      <input
+                        id="signupConfirmPassword"
+                        type={showSignupConfirmPassword ? 'text' : 'password'}
+                        placeholder="Re-enter password"
+                        value={signupConfirmPassword}
+                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                        onFocus={() => setFocusedField('signupConfirmPassword')}
+                        onBlur={() => setFocusedField(null)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="field-toggle-btn"
+                        onClick={() => setShowSignupConfirmPassword((prev) => !prev)}
+                        aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                        tabIndex={-1}
+                      >
+                        <AppIcon name={showSignupConfirmPassword ? 'visibilityOff' : 'visibility'} size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>
@@ -478,5 +531,6 @@ export default function AuthPage({
     </div>
   )
 }
+
 
 

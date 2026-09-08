@@ -454,7 +454,7 @@ function subscribe(listener) {
   }
 }
 
-function getSnapshot() {
+export function getSnapshot() {
   return snapshot
 }
 

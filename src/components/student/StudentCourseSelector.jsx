@@ -45,15 +45,17 @@ function StudentCourseSelector({ onSelect }) {
   }
 
   const courseDisplayName = (activeCourse?.name || 'SELECT COURSE').toUpperCase()
+  const hasMultipleCourses = visibleCourses.length > 1
 
   return (
     <div className="student-course-selector-wrap" ref={ref}>
       <button
         type="button"
-        className={`course-track-pill${open ? ' open' : ''}`}
-        onClick={() => setOpen(!open)}
-        title={activeCourse?.name || 'Switch Course Track'}
+        className={`course-track-pill${open ? ' open' : ''}${!hasMultipleCourses ? ' single-track' : ''}`}
+        onClick={() => hasMultipleCourses && setOpen(!open)}
+        title={activeCourse?.name || 'Academic Course Track'}
         aria-expanded={open}
+        style={!hasMultipleCourses ? { cursor: 'default' } : {}}
       >
         <div className="course-pill-left">
           <div className="course-pill-icon-box">
@@ -68,12 +70,16 @@ function StudentCourseSelector({ onSelect }) {
             </span>
           </div>
         </div>
-        <svg className={`course-pill-chevron${open ? ' rotate' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-        </svg>
+        {hasMultipleCourses ? (
+          <svg className={`course-pill-chevron${open ? ' rotate' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          </svg>
+        ) : (
+          <span style={{ fontSize: '12px', color: '#12B76A', fontWeight: 800, marginLeft: '6px' }} title="Enrolled Academic Track">✓</span>
+        )}
       </button>
 
-      {open && (
+      {open && hasMultipleCourses && (
         <div className="student-course-dropdown-menu">
           <div className="course-dropdown-header">
             <span className="course-dropdown-title">Switch Active Course</span>

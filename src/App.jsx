@@ -11,7 +11,7 @@ import AuthPage from './pages/AuthPage'
 import AccessRestrictedCard from './components/common/AccessRestrictedCard'
 import { navigate, parseHash, testSession, subjectTabs } from './utils/navigation'
 import { switchToAdmin, switchToStudent, useRoleStore } from './data/roleStore'
-import { useWorkspaceStore, hydrateWorkspacesFromSupabase } from './data/workspaceStore'
+import { useWorkspaceStore, hydrateWorkspacesFromSupabase, setActiveWorkspace } from './data/workspaceStore'
 import { hydrateAdminStoreFromSupabase } from './data/adminStore'
 import { useMemberStore, exitViewAsMember, clearMemberSession } from './data/memberStore'
 import { permissionService } from './services/permissionService'
@@ -33,7 +33,14 @@ function resolveRoute() {
 
   if (parts[0] === 'signup') return { name: 'signup' }
 
-  if (parts[0] === 'subjects') return { name: 'subjects' }
+  if (parts[0] === 'course' && parts[1]) {
+    return { name: 'course', courseId: parts[1] }
+  }
+
+  if (parts[0] === 'subjects') {
+    if (parts[1]) return { name: 'subjects', courseId: parts[1] }
+    return { name: 'subjects' }
+  }
 
   if (parts[0] === 'practice') return { name: 'practice' }
 
@@ -142,6 +149,18 @@ function App() {
     }
   }, [route, activeRole, isAuthenticated, effectiveMember])
 
+  // Session Consistency & Course Context Sync:
+  // If student is assigned to Course A but active workspace is different or unassigned, sync it!
+  useEffect(() => {
+    if (!isAuthenticated || !effectiveMember) return
+    if (permissionService.isSuperAdmin(effectiveMember)) return
+
+    const assignedId = effectiveMember.assigned_course_id || (Array.isArray(effectiveMember.assigned_courses) ? effectiveMember.assigned_courses[0] : null)
+    if (assignedId && assignedId !== '*' && (!activeWorkspaceId || !permissionService.canAccessCourse(effectiveMember, activeWorkspaceId))) {
+      setActiveWorkspace(assignedId)
+    }
+  }, [isAuthenticated, effectiveMember, activeWorkspaceId])
+
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -200,7 +219,20 @@ function App() {
     )
   }
 
-  const { name, subjectKey, chapterId } = route
+  const { name, subjectKey, chapterId, courseId: routeCourseId } = route
+
+  // Direct Route Protection: Direct Course URL Access Guard
+  if ((name === 'course' || (name === 'subjects' && routeCourseId)) && routeCourseId) {
+    if (!permissionService.canAccessCourse(effectiveMember, routeCourseId)) {
+      return (
+        <AccessRestrictedCard
+          title="Access Restricted"
+          message="This academic content belongs to another course track."
+          onReturnDashboard={() => navigate('')}
+        />
+      )
+    }
+  }
 
   // Layer 2 Security Guard: Admin Route Protection
   if (name === 'admin') {
@@ -229,8 +261,31 @@ function App() {
     if (!permissionService.canAccessSubject(effectiveMember, activeWorkspaceId, subjectKey)) {
       return (
         <AccessRestrictedCard
-          title="Course Access Restricted"
-          message="Your student profile is not assigned to access this course or subject. Please select an allowed course."
+          title="Access Restricted"
+          message="This academic content belongs to another course track."
+          onReturnDashboard={() => navigate('')}
+        />
+      )
+    }
+  }
+
+  // Layer 2 Security Guard: MCQ / Practice / Review / Results Chapter-Level Permission Protection
+  if ((name === 'mcq' || name === 'review' || name === 'results') && subjectKey) {
+    if (!permissionService.canAccessSubject(effectiveMember, activeWorkspaceId, subjectKey)) {
+      return (
+        <AccessRestrictedCard
+          title="Access Restricted"
+          message="This academic practice module belongs to another course track."
+          onReturnDashboard={() => navigate('')}
+        />
+      )
+    }
+
+    if (chapterId && !permissionService.canAccessChapter(effectiveMember, activeWorkspaceId, subjectKey, chapterId)) {
+      return (
+        <AccessRestrictedCard
+          title="Access Restricted"
+          message="This chapter practice module belongs to another course track."
           onReturnDashboard={() => navigate('')}
         />
       )
@@ -238,6 +293,23 @@ function App() {
   }
 
   const renderMainContent = () => {
+    // Layer 2 Guard: Active Course Access Protection
+    if (!permissionService.canAccessCourse(effectiveMember, activeWorkspaceId)) {
+      return (
+        <AccessRestrictedCard
+          title="Access Restricted"
+          message="This academic course track is not assigned to your student profile."
+          onReturnDashboard={() => {
+            const assigned = effectiveMember?.assigned_course_id || (Array.isArray(effectiveMember?.assigned_courses) ? effectiveMember?.assigned_courses[0] : null)
+            if (assigned && assigned !== '*') {
+              setActiveWorkspace(assigned)
+            }
+            navigate('')
+          }}
+        />
+      )
+    }
+
     if (name === 'subjects') {
       return (
         <SubjectsPage

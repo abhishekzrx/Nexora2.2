@@ -76,7 +76,7 @@ export default function AccessRestrictedCard({
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            ← Return to Allowed Dashboard
+            ← Back to My Course
           </button>
 
           {showContactAdmin && (
