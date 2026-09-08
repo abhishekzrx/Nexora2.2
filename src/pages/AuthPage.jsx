@@ -23,15 +23,19 @@ export default function AuthPage({
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Signup fields (Academic Fast Registration)
+  // Signup fields (Academic Fast Registration with Mobile SMS OTP)
+  const [signupStep, setSignupStep] = useState('form') // 'form' | 'otp'
   const [signupName, setSignupName] = useState('')
   const [signupCourseId, setSignupCourseId] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPhone, setSignupPhone] = useState('')
+  const [signupDisplayPhone, setSignupDisplayPhone] = useState('')
   const [signupUsername, setSignupUsername] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   // Status & UI state
   const [errorMessage, setErrorMessage] = useState('')
@@ -40,6 +44,7 @@ export default function AuthPage({
   const [focusedField, setFocusedField] = useState(null)
 
   const timerRef = useRef(null)
+  const cooldownTimerRef = useRef(null)
 
   useEffect(() => {
     hydrateWorkspacesFromSupabase().catch(() => {})
@@ -48,12 +53,33 @@ export default function AuthPage({
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current)
     }
   }, [])
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      cooldownTimerRef.current = setInterval(() => {
+        setResendCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownTimerRef.current)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => {
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current)
+    }
+  }, [resendCooldown])
 
   // Sync mode prop when changed externally (via hash routing #/login vs #/signup)
   useEffect(() => {
     setLocalMode(mode)
+    setSignupStep('form')
+    setOtpCode('')
   }, [mode])
 
   // Pre-select first course when courses load
@@ -79,15 +105,19 @@ export default function AuthPage({
     setErrorMessage('')
     setSuccessMessage('')
     setIsLoading(false)
+    setSignupStep('form')
+    setOtpCode('')
   }, [localMode])
 
   const handleSwitchToLogin = () => {
     setLocalMode('login')
+    setSignupStep('form')
     onGoLogin?.()
   }
 
   const handleSwitchToSignup = () => {
     setLocalMode('signup')
+    setSignupStep('form')
     onGoSignup?.()
   }
 
@@ -100,7 +130,7 @@ export default function AuthPage({
     const trimmedPassword = password.trim()
 
     if (!trimmedUser) {
-      setErrorMessage('Please enter your email or username.')
+      setErrorMessage('Please enter your mobile number, email, or username.')
       return
     }
 
@@ -138,14 +168,14 @@ export default function AuthPage({
     }
   }
 
-  // Handle Signup Submit (Fast Academic Registration Flow)
-  const handleSignupSubmit = async (e) => {
+  // Step 1: Send OTP to Mobile Number
+  const handleSendOtp = async (e) => {
     e.preventDefault()
     if (isLoading) return
 
     const trimmedName = signupName.trim()
     const trimmedCourse = signupCourseId || (activeCourses[0]?.id || 'cbse-10')
-    const trimmedEmail = signupEmail.trim().toLowerCase()
+    const trimmedPhone = signupPhone.trim()
     let trimmedUser = signupUsername.trim().toUpperCase()
     const trimmedPass = signupPassword.trim()
     const trimmedConfirmPass = signupConfirmPassword.trim()
@@ -160,20 +190,20 @@ export default function AuthPage({
       return
     }
 
-    if (!trimmedEmail) {
-      setErrorMessage('Please enter your email address.')
+    if (!trimmedPhone) {
+      setErrorMessage('Please enter your 10-digit mobile number.')
       return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(trimmedEmail)) {
-      setErrorMessage('Please enter a valid email address (e.g. name@domain.com).')
+    const digitsOnly = trimmedPhone.replace(/\D/g, '')
+    if (digitsOnly.length < 10) {
+      setErrorMessage('Please enter a valid 10-digit mobile number.')
       return
     }
 
     if (!trimmedUser) {
-      const base = trimmedName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) || 'STU'
-      trimmedUser = `${base}${Date.now().toString().slice(-4)}`
+      const base = trimmedName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6) || 'STU'
+      trimmedUser = `${base}${digitsOnly.slice(-4)}`
     }
 
     if (!trimmedPass || trimmedPass.length < 6) {
@@ -191,23 +221,65 @@ export default function AuthPage({
     setSuccessMessage('')
 
     try {
-      const createRes = await userService.createStudentProfile({
+      const otpRes = await userService.sendSignupOtp({
         name: trimmedName,
         courseId: trimmedCourse,
-        email: trimmedEmail,
+        phone: trimmedPhone,
         username: trimmedUser,
         password: trimmedPass,
       })
 
-      if (!createRes.success || !createRes.data) {
-        setIsLoading(false)
-        setErrorMessage(createRes.error || 'Failed to create account. Please try again.')
+      setIsLoading(false)
+
+      if (!otpRes.success) {
+        setErrorMessage(otpRes.error || 'Failed to send mobile verification code. Please try again.')
         return
       }
 
-      const newMember = createRes.data
+      setSignupDisplayPhone(otpRes.displayPhone || trimmedPhone)
+      setSignupStep('otp')
+      setResendCooldown(45)
+      setSuccessMessage(`SMS verification code sent to ${otpRes.displayPhone || trimmedPhone}!`)
+    } catch (err) {
       setIsLoading(false)
-      setSuccessMessage(`Account created! Entering ${newMember.display_name}'s classroom...`)
+      setErrorMessage(err.message || 'Failed to send SMS verification code.')
+    }
+  }
+
+  // Step 2: Verify OTP & Finalize Account Creation
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    if (isLoading) return
+
+    const trimmedOtp = otpCode.trim().replace(/\D/g, '')
+
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
+      setErrorMessage('Please enter the full 6-digit SMS verification code.')
+      return
+    }
+
+    setIsLoading(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      const verifyRes = await userService.verifySignupOtp({
+        phone: signupPhone.trim(),
+        otp: trimmedOtp,
+        name: signupName.trim(),
+        courseId: signupCourseId || (activeCourses[0]?.id || 'cbse-10'),
+        username: signupUsername.trim().toUpperCase(),
+      })
+
+      if (!verifyRes.success || !verifyRes.data) {
+        setIsLoading(false)
+        setErrorMessage(verifyRes.error || 'Invalid or expired SMS code. Please try again.')
+        return
+      }
+
+      const newMember = verifyRes.data
+      setIsLoading(false)
+      setSuccessMessage(`Mobile verified! Welcome to Nexora, ${newMember.display_name}! 🚀`)
 
       timerRef.current = setTimeout(() => {
         onSignupSuccess?.()
@@ -215,7 +287,27 @@ export default function AuthPage({
       }, 850)
     } catch (err) {
       setIsLoading(false)
-      setErrorMessage(err.message || 'Failed to register account.')
+      setErrorMessage(err.message || 'SMS verification failed.')
+    }
+  }
+
+  // Resend SMS OTP
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isLoading) return
+    setIsLoading(true)
+    setErrorMessage('')
+    try {
+      const res = await userService.resendSignupOtp({ phone: signupPhone.trim() })
+      setIsLoading(false)
+      if (res.success) {
+        setResendCooldown(45)
+        setSuccessMessage(`New SMS verification code sent to ${signupDisplayPhone || signupPhone}!`)
+      } else {
+        setErrorMessage(res.error || 'Failed to resend SMS.')
+      }
+    } catch (err) {
+      setIsLoading(false)
+      setErrorMessage(err.message || 'Failed to resend SMS.')
     }
   }
 
@@ -275,20 +367,26 @@ export default function AuthPage({
           {/* Form */}
           <form
             className="alpha-form"
-            onSubmit={isSignup ? handleSignupSubmit : handleLoginSubmit}
+            onSubmit={
+              isSignup
+                ? signupStep === 'otp'
+                  ? handleVerifyOtp
+                  : handleSendOtp
+                : handleLoginSubmit
+            }
           >
             {!isSignup ? (
               <>
-                {/* Email or Username */}
+                {/* Mobile / Email / Username */}
                 <div className="field">
-                  <label htmlFor="username">Email or Username</label>
+                  <label htmlFor="username">Mobile Number, Email or Username</label>
                   <div className={`field-input-wrap${focusedField === 'username' ? ' focused' : ''}`}>
                     <input
                       id="username"
                       name="username"
                       type="text"
                       autoComplete="username"
-                      placeholder="e.g. adminalpha or student@example.com"
+                      placeholder="e.g. 9876543210 or adminalpha"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       onFocus={() => setFocusedField('username')}
@@ -325,7 +423,85 @@ export default function AuthPage({
                     </button>
                   </div>
                 </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  className={`submit${isLoading ? ' loading' : ''}`}
+                  id="submitBtn"
+                  disabled={isLoading}
+                >
+                  {isLoading && <span className="spinner"></span>}
+                  <span className="btn-text">{isLoading ? 'Signing in...' : 'Log in'}</span>
+                </button>
               </>
+            ) : signupStep === 'otp' ? (
+              <div className="alpha-otp-container">
+                <div className="alpha-otp-badge">
+                  <AppIcon name="security" size={14} />
+                  <span>SMS VERIFICATION</span>
+                </div>
+                <h2 className="alpha-otp-title">Enter SMS Code</h2>
+                <p className="alpha-otp-subtitle">
+                  Enter the 6-digit SMS verification code sent to{' '}
+                  <span className="alpha-otp-highlight">{signupDisplayPhone || signupPhone}</span>
+                </p>
+
+                <div className="field">
+                  <div className={`field-input-wrap alpha-otp-input-wrap${focusedField === 'otpCode' ? ' focused' : ''}`}>
+                    <input
+                      id="otpCode"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      className="alpha-otp-input"
+                      placeholder="••••••"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onFocus={() => setFocusedField('otpCode')}
+                      onBlur={() => setFocusedField(null)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Verify Submit Button */}
+                <button
+                  type="submit"
+                  className={`submit${isLoading ? ' loading' : ''}`}
+                  id="verifyOtpBtn"
+                  disabled={isLoading || otpCode.length < 6}
+                >
+                  {isLoading && <span className="spinner"></span>}
+                  <span className="btn-text">
+                    {isLoading ? 'Verifying SMS Code...' : 'Verify & Create Account 🚀'}
+                  </span>
+                </button>
+
+                <div className="alpha-otp-footer">
+                  <button
+                    type="button"
+                    className="alpha-link-btn"
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0 || isLoading}
+                  >
+                    {resendCooldown > 0 ? `Resend SMS in ${resendCooldown}s` : 'Resend SMS'}
+                  </button>
+                  <span className="alpha-otp-dot">•</span>
+                  <button
+                    type="button"
+                    className="alpha-link-btn"
+                    onClick={() => {
+                      setSignupStep('form')
+                      setErrorMessage('')
+                    }}
+                  >
+                    Edit Mobile Number
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 {/* 1. Academic Track / Class Dynamic Selection */}
@@ -386,44 +562,30 @@ export default function AuthPage({
                   </div>
                 </div>
 
-                {/* 3. Email Address */}
+                {/* 3. Mobile Number */}
                 <div className="field">
-                  <label htmlFor="signupEmail">Email Address</label>
-                  <div className={`field-input-wrap${focusedField === 'signupEmail' ? ' focused' : ''}`}>
+                  <label htmlFor="signupPhone">Mobile Number (for SMS OTP)</label>
+                  <div className={`field-input-wrap alpha-phone-wrap${focusedField === 'signupPhone' ? ' focused' : ''}`}>
+                    <span className="alpha-phone-prefix">+91</span>
                     <input
-                      id="signupEmail"
-                      type="email"
-                      placeholder="student@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      onFocus={() => setFocusedField('signupEmail')}
+                      id="signupPhone"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={14}
+                      placeholder="98765 43210"
+                      value={signupPhone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d+ ]/g, '')
+                        setSignupPhone(val)
+                      }}
+                      onFocus={() => setFocusedField('signupPhone')}
                       onBlur={() => setFocusedField(null)}
                       required
                     />
                   </div>
                 </div>
 
-                {/* 4. Username */}
-                <div className="field">
-                  <label htmlFor="signupUsername">
-                    <span>Username</span>
-                    <span className="field-label-hint">Auto-suggested</span>
-                  </label>
-                  <div className={`field-input-wrap${focusedField === 'signupUsername' ? ' focused' : ''}`}>
-                    <input
-                      id="signupUsername"
-                      type="text"
-                      placeholder="e.g. STU_ABHISHEK"
-                      value={signupUsername}
-                      onChange={(e) => setSignupUsername(e.target.value)}
-                      onFocus={() => setFocusedField('signupUsername')}
-                      onBlur={() => setFocusedField(null)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Password & 6. Confirm Password */}
+                {/* 4. Password & Confirm Password */}
                 <div className="field-grid-row">
                   <div className="field">
                     <label htmlFor="signupPassword">Password</label>
@@ -475,27 +637,21 @@ export default function AuthPage({
                     </div>
                   </div>
                 </div>
+
+                {/* Send Mobile OTP Submit Button */}
+                <button
+                  type="submit"
+                  className={`submit${isLoading ? ' loading' : ''}`}
+                  id="sendOtpBtn"
+                  disabled={isLoading}
+                >
+                  {isLoading && <span className="spinner"></span>}
+                  <span className="btn-text">
+                    {isLoading ? 'Sending SMS OTP...' : 'Send Mobile OTP 📱'}
+                  </span>
+                </button>
               </>
             )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className={`submit${isLoading ? ' loading' : ''}`}
-              id="submitBtn"
-              disabled={isLoading}
-            >
-              {isLoading && <span className="spinner"></span>}
-              <span className="btn-text">
-                {isLoading
-                  ? isSignup
-                    ? 'Creating account...'
-                    : 'Signing in...'
-                  : isSignup
-                    ? 'Create Account & Start Learning 🚀'
-                    : 'Log in'}
-              </span>
-            </button>
           </form>
 
           {/* Mode Switch Footer Link */}

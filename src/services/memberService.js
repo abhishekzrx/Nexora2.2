@@ -278,12 +278,15 @@ export const memberService = {
     if (!idOrUsername) return { success: false, error: 'User ID or username required.' }
 
     const clean = String(idOrUsername).trim().toLowerCase()
+    const cleanDigits = clean.replace(/\D/g, '')
     const all = getLocalMembers()
     const found = all.find(
       (m) =>
         m.id === idOrUsername ||
         String(m.username || '').toLowerCase() === clean ||
         String(m.email || '').toLowerCase() === clean ||
+        String(m.phone || '').toLowerCase() === clean ||
+        (cleanDigits.length >= 10 && String(m.phone || '').replace(/\D/g, '').endsWith(cleanDigits.slice(-10))) ||
         String(m.display_name || '').toLowerCase() === clean ||
         String(m.public_user_id || '').toLowerCase() === clean ||
         String(m.warrior_name || '').toLowerCase() === clean
@@ -301,6 +304,7 @@ export const memberService = {
     username,
     display_name,
     email,
+    phone = null,
     assigned_courses = [],
     assigned_course_id = null,
     role = 'MEMBER',
@@ -325,6 +329,13 @@ export const memberService = {
     const cleanEmail = String(email || '').trim().toLowerCase()
     if (cleanEmail && all.some((m) => String(m.email || '').trim().toLowerCase() === cleanEmail)) {
       return { success: false, error: `Email "${cleanEmail}" is already registered. Please log in instead.` }
+    }
+
+    // Validate phone uniqueness if phone provided
+    const cleanPhone = String(phone || '').trim()
+    const phoneDigits = cleanPhone.replace(/\D/g, '')
+    if (phoneDigits.length >= 10 && all.some((m) => String(m.phone || '').replace(/\D/g, '').endsWith(phoneDigits.slice(-10)))) {
+      return { success: false, error: `Mobile number "${cleanPhone}" is already registered. Please log in instead.` }
     }
 
     // Validate or generate Public ID
@@ -359,7 +370,8 @@ export const memberService = {
       public_user_id: publicId,
       warrior_name: warriorName,
       display_name: display_name || cleanUsername,
-      email: cleanEmail || `${cleanUsername.toLowerCase()}@student.nexora.io`,
+      email: cleanEmail || (cleanPhone ? `${phoneDigits.slice(-10)}@student.nexora.io` : `${cleanUsername.toLowerCase()}@student.nexora.io`),
+      phone: cleanPhone || null,
       role,
       status,
       assigned_course_id: resolvedPrimaryCourseId,

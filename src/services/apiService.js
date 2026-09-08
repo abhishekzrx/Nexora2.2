@@ -40,31 +40,31 @@ async function request(endpoint, options = {}) {
     if (!res.ok) {
       const errText = await res.text()
       let errMsg = `HTTP Error ${res.status}: ${res.statusText}`
+      let rawJson = null
       try {
-        const json = JSON.parse(errText)
-        if (json.msg || json.message || json.error_description || json.error || json.hint) {
-          errMsg = json.msg || json.message || json.error_description || json.error || json.hint
+        rawJson = JSON.parse(errText)
+        if (rawJson.msg || rawJson.message || rawJson.error_description || rawJson.error || rawJson.hint) {
+          errMsg = rawJson.msg || rawJson.message || rawJson.error_description || rawJson.error || rawJson.hint
         }
       } catch {
-        // ignore
+        // ignore non-json
       }
-      return { success: false, error: errMsg }
+      return { success: false, error: errMsg, status: res.status, raw: rawJson, url }
     }
 
     // 204 No Content
     if (res.status === 204) {
-      return { success: true, data: null }
+      return { success: true, data: null, status: res.status }
     }
 
     const data = await res.json()
-    // If Supabase returns single row array for return=representation, unwrap or pass
-    return { success: true, data }
+    return { success: true, data, status: res.status }
   } catch (err) {
     clearTimeout(timer)
     if (err.name === 'AbortError') {
-      return { success: false, error: `Request timed out after ${env.timeoutMs}ms` }
+      return { success: false, error: `Request timed out after ${env.timeoutMs}ms`, status: 408, url }
     }
-    return { success: false, error: err.message || 'Network request failed' }
+    return { success: false, error: err.message || 'Network request failed', status: 0, url }
   }
 }
 

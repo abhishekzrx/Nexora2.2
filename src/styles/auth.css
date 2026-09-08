@@ -340,6 +340,25 @@
   box-shadow: 0 0 0 3px rgba(255, 116, 31, 0.22), 0 6px 20px -4px rgba(255, 116, 31, 0.25);
 }
 
+.alpha-phone-wrap {
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+
+.alpha-phone-prefix {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-light);
+  background: rgba(255, 116, 31, 0.12);
+  border: 1px solid rgba(255, 116, 31, 0.25);
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-right: 10px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
 .field input,
 .field select {
   width: 100%;
@@ -579,6 +598,128 @@ button.submit:focus-visible {
   color: #1a0c02;
   padding: 2px 7px;
   border-radius: 999px;
+}
+
+/* ── OTP Verification Step ─────────────────────────────────────────── */
+.alpha-otp-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeInOtp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInOtp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alpha-otp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(255, 116, 31, 0.12);
+  border: 1px solid rgba(255, 116, 31, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-light);
+  margin-bottom: 8px;
+}
+
+.alpha-otp-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+  color: var(--text-primary);
+}
+
+.alpha-otp-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 18px;
+  line-height: 1.45;
+  text-align: center;
+  max-width: 320px;
+}
+
+.alpha-otp-highlight {
+  color: #ffffff;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.alpha-otp-input-wrap {
+  border: 1.5px solid rgba(255, 116, 31, 0.35);
+  background: rgba(13, 18, 33, 0.95);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+.alpha-otp-input-wrap.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 116, 31, 0.25), 0 6px 20px rgba(255, 116, 31, 0.18);
+}
+
+.alpha-otp-input {
+  font-family: 'DM Sans', -apple-system, monospace;
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.35em !important;
+  text-align: center !important;
+  padding: 10px 14px !important;
+  color: #ffffff !important;
+  caret-color: var(--accent);
+}
+
+.alpha-otp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.alpha-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.alpha-link-btn:hover:not(:disabled) {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.alpha-link-btn:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.alpha-otp-dot {
+  color: var(--text-muted);
+  opacity: 0.5;
+  user-select: none;
 }
 
 /* ── Responsive Rules ──────────────────────────────────────────────── */
