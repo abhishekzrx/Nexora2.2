@@ -170,7 +170,11 @@ function App() {
         switchToStudent()
         navigate('')
       }}
-      onSignupSuccess={() => navigate('login')}
+      onSignupSuccess={() => {
+        setIsAuthenticated(true)
+        switchToStudent()
+        navigate('')
+      }}
     />
   )
 

@@ -297,10 +297,12 @@ export const memberService = {
    * Creates a new member profile (Unlimited members supported).
    */
   async createMember({
+    id = null,
     username,
     display_name,
     email,
     assigned_courses = [],
+    assigned_course_id = null,
     role = 'MEMBER',
     status = 'ACTIVE',
     custom_public_id = null,
@@ -317,6 +319,12 @@ export const memberService = {
 
     if (all.some((m) => String(m.username).toUpperCase() === cleanUsername)) {
       return { success: false, error: `Username "${cleanUsername}" is already taken.` }
+    }
+
+    // Validate email uniqueness if email provided
+    const cleanEmail = String(email || '').trim().toLowerCase()
+    if (cleanEmail && all.some((m) => String(m.email || '').trim().toLowerCase() === cleanEmail)) {
+      return { success: false, error: `Email "${cleanEmail}" is already registered. Please log in instead.` }
     }
 
     // Validate or generate Public ID
@@ -339,16 +347,23 @@ export const memberService = {
       warriorName = val.cleanName
     }
 
+    const resolvedCourses = Array.isArray(assigned_courses) && assigned_courses.length > 0
+      ? assigned_courses
+      : (assigned_course_id ? [assigned_course_id] : [])
+
+    const resolvedPrimaryCourseId = assigned_course_id || (resolvedCourses[0] || null)
+
     const newMember = {
-      id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      id: id || `usr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       username: cleanUsername,
       public_user_id: publicId,
       warrior_name: warriorName,
       display_name: display_name || cleanUsername,
-      email: email || `${cleanUsername.toLowerCase()}@student.nexora.io`,
+      email: cleanEmail || `${cleanUsername.toLowerCase()}@student.nexora.io`,
       role,
       status,
-      assigned_courses: Array.isArray(assigned_courses) ? assigned_courses : [],
+      assigned_course_id: resolvedPrimaryCourseId,
+      assigned_courses: resolvedCourses,
       permissions: {
         all_courses: role === 'SUPER_ADMIN',
         subject_overrides: {},

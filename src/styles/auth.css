@@ -37,7 +37,7 @@
 .alpha-scene {
   position: relative;
   width: 100%;
-  max-width: 410px;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -127,7 +127,103 @@
 .alpha-card .subtext {
   font-size: 13.5px;
   color: var(--text-muted);
-  margin: 0 0 28px;
+  margin: 0 0 24px;
+  line-height: 1.45;
+}
+
+/* ── 1-Click Academic Class Chips Grid ─────────────────────────────── */
+.alpha-class-section {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.alpha-class-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.alpha-class-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.alpha-class-section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-light);
+  background: rgba(255, 116, 31, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.alpha-class-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.alpha-class-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(13, 18, 33, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.alpha-class-chip:hover {
+  background: rgba(20, 28, 50, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.alpha-class-chip.active {
+  background: rgba(255, 116, 31, 0.16);
+  border-color: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(255, 116, 31, 0.22);
+}
+
+.alpha-class-chip-icon {
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.alpha-class-chip-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.alpha-class-chip-check {
+  display: flex;
+  align-items: center;
+  color: var(--accent-light);
+  flex-shrink: 0;
 }
 
 /* ── Form ──────────────────────────────────────────────────────────── */
@@ -135,7 +231,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .field {
@@ -145,10 +241,19 @@
 }
 
 .field label {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 12.5px;
   color: var(--text-muted);
-  margin-bottom: 7px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.field-label-hint {
+  font-size: 11px;
+  color: var(--accent-light);
   font-weight: 500;
 }
 
@@ -157,53 +262,97 @@
   display: flex;
   align-items: center;
   width: 100%;
+  background: rgba(13, 18, 33, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
 }
 
-.field input {
+.field-input-wrap:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(17, 24, 44, 0.92);
+}
+
+.field-input-wrap.focused {
+  border-color: var(--accent);
+  background: rgba(21, 29, 52, 0.98);
+  box-shadow: 0 0 0 3px rgba(255, 116, 31, 0.22), 0 6px 20px -4px rgba(255, 116, 31, 0.25);
+}
+
+.field input,
+.field select {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid var(--line);
-  color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15.5px;
-  padding: 6px 28px 10px 2px;
-  outline: none;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-primary) !important;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 13px 0;
+  outline: none !important;
   box-sizing: border-box;
+}
+
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.field select option {
+  background: #0d1222;
+  color: #f4f2ec;
+  padding: 10px;
+}
+
+.field-select-icon {
+  position: absolute;
+  right: 14px;
+  pointer-events: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
 }
 
 .field input::placeholder {
   color: rgba(255, 255, 255, 0.25);
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
-.field input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 1.5px 0 0 var(--accent);
+/* Crucial browser autofill background killer */
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus,
+.field input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0e1528 inset !important;
+  -webkit-text-fill-color: #f4f2ec !important;
+  caret-color: #ff741f !important;
+  border-radius: 11px !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 }
 
 .field-toggle-btn {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
+  margin-left: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.15s ease;
+  flex-shrink: 0;
 }
 
 .field-toggle-btn:hover {
   color: var(--accent-light);
 }
 
-/* ── Error Banner ─────────────────────────────────────────────────── */
+/* ── Error & Success Banners ───────────────────────────────────────── */
 .alpha-error-banner {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.35);
@@ -217,6 +366,9 @@
   gap: 8px;
   text-align: left;
   animation: fadeIn 0.2s ease-out;
+  margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .alpha-success-banner {
@@ -232,38 +384,51 @@
   gap: 8px;
   text-align: left;
   animation: fadeIn 0.2s ease-out;
+  margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Submit Button ─────────────────────────────────────────────────── */
 button.submit {
   position: relative;
-  margin-top: 10px;
+  margin-top: 6px;
   width: 100%;
   border: none;
   cursor: pointer;
-  padding: 15px 20px;
+  padding: 14px 20px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 55%, var(--accent-deep) 100%);
   color: #211004;
   font-family: 'DM Sans', sans-serif;
   font-weight: 700;
-  font-size: 15.5px;
+  font-size: 15px;
   letter-spacing: 0.01em;
   box-shadow: 0 14px 30px -8px rgba(255, 116, 31, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 50px;
+  min-height: 48px;
 }
 
-button.submit:hover {
+button.submit:hover:not(:disabled) {
   box-shadow: 0 16px 34px -6px rgba(255, 116, 31, 0.65), 0 2px 6px rgba(0, 0, 0, 0.35);
   transform: translateY(-1px);
 }
 
-button.submit:active {
-  transform: scale(0.97);
+button.submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button.submit:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
 }
 
 button.submit:focus-visible {
@@ -277,20 +442,21 @@ button.submit:focus-visible {
   border-radius: 50%;
   border: 2.5px solid rgba(33, 16, 4, 0.32);
   border-top-color: #211004;
-  display: none;
+  display: inline-block;
   animation: spin 0.7s linear infinite;
+  margin-right: 8px;
 }
-
-button.submit.loading .btn-text { display: none; }
-button.submit.loading .spinner { display: inline-block; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Mode Switch & Demo Profiles ───────────────────────────────────── */
+/* ── Mode Switch Footer ────────────────────────────────────────────── */
 .alpha-mode-switch {
-  margin-top: 20px;
-  font-size: 13px;
+  margin-top: 18px;
+  font-size: 13.5px;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .alpha-switch-btn {
@@ -299,10 +465,10 @@ button.submit.loading .spinner { display: inline-block; }
   color: var(--accent-light);
   font-weight: 700;
   cursor: pointer;
-  margin-left: 5px;
+  margin-left: 6px;
   padding: 0;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   transition: color 0.15s ease, text-decoration 0.15s ease;
 }
 
@@ -311,58 +477,50 @@ button.submit.loading .spinner { display: inline-block; }
   text-decoration: underline;
 }
 
-/* ── Quick Demo Profiles Toolbar ───────────────────────────────────── */
-.alpha-demo-section {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  width: 100%;
-}
-
-.alpha-demo-title {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-  display: block;
-}
-
-.alpha-demo-chips {
+/* ── Supreme Admin Quick Login Chip ───────────────────────────────── */
+.alpha-admin-badge {
+  margin-top: 18px;
+  padding: 10px 14px;
+  background: rgba(255, 116, 31, 0.08);
+  border: 1px dashed rgba(255, 116, 31, 0.35);
+  border-radius: 12px;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-}
-
-.alpha-chip-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  border-radius: 999px;
-  padding: 5px 11px;
-  font-size: 11.5px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  transition: all 0.15s ease;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.alpha-chip-btn:hover {
-  background: rgba(255, 116, 31, 0.15);
+.alpha-admin-badge:hover {
+  background: rgba(255, 116, 31, 0.16);
   border-color: var(--accent);
-  color: #fff;
   transform: translateY(-1px);
 }
 
-.alpha-chip-btn.active {
-  background: rgba(255, 116, 31, 0.22);
-  border-color: var(--accent);
-  color: var(--accent-light);
+.alpha-admin-badge-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alpha-admin-badge-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.alpha-admin-badge-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: #1a0c02;
+  padding: 2px 7px;
+  border-radius: 999px;
 }
 
 /* ── Responsive Rules ──────────────────────────────────────────────── */
@@ -373,17 +531,17 @@ button.submit.loading .spinner { display: inline-block; }
 
 @media (max-width: 420px) {
   .alpha-card {
-    padding: 72px 20px 28px;
+    padding: 68px 18px 24px;
     border-radius: 24px;
-    margin-top: 80px;
+    margin-top: 76px;
   }
   .logo-wrap {
-    top: -76px;
-    width: 112px;
-    height: 112px;
+    top: -72px;
+    width: 108px;
+    height: 108px;
   }
   .logo-img {
-    width: 80px;
-    height: 80px;
+    width: 76px;
+    height: 76px;
   }
 }

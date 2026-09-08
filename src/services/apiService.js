@@ -7,9 +7,16 @@
 import { env } from '../config/env.js'
 
 async function request(endpoint, options = {}) {
-  const baseUrl = env.apiUrl.replace(/\/+$/, '')
   const cleanEndpoint = endpoint.replace(/^\/+/, '')
-  const url = cleanEndpoint.startsWith('http') ? cleanEndpoint : `${baseUrl}/${cleanEndpoint}`
+  let url
+  if (cleanEndpoint.startsWith('http')) {
+    url = cleanEndpoint
+  } else if (cleanEndpoint.startsWith('auth/v1')) {
+    url = `${env.supabaseUrl.replace(/\/+$/, '')}/${cleanEndpoint}`
+  } else {
+    const baseUrl = env.apiUrl.replace(/\/+$/, '')
+    url = `${baseUrl}/${cleanEndpoint}`
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -35,8 +42,8 @@ async function request(endpoint, options = {}) {
       let errMsg = `HTTP Error ${res.status}: ${res.statusText}`
       try {
         const json = JSON.parse(errText)
-        if (json.message || json.error || json.hint) {
-          errMsg = json.message || json.error || json.hint
+        if (json.msg || json.message || json.error_description || json.error || json.hint) {
+          errMsg = json.msg || json.message || json.error_description || json.error || json.hint
         }
       } catch {
         // ignore

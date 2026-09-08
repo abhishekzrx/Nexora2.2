@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import AppIcon from '../components/ui/AppIcon'
 import '../styles/auth.css'
-import { memberService } from '../services/memberService'
-import { setActiveMember } from '../data/memberStore'
-import { clearUserProgressStore } from '../data/progressStore'
-import { clearAnalyticsStore } from '../data/analyticsStore'
+import { userService } from '../services/userService'
+import { useWorkspaceStore, hydrateWorkspacesFromSupabase } from '../data/workspaceStore'
 
 export default function AuthPage({
   mode = 'login',
@@ -13,25 +11,36 @@ export default function AuthPage({
   onLoginSuccess,
   onSignupSuccess,
 }) {
+  const [localMode, setLocalMode] = useState(mode)
+  const isSignup = localMode === 'signup'
+
+  // Workspace courses
+  const { workspaces } = useWorkspaceStore()
+  const activeCourses = workspaces.filter((w) => w.status !== 'archived' && w.status !== 'deleted')
+
+  // Login fields
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Signup fields
+  // Signup fields (Optimized for 5-10 second fast creation)
   const [signupName, setSignupName] = useState('')
-  const [signupUsername, setSignupUsername] = useState('')
+  const [signupCourseId, setSignupCourseId] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
-  const [signupConfirm, setSignupConfirm] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
 
   // Status & UI state
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isInputFocused, setIsInputFocused] = useState(false)
+  const [focusedField, setFocusedField] = useState(null)
 
   const timerRef = useRef(null)
+
+  useEffect(() => {
+    hydrateWorkspacesFromSupabase().catch(() => {})
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -39,22 +48,43 @@ export default function AuthPage({
     }
   }, [])
 
+  // Sync mode prop when changed externally (via hash routing #/login vs #/signup)
+  useEffect(() => {
+    setLocalMode(mode)
+  }, [mode])
+
+  // Pre-select first course when courses load
+  useEffect(() => {
+    if (!signupCourseId && activeCourses.length > 0) {
+      setSignupCourseId(activeCourses[0].id)
+    }
+  }, [activeCourses, signupCourseId])
+
+  // Reset form messages on mode switch
   useEffect(() => {
     setErrorMessage('')
     setSuccessMessage('')
     setIsLoading(false)
 
-    if (mode === 'login') {
+    if (localMode === 'login') {
       setUsername('')
       setPassword('')
     } else {
       setSignupName('')
-      setSignupUsername('')
       setSignupEmail('')
       setSignupPassword('')
-      setSignupConfirm('')
     }
-  }, [mode])
+  }, [localMode])
+
+  const handleSwitchToLogin = () => {
+    setLocalMode('login')
+    onGoLogin?.()
+  }
+
+  const handleSwitchToSignup = () => {
+    setLocalMode('signup')
+    onGoSignup?.()
+  }
 
   // Handle Login Submit
   const handleLoginSubmit = async (e) => {
@@ -76,66 +106,50 @@ export default function AuthPage({
 
     setIsLoading(true)
     setErrorMessage('')
+    setSuccessMessage('')
 
     try {
-      const cleanLookup = trimmedUser.toLowerCase() === 'student01' ? 'adminalpha' : trimmedUser
-      const memberRes = await memberService.getMemberById(cleanLookup)
+      const authRes = await userService.authenticateUser({
+        identifier: trimmedUser,
+        password: trimmedPassword,
+      })
 
-      if (!memberRes.success || !memberRes.data) {
+      if (!authRes.success || !authRes.data) {
         setIsLoading(false)
-        setErrorMessage(`Account "${trimmedUser}" not found. Please verify your credentials.`)
+        setErrorMessage(authRes.error || 'Authentication failed. Please verify your credentials.')
         return
       }
 
-      const member = memberRes.data
-
-      if (member.status === 'ARCHIVED') {
-        setIsLoading(false)
-        setErrorMessage('This account is archived and inactive. Contact Super Admin.')
-        return
-      }
-
-      if (member.status === 'DISABLED') {
-        setIsLoading(false)
-        setErrorMessage('This account is currently disabled. Contact Super Admin.')
-        return
-      }
-
-      // Clear user stores before binding new user
-      clearUserProgressStore()
-      clearAnalyticsStore()
-
-      // Bind member session
-      setActiveMember(member)
+      const member = authRes.data
+      setIsLoading(false)
+      setSuccessMessage(`Welcome back, ${member.display_name || member.username}!`)
 
       timerRef.current = setTimeout(() => {
-        setIsLoading(false)
         onLoginSuccess?.()
-      }, 950)
+      }, 700)
     } catch (err) {
       setIsLoading(false)
-      setErrorMessage(err.message || 'Login failed. Please try again.')
+      setErrorMessage(err.message || 'Login failed. Please check network connection.')
     }
   }
 
-  // Handle Signup Submit
+  // Handle Signup Submit (Fast 5-10 second flow)
   const handleSignupSubmit = async (e) => {
     e.preventDefault()
     if (isLoading) return
 
     const trimmedName = signupName.trim()
-    const trimmedUser = signupUsername.trim().toUpperCase()
-    const trimmedEmail = signupEmail.trim()
+    const trimmedCourse = signupCourseId || (activeCourses[0]?.id || 'cbse-10')
+    const trimmedEmail = signupEmail.trim().toLowerCase()
     const trimmedPass = signupPassword.trim()
-    const trimmedConfirm = signupConfirm.trim()
 
     if (!trimmedName) {
       setErrorMessage('Please enter your full name.')
       return
     }
 
-    if (!trimmedUser) {
-      setErrorMessage('Please choose a username.')
+    if (!trimmedCourse) {
+      setErrorMessage('Please choose your academic class.')
       return
     }
 
@@ -144,49 +158,77 @@ export default function AuthPage({
       return
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Please enter a valid email address (e.g. name@domain.com).')
+      return
+    }
+
     if (!trimmedPass || trimmedPass.length < 6) {
       setErrorMessage('Password must be at least 6 characters.')
       return
     }
 
-    if (trimmedPass !== trimmedConfirm) {
-      setErrorMessage('Passwords do not match.')
-      return
-    }
+    // Auto-derive unique username in background from name / email
+    const baseUsername = trimmedName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8) || 'STU'
+    const generatedUsername = `${baseUsername}${Date.now().toString().slice(-4)}`
 
     setIsLoading(true)
     setErrorMessage('')
+    setSuccessMessage('')
 
     try {
-      const createRes = await memberService.createMember({
-        username: trimmedUser,
-        display_name: trimmedName,
+      const createRes = await userService.createStudentProfile({
+        name: trimmedName,
+        courseId: trimmedCourse,
         email: trimmedEmail,
-        assigned_courses: ['bpsc_prelims'],
-        role: 'MEMBER',
-        status: 'ACTIVE',
+        username: generatedUsername,
+        password: trimmedPass,
       })
 
-      if (!createRes.success) {
+      if (!createRes.success || !createRes.data) {
         setIsLoading(false)
-        setErrorMessage(createRes.error || 'Failed to create account.')
+        setErrorMessage(createRes.error || 'Failed to create account. Please try again.')
         return
       }
 
+      const newMember = createRes.data
       setIsLoading(false)
-      setSuccessMessage(`Account "${trimmedUser}" created! Redirecting to login...`)
+      setSuccessMessage(`Account created! Entering ${newMember.display_name}'s classroom...`)
 
       timerRef.current = setTimeout(() => {
         onSignupSuccess?.()
-        onGoLogin?.()
-      }, 1200)
+        onLoginSuccess?.()
+      }, 850)
     } catch (err) {
       setIsLoading(false)
       setErrorMessage(err.message || 'Failed to register account.')
     }
   }
 
-  const isSignup = mode === 'signup'
+  // Quick Supreme Admin Login Trigger
+  const handleSupremeAdminQuickLogin = async () => {
+    setIsLoading(true)
+    setErrorMessage('')
+    try {
+      const res = await userService.authenticateUser({
+        identifier: 'adminalpha',
+        password: 'password',
+      })
+      if (res.success) {
+        setSuccessMessage('Supreme Alpha Admin verified. Loading console...')
+        timerRef.current = setTimeout(() => {
+          onLoginSuccess?.()
+        }, 600)
+      } else {
+        setIsLoading(false)
+        setErrorMessage(res.error || 'Failed to authenticate Supreme Admin.')
+      }
+    } catch (err) {
+      setIsLoading(false)
+      setErrorMessage(err.message || 'Supreme Admin login error.')
+    }
+  }
 
   return (
     <div className="alpha-auth-root">
@@ -194,17 +236,19 @@ export default function AuthPage({
         <div className="alpha-card">
           {/* Floating Logo with Glow & Heartbeat */}
           <div
-            className={`logo-wrap${isInputFocused ? ' active' : ''}`}
+            className={`logo-wrap${focusedField ? ' active' : ''}`}
             id="logoWrap"
-            title="Nexora Alpha Portal"
+            title="Nexora Academic Portal"
           >
             <div className="logo-glow"></div>
-            <img className="logo-img" src="/alpha-logo.png" alt="Alpha" />
+            <img className="logo-img" src="/alpha-logo.png" alt="Nexora Alpha" />
           </div>
 
-          <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
+          <h1>{isSignup ? 'Create Account' : 'Welcome Back'}</h1>
           <p className="subtext">
-            {isSignup ? 'Join Nexora to begin your exam journey' : 'Sign in to continue'}
+            {isSignup
+              ? 'Get your student profile ready in 5–10 seconds'
+              : 'Sign in to access your course notes, MCQs & analytics'}
           </p>
 
           {/* Feedback messages */}
@@ -231,18 +275,18 @@ export default function AuthPage({
               <>
                 {/* Email or Username */}
                 <div className="field">
-                  <label htmlFor="username">Email or username</label>
-                  <div className="field-input-wrap">
+                  <label htmlFor="username">Email or Username</label>
+                  <div className={`field-input-wrap${focusedField === 'username' ? ' focused' : ''}`}>
                     <input
                       id="username"
                       name="username"
                       type="text"
                       autoComplete="username"
-                      placeholder="Enter your email or username"
+                      placeholder="e.g. adminalpha or student@example.com"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
+                      onFocus={() => setFocusedField('username')}
+                      onBlur={() => setFocusedField(null)}
                       required
                     />
                   </div>
@@ -251,7 +295,7 @@ export default function AuthPage({
                 {/* Password */}
                 <div className="field">
                   <label htmlFor="password">Password</label>
-                  <div className="field-input-wrap">
+                  <div className={`field-input-wrap${focusedField === 'password' ? ' focused' : ''}`}>
                     <input
                       id="password"
                       name="password"
@@ -260,8 +304,8 @@ export default function AuthPage({
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
                       required
                     />
                     <button
@@ -278,52 +322,76 @@ export default function AuthPage({
               </>
             ) : (
               <>
+                {/* 1-Click Academic Class Selection */}
+                <div className="alpha-class-section">
+                  <div className="alpha-class-section-header">
+                    <span className="alpha-class-section-title">Select Your Class / Stream</span>
+                    <span className="alpha-class-section-badge">1-Click Choose</span>
+                  </div>
+                  <div className="alpha-class-grid">
+                    {activeCourses.map((course) => {
+                      const isSelected = signupCourseId === course.id
+                      return (
+                        <button
+                          key={course.id}
+                          type="button"
+                          className={`alpha-class-chip${isSelected ? ' active' : ''}`}
+                          onClick={() => setSignupCourseId(course.id)}
+                        >
+                          <span className="alpha-class-chip-icon">
+                            {course.name.toLowerCase().includes('9')
+                              ? '⚡'
+                              : course.name.toLowerCase().includes('10')
+                              ? '📘'
+                              : course.name.toLowerCase().includes('11')
+                              ? '⚛️'
+                              : course.name.toLowerCase().includes('12')
+                              ? '💻'
+                              : '🎓'}
+                          </span>
+                          <span className="alpha-class-chip-name" title={course.name}>
+                            {course.name}
+                          </span>
+                          {isSelected && (
+                            <span className="alpha-class-chip-check">
+                              <AppIcon name="check" size={13} />
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 {/* Full Name */}
                 <div className="field">
                   <label htmlFor="signupName">Full Name</label>
-                  <div className="field-input-wrap">
+                  <div className={`field-input-wrap${focusedField === 'signupName' ? ' focused' : ''}`}>
                     <input
                       id="signupName"
                       type="text"
                       placeholder="e.g. Abhishek Kumar"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
+                      onFocus={() => setFocusedField('signupName')}
+                      onBlur={() => setFocusedField(null)}
                       required
                     />
                   </div>
                 </div>
 
-                {/* Username */}
+                {/* Email Address */}
                 <div className="field">
-                  <label htmlFor="signupUsername">Username / ID</label>
-                  <div className="field-input-wrap">
-                    <input
-                      id="signupUsername"
-                      type="text"
-                      placeholder="e.g. MEMBER06"
-                      value={signupUsername}
-                      onChange={(e) => setSignupUsername(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="field">
-                  <label htmlFor="signupEmail">Email address</label>
-                  <div className="field-input-wrap">
+                  <label htmlFor="signupEmail">Email Address</label>
+                  <div className={`field-input-wrap${focusedField === 'signupEmail' ? ' focused' : ''}`}>
                     <input
                       id="signupEmail"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="student@example.com"
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
+                      onFocus={() => setFocusedField('signupEmail')}
+                      onBlur={() => setFocusedField(null)}
                       required
                     />
                   </div>
@@ -332,15 +400,15 @@ export default function AuthPage({
                 {/* Password */}
                 <div className="field">
                   <label htmlFor="signupPassword">Password</label>
-                  <div className="field-input-wrap">
+                  <div className={`field-input-wrap${focusedField === 'signupPassword' ? ' focused' : ''}`}>
                     <input
                       id="signupPassword"
                       type={showSignupPassword ? 'text' : 'password'}
                       placeholder="Min 6 characters"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
+                      onFocus={() => setFocusedField('signupPassword')}
+                      onBlur={() => setFocusedField(null)}
                       required
                     />
                     <button
@@ -354,23 +422,6 @@ export default function AuthPage({
                     </button>
                   </div>
                 </div>
-
-                {/* Confirm Password */}
-                <div className="field">
-                  <label htmlFor="signupConfirm">Confirm Password</label>
-                  <div className="field-input-wrap">
-                    <input
-                      id="signupConfirm"
-                      type="password"
-                      placeholder="Re-enter password"
-                      value={signupConfirm}
-                      onChange={(e) => setSignupConfirm(e.target.value)}
-                      onFocus={() => setIsInputFocused(true)}
-                      onBlur={() => setIsInputFocused(false)}
-                      required
-                    />
-                  </div>
-                </div>
               </>
             )}
 
@@ -381,24 +432,45 @@ export default function AuthPage({
               id="submitBtn"
               disabled={isLoading}
             >
-              <span className="btn-text">{isSignup ? 'Create Account' : 'Log in'}</span>
-              <span className="spinner"></span>
+              {isLoading && <span className="spinner"></span>}
+              <span className="btn-text">
+                {isLoading
+                  ? isSignup
+                    ? 'Creating account...'
+                    : 'Signing in...'
+                  : isSignup
+                    ? 'Create Account & Start Learning 🚀'
+                    : 'Log in'}
+              </span>
             </button>
           </form>
 
-          {/* Mode Switch (Sign up mode only) */}
-          {isSignup && (
-            <div className="alpha-mode-switch">
-              <span>
-                Already have an account?
-                <button
-                  type="button"
-                  className="alpha-switch-btn"
-                  onClick={onGoLogin}
-                >
-                  Log in
-                </button>
-              </span>
+          {/* Mode Switch Footer Link */}
+          <div className="alpha-mode-switch">
+            <span>
+              {isSignup ? 'Already have an account?' : "Don't have an account?"}
+              <button
+                type="button"
+                className="alpha-switch-btn"
+                onClick={isSignup ? handleSwitchToLogin : handleSwitchToSignup}
+              >
+                {isSignup ? 'Log in' : 'Create Account'}
+              </button>
+            </span>
+          </div>
+
+          {/* Supreme Alpha Admin Quick Login Chip (on Login screen) */}
+          {!isSignup && (
+            <div
+              className="alpha-admin-badge"
+              onClick={handleSupremeAdminQuickLogin}
+              title="Click to sign in instantly as Supreme Alpha Admin"
+            >
+              <div className="alpha-admin-badge-left">
+                <AppIcon name="lock" size={14} color="#ff741f" />
+                <span className="alpha-admin-badge-text">Supreme Alpha Admin Access</span>
+              </div>
+              <span className="alpha-admin-badge-tag">ADMINALPHA</span>
             </div>
           )}
         </div>
@@ -406,3 +478,5 @@ export default function AuthPage({
     </div>
   )
 }
+
+
