@@ -16,6 +16,34 @@ let progressList = []
 let progressMap = new Map() // mcq_id -> progress object
 let isHydrated = false
 let hydrationPromise = null
+let currentRequestId = 0
+
+function getScopedProgressKey(userId) {
+  return `nexora_progress_${userId || 'anon'}`
+}
+
+function loadLocalUserProgress(userId) {
+  if (!userId || typeof localStorage === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(getScopedProgressKey(userId))
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch {
+    // ignore
+  }
+  return []
+}
+
+function saveLocalUserProgress(userId, records) {
+  if (!userId || typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(getScopedProgressKey(userId), JSON.stringify(records))
+  } catch {
+    // ignore
+  }
+}
 
 let snapshot = {
   progressList: [],
@@ -51,26 +79,44 @@ export function clearUserProgressStore() {
   progressMap = new Map()
   isHydrated = false
   activeScopedUserId = null
+  hydrationPromise = null
   emit()
 }
 
-export async function hydrateUserProgressFromSupabase(targetUserId = null, force = false) {
-  const userId = targetUserId || getUserId()
-  if (!userId) return { success: true, data: [] }
-
-  // If user changed, clear previous user's cached progress to prevent leakage
-  if (activeScopedUserId && activeScopedUserId !== userId) {
-    progressList = []
-    progressMap = new Map()
-    isHydrated = false
+export async function hydrateUserProgressFromSupabase(targetUserId = undefined, force = false) {
+  const userId = targetUserId !== undefined ? targetUserId : getUserId()
+  if (!userId) {
+    clearUserProgressStore()
+    return { success: true, data: [] }
   }
-  activeScopedUserId = userId
+
+  // If user changed, clear previous user's cached progress immediately
+  if (activeScopedUserId !== userId) {
+    activeScopedUserId = userId
+    // Seed immediately from user's local cache
+    const local = loadLocalUserProgress(userId)
+    progressList = local
+    progressMap = new Map()
+    local.forEach((item) => {
+      const mcqId = item.mcq_id || item.mcqId
+      if (mcqId) progressMap.set(String(mcqId), item)
+    })
+    isHydrated = local.length > 0
+    emit()
+  }
+
+  const requestId = ++currentRequestId
 
   if (hydrationPromise && !force) return hydrationPromise
 
   hydrationPromise = (async () => {
     try {
       const res = await mcqService.getAllUserProgress(userId)
+      // Check if user changed or request is stale
+      if (requestId !== currentRequestId || activeScopedUserId !== userId) {
+        return { success: false, stale: true }
+      }
+
       if (res && res.success && Array.isArray(res.data)) {
         progressList = res.data
         progressMap = new Map()
@@ -80,6 +126,7 @@ export async function hydrateUserProgressFromSupabase(targetUserId = null, force
             progressMap.set(String(mcqId), item)
           }
         })
+        saveLocalUserProgress(userId, res.data)
         isHydrated = true
         emit()
         return { success: true, data: res.data }
@@ -88,7 +135,9 @@ export async function hydrateUserProgressFromSupabase(targetUserId = null, force
     } catch (err) {
       return { success: false, error: err.message }
     } finally {
-      hydrationPromise = null
+      if (requestId === currentRequestId) {
+        hydrationPromise = null
+      }
     }
   })()
 
@@ -97,6 +146,11 @@ export async function hydrateUserProgressFromSupabase(targetUserId = null, force
 
 export function updateUserProgressStore(records) {
   if (!Array.isArray(records) || records.length === 0) return
+
+  const uid = activeScopedUserId || getUserId() || 'anon'
+  if (!activeScopedUserId && uid && uid !== 'anon') {
+    activeScopedUserId = uid
+  }
 
   const updatedMap = new Map(progressMap)
   records.forEach((rec) => {
@@ -110,6 +164,8 @@ export function updateUserProgressStore(records) {
   progressMap = updatedMap
   progressList = Array.from(progressMap.values())
   isHydrated = true
+
+  saveLocalUserProgress(uid, progressList)
   emit()
 }
 

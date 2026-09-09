@@ -233,7 +233,22 @@ function DashboardPage({
   const { isAdmin } = useRoleStore()
   const { effectiveMember } = useMemberStore()
   const userProgressState = useUserProgressStore()
-  const [persistentAttempts, setPersistentAttempts] = useState([])
+  const [persistentAttempts, setPersistentAttempts] = useState(() => {
+    const userId = effectiveMember?.id
+    if (!userId) return []
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem(`nexora_attempts_${userId}`)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) return parsed
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
 
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
   const effectiveCourseId = activeWorkspaceId || activeCourse?.id
@@ -250,7 +265,7 @@ function DashboardPage({
         hydrateUserAnalytics(userId, effectiveCourseId),
       ])
       const attempts = await userAnalyticsService.getUserAttempts(userId, effectiveCourseId)
-      if (isMounted) {
+      if (isMounted && Array.isArray(attempts)) {
         setPersistentAttempts(attempts)
       }
     }

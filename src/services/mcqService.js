@@ -344,57 +344,91 @@ export const mcqService = {
     if (!userId || !chapterId) {
       return { success: true, data: [] }
     }
-    try {
-      const res = await apiService.get(
-        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}&chapter_id=eq.${encodeURIComponent(chapterId)}`
-      )
-      if (res && res.success) {
-        return {
-          success: true,
-          data: Array.isArray(res.data) ? res.data : [],
-        }
-      }
-      return {
-        success: false,
-        error: res?.error || res?.message || 'Failed to fetch MCQ progress',
-      }
-    } catch (err) {
-      return {
-        success: false,
-        error: err?.message || 'Failed to fetch MCQ progress',
-      }
+    const all = await this.getAllUserProgress(userId)
+    if (all.success && Array.isArray(all.data)) {
+      const filtered = all.data.filter((p) => String(p.chapter_id || p.chapterId) === String(chapterId))
+      return { success: true, data: filtered }
     }
+    return { success: true, data: [] }
   },
 
   async getAllUserProgress(userId) {
     if (!userId) {
       return { success: true, data: [] }
     }
+    let local = []
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(`nexora_progress_${userId}`)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) local = parsed
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       const res = await apiService.get(
         `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}`
       )
-      if (res && res.success) {
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(res.data))
+          }
+        } catch {
+          // ignore
+        }
         return {
           success: true,
-          data: Array.isArray(res.data) ? res.data : [],
+          data: res.data,
         }
       }
-      return {
-        success: false,
-        error: res?.error || res?.message || 'Failed to fetch overall MCQ progress',
-      }
     } catch (err) {
-      return {
-        success: false,
-        error: err?.message || 'Failed to fetch overall MCQ progress',
-      }
+      // fallback to local
+    }
+
+    return {
+      success: true,
+      data: local,
     }
   },
 
   async updateUserProgress(userId, progressUpdates) {
     if (!userId || !Array.isArray(progressUpdates) || progressUpdates.length === 0) {
       return { success: true, data: [] }
+    }
+
+    let local = []
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(`nexora_progress_${userId}`)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) local = parsed
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const map = new Map(local.map((item) => [String(item.mcq_id || item.mcqId), item]))
+    progressUpdates.forEach((rec) => {
+      const mcqId = String(rec.mcq_id || rec.mcqId)
+      if (mcqId) {
+        const existing = map.get(mcqId) || {}
+        map.set(mcqId, { ...existing, ...rec, user_id: userId })
+      }
+    })
+    const merged = Array.from(map.values())
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(merged))
+      }
+    } catch {
+      // ignore
     }
 
     const payload = progressUpdates.map((item) => ({
@@ -429,16 +463,13 @@ export const mcqService = {
           data: Array.isArray(res.data) ? res.data : [res.data],
         }
       }
-
-      return {
-        success: false,
-        error: res?.error || res?.message || 'Failed to update MCQ progress',
-      }
     } catch (err) {
-      return {
-        success: false,
-        error: err?.message || 'Failed to update MCQ progress',
-      }
+      // fallback
+    }
+
+    return {
+      success: true,
+      data: merged,
     }
   },
 

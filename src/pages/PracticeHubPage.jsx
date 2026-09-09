@@ -96,16 +96,31 @@ function PracticeHubPage({
   const { workspaces, activeWorkspaceId } = useWorkspaceStore()
   const { isAdmin } = useRoleStore()
   const { effectiveMember } = useMemberStore()
-  const userProgressState = useUserProgressStore()
-  const [persistentAttempts, setPersistentAttempts] = useState([])
-
   const activeCourse = workspaces.find((w) => w.id === (courseId || activeWorkspaceId)) || workspaces[0] || null
   const effectiveCourseId = activeCourse?.id || activeWorkspaceId
 
   // Reactive course registry
   const courseRegistry = useCourseRegistry(effectiveCourseId)
 
-  // Hydrate user progress and course attempts
+  const userProgressState = useUserProgressStore()
+  const [persistentAttempts, setPersistentAttempts] = useState(() => {
+    const userId = effectiveMember?.id
+    if (!userId) return []
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem(`nexora_attempts_${userId}`)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) return parsed
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
+
+  // Hydrate user progress and persistent analytics on mount & when user or course changes
   useEffect(() => {
     const userId = effectiveMember?.id
     if (!userId || !effectiveCourseId) return
@@ -117,7 +132,7 @@ function PracticeHubPage({
         hydrateUserAnalytics(userId, effectiveCourseId),
       ])
       const attempts = await userAnalyticsService.getUserAttempts(userId, effectiveCourseId)
-      if (isMounted) {
+      if (isMounted && Array.isArray(attempts)) {
         setPersistentAttempts(attempts)
       }
     }

@@ -14,6 +14,7 @@ const VIEW_AS_KEY = 'nexora_view_as_member_profile'
 
 function loadSavedMember() {
   try {
+    const isAuth = localStorage.getItem('nexora_is_authenticated') === 'true'
     const saved = localStorage.getItem(CURRENT_USER_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
@@ -22,7 +23,7 @@ function loadSavedMember() {
   } catch {
     // ignore
   }
-  return SEED_MEMBERS[0] // Default to adminalpha
+  return null
 }
 
 function loadSavedViewAs() {
@@ -49,7 +50,7 @@ let snapshot = {
   isViewingAs: Boolean(viewAsMember),
   viewAsMember,
   membersList,
-  isSuperAdmin: activeMember?.role === 'SUPER_ADMIN',
+  isSuperAdmin: Boolean(activeMember && (activeMember.role === 'SUPER_ADMIN' || activeMember.username === 'adminalpha')),
   isHydrated,
   version: 0,
 }
@@ -61,7 +62,7 @@ function emit() {
     isViewingAs: Boolean(viewAsMember),
     viewAsMember,
     membersList: [...membersList],
-    isSuperAdmin: activeMember?.role === 'SUPER_ADMIN',
+    isSuperAdmin: Boolean(activeMember && (activeMember.role === 'SUPER_ADMIN' || activeMember.username === 'adminalpha')),
     isHydrated,
     version,
   }

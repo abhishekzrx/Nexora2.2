@@ -13,8 +13,8 @@ import { env } from '../config/env.js'
 import { apiService } from './apiService.js'
 import { memberService, SEED_MEMBERS } from './memberService.js'
 import { setActiveMember, clearMemberSession, getMemberStoreSnapshot } from '../data/memberStore.js'
-import { clearUserProgressStore } from '../data/progressStore.js'
-import { clearAnalyticsStore } from '../data/analyticsStore.js'
+import { clearUserProgressStore, hydrateUserProgressFromSupabase } from '../data/progressStore.js'
+import { clearAnalyticsStore, hydrateUserAnalytics } from '../data/analyticsStore.js'
 import { setActiveWorkspace, getWorkspaces } from '../data/workspaceStore.js'
 
 const USER_ID_KEY = 'nexora_user_id'
@@ -23,39 +23,206 @@ const VIEW_AS_KEY = 'nexora_view_as_member_profile'
 const AUTH_TOKEN_KEY = 'nexora_auth_token'
 
 /**
- * Returns the active user ID (or view-as ID if in Super Admin emulation mode).
+ * Returns the immutable UUID of the currently authenticated user.
+ * (Even if in View As mode, this returns the real Super Admin ID).
  */
-export function getUserId() {
-  if (typeof window === 'undefined') return 'usr_super_admin_alpha'
-
+export function getAuthUserId() {
   try {
-    const viewAsRaw = localStorage.getItem(VIEW_AS_KEY)
-    if (viewAsRaw) {
-      const viewAs = JSON.parse(viewAsRaw)
-      if (viewAs && viewAs.id) return viewAs.id
+    const snapshot = getMemberStoreSnapshot()
+    if (snapshot?.activeMember?.id) {
+      return snapshot.activeMember.id
     }
 
-    const profileRaw = localStorage.getItem(MEMBER_PROFILE_KEY)
-    if (profileRaw) {
-      const profile = JSON.parse(profileRaw)
-      if (profile && profile.id) return profile.id
+    if (typeof localStorage !== 'undefined') {
+      const profileRaw = localStorage.getItem(MEMBER_PROFILE_KEY)
+      if (profileRaw) {
+        const profile = JSON.parse(profileRaw)
+        if (profile && profile.id) return profile.id
+      }
+
+      let id = localStorage.getItem(USER_ID_KEY)
+      if (id && typeof id === 'string' && id.trim()) {
+        return id.trim()
+      }
     }
 
-    let id = localStorage.getItem(USER_ID_KEY)
-    if (id && typeof id === 'string' && id.trim()) {
-      return id.trim()
-    }
-
-    return 'usr_super_admin_alpha'
+    return null
   } catch (err) {
     if (env.isDev) {
-      console.warn('[userService] getUserId localStorage error:', err)
+      console.warn('[userService] getAuthUserId error:', err)
     }
-    return 'usr_super_admin_alpha'
+    return null
   }
 }
 
-export const getCurrentUserId = getUserId
+/**
+ * Returns the effective user ID for data retrieval (or view-as ID if in Super Admin inspection mode).
+ */
+export function getEffectiveUserId() {
+  try {
+    const snapshot = getMemberStoreSnapshot()
+    if (snapshot?.effectiveMember?.id) {
+      return snapshot.effectiveMember.id
+    }
+
+    if (typeof localStorage !== 'undefined') {
+      const viewAsRaw = localStorage.getItem(VIEW_AS_KEY)
+      if (viewAsRaw) {
+        const viewAs = JSON.parse(viewAsRaw)
+        if (viewAs && viewAs.id) return viewAs.id
+      }
+    }
+
+    return getAuthUserId()
+  } catch (err) {
+    if (env.isDev) {
+      console.warn('[userService] getEffectiveUserId error:', err)
+    }
+    return getAuthUserId()
+  }
+}
+
+export const getUserId = getEffectiveUserId
+export const getCurrentUserId = getEffectiveUserId
+
+/**
+ * Single authoritative application initialization and session restoration flow.
+ *
+ * Sequence:
+ * CHECK SUPABASE SESSION / STORAGE TOKEN
+ * ↓
+ * GET AUTH USER (from Supabase /auth/v1/user or verified local identity)
+ * ↓
+ * GET & REFRESH USER PROFILE from user_profiles table / member directory
+ * ↓
+ * VERIFY ACCOUNT STATUS (ACTIVE vs DISABLED vs ARCHIVED)
+ * ↓
+ * VERIFY ROLE (SUPER_ADMIN vs MEMBER)
+ * ↓
+ * LOAD PERMISSIONS & ASSIGNED COURSES
+ * ↓
+ * HYDRATE PROGRESS (mcq_progress)
+ * ↓
+ * HYDRATE ANALYTICS (snapshots & attempts)
+ * ↓
+ * MARK READY
+ */
+export async function restoreSession() {
+  if (typeof window === 'undefined') {
+    return { success: false, authenticated: false }
+  }
+
+  try {
+    const isAuthFlag = localStorage.getItem('nexora_is_authenticated') === 'true'
+    const authToken = localStorage.getItem(AUTH_TOKEN_KEY)
+    const profileRaw = localStorage.getItem(MEMBER_PROFILE_KEY)
+    const savedUserId = localStorage.getItem(USER_ID_KEY)
+
+    if (!isAuthFlag && !authToken && !profileRaw && !savedUserId) {
+      return { success: false, authenticated: false }
+    }
+
+    let parsedSavedProfile = null
+    if (profileRaw) {
+      try {
+        parsedSavedProfile = JSON.parse(profileRaw)
+      } catch {
+        parsedSavedProfile = null
+      }
+    }
+
+    let resolvedUserId = parsedSavedProfile?.id || savedUserId || null
+    let authUserEmail = parsedSavedProfile?.email || null
+
+    // 1. If Supabase auth token is present, verify directly with Supabase /auth/v1/user
+    if (authToken) {
+      try {
+        const authUserRes = await apiService.getAuthUser(authToken)
+        if (authUserRes.success && authUserRes.data?.id) {
+          resolvedUserId = authUserRes.data.id
+          authUserEmail = authUserRes.data.email || authUserEmail
+        }
+      } catch {
+        // network fallback to local profile
+      }
+    }
+
+    // If still no resolved user, check if we had a saved identifier or username
+    if (!resolvedUserId && parsedSavedProfile?.username) {
+      resolvedUserId = parsedSavedProfile.username
+    }
+
+    if (!resolvedUserId) {
+      clearCurrentUser()
+      return { success: false, authenticated: false }
+    }
+
+    // 2. Fetch authoritative member profile from directory / DB
+    const profileRes = await memberService.getMemberById(resolvedUserId)
+    let member = profileRes.success ? profileRes.data : parsedSavedProfile
+
+    if (!member && parsedSavedProfile) {
+      member = parsedSavedProfile
+    }
+
+    if (!member) {
+      clearCurrentUser()
+      return { success: false, authenticated: false, error: 'User profile not found.' }
+    }
+
+    // 3. Verify Account Status
+    if (member.status === 'ARCHIVED') {
+      clearCurrentUser()
+      return {
+        success: false,
+        authenticated: false,
+        status: 'ARCHIVED',
+        error: 'This account has been archived. Access is restricted.',
+      }
+    }
+
+    // 4. Verify and Establish Role & Permissions
+    const isSuperAdmin = member.role === 'SUPER_ADMIN' || member.username === 'adminalpha'
+    const effectiveRole = isSuperAdmin ? 'SUPER_ADMIN' : (member.role || 'MEMBER')
+
+    // Defensive check: Ensure Super Admin is never converted to MEMBER
+    const sanitizedMember = {
+      ...member,
+      role: effectiveRole,
+      assigned_courses: isSuperAdmin ? ['*'] : (member.assigned_courses || (member.assigned_course_id ? [member.assigned_course_id] : ['bpsc_prelims'])),
+      assigned_course_id: isSuperAdmin ? (member.assigned_course_id || 'bpsc_prelims') : (member.assigned_course_id || member.assigned_courses?.[0] || 'bpsc_prelims'),
+    }
+
+    // 5. Establish Member Store state
+    setActiveMember(sanitizedMember)
+
+    // Set course workspace
+    const primaryCourse = sanitizedMember.assigned_course_id || (sanitizedMember.assigned_courses?.[0] !== '*' ? sanitizedMember.assigned_courses?.[0] : 'bpsc_prelims')
+    if (primaryCourse && primaryCourse !== '*') {
+      setActiveWorkspace(primaryCourse)
+    }
+
+    // 6. Hydrate Progress & Analytics for this authenticated user
+    const courseId = primaryCourse || 'bpsc_prelims'
+    await Promise.allSettled([
+      hydrateUserProgressFromSupabase(sanitizedMember.id, true),
+      hydrateUserAnalytics(sanitizedMember.id, courseId),
+    ])
+
+    return {
+      success: true,
+      authenticated: true,
+      status: sanitizedMember.status,
+      role: effectiveRole,
+      data: sanitizedMember,
+    }
+  } catch (err) {
+    if (env.isDev) {
+      console.error('[userService] restoreSession exception:', err)
+    }
+    return { success: false, error: err.message }
+  }
+}
 
 /**
  * Returns the currently authenticated user profile from memory or localStorage.
@@ -742,11 +909,14 @@ export function clearCurrentUser() {
 export const userService = {
   getUserId,
   getCurrentUserId,
+  getAuthUserId,
+  getEffectiveUserId,
   getCurrentUser,
   getUserProfile,
   getAssignedCourse,
   normalizePhoneNumber,
   authenticateUser,
+  restoreSession,
   createStudentProfile,
   sendSignupOtp,
   verifySignupOtp,
@@ -756,5 +926,6 @@ export const userService = {
 }
 
 export default userService
+
 
 

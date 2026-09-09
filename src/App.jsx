@@ -17,6 +17,7 @@ import { useMemberStore, exitViewAsMember, clearMemberSession } from './data/mem
 import { permissionService } from './services/permissionService'
 import { clearUserProgressStore } from './data/progressStore'
 import { clearAnalyticsStore } from './data/analyticsStore'
+import { userService } from './services/userService'
 
 const AUTH_ROUTES = new Set(['login', 'signup'])
 
@@ -73,6 +74,17 @@ function resolveRoute() {
 
 function App() {
   const [route, setRoute] = useState(resolveRoute)
+  const [isRestoringSession, setIsRestoringSession] = useState(() => {
+    try {
+      return (
+        localStorage.getItem('nexora_is_authenticated') === 'true' ||
+        Boolean(localStorage.getItem('nexora_auth_token')) ||
+        Boolean(localStorage.getItem('nexora_active_member_profile'))
+      )
+    } catch {
+      return false
+    }
+  })
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try {
       return localStorage.getItem('nexora_is_authenticated') === 'true'
@@ -85,11 +97,11 @@ function App() {
   const { effectiveMember, isSuperAdmin, isViewingAs } = useMemberStore()
 
   const handleLogout = () => {
-    testSession.reset()
+    testSession.reset(effectiveMember?.id)
     Object.keys(subjectTabs).forEach((key) => {
       delete subjectTabs[key]
     })
-    clearMemberSession()
+    userService.clearCurrentUser()
     clearUserProgressStore()
     clearAnalyticsStore()
     setIsAuthenticated(false)
@@ -121,6 +133,7 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (isRestoringSession) return
     if (!route) return
 
     const isAuthRoute = AUTH_ROUTES.has(route.name)
@@ -133,9 +146,10 @@ function App() {
     if (isAuthenticated && isAuthRoute) {
       navigate('')
     }
-  }, [route, isAuthenticated])
+  }, [route, isAuthenticated, isRestoringSession])
 
   useEffect(() => {
+    if (isRestoringSession) return
     if (!route) return
     if (!isAuthenticated) return
 
@@ -147,7 +161,7 @@ function App() {
     if (route.name !== 'admin' && activeRole === 'admin') {
       switchToStudent()
     }
-  }, [route, activeRole, isAuthenticated, effectiveMember])
+  }, [route, activeRole, isAuthenticated, effectiveMember, isRestoringSession])
 
   // Session Consistency & Course Context Sync:
   // If student is assigned to Course A but active workspace is different or unassigned, sync it!
@@ -162,21 +176,37 @@ function App() {
   }, [isAuthenticated, effectiveMember, activeWorkspaceId])
 
   useEffect(() => {
+    let isMounted = true
     async function bootstrap() {
       try {
-        await Promise.all([
+        const [sessionRes] = await Promise.all([
+          userService.restoreSession(),
           hydrateWorkspacesFromSupabase(),
           hydrateAdminStoreFromSupabase(),
         ])
+
+        if (isMounted) {
+          if (sessionRes?.authenticated && sessionRes.status !== 'ARCHIVED') {
+            setIsAuthenticated(true)
+          } else {
+            setIsAuthenticated(false)
+          }
+          setIsRestoringSession(false)
+        }
       } catch (err) {
         if (import.meta.env.DEV) {
-          console.warn('[App] Supabase hydration failed:', err)
+          console.warn('[App] Supabase bootstrap/restoreSession error:', err)
+        }
+        if (isMounted) {
+          setIsRestoringSession(false)
         }
       }
     }
 
     bootstrap()
-    return () => {}
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const renderAuthPage = () => (
@@ -196,6 +226,47 @@ function App() {
       }}
     />
   )
+
+  // Session restoration loading state to prevent flash of 0% unhydrated dashboard
+  if (isRestoringSession) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: '#0F0E0D',
+          color: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          gap: '16px',
+        }}
+      >
+        <div
+          style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            border: '3px solid rgba(241, 98, 27, 0.2)',
+            borderTopColor: '#F1621B',
+            animation: 'nexora-spin 0.8s linear infinite',
+          }}
+        />
+        <div
+          style={{
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            color: '#E6E4E2',
+          }}
+        >
+          Restoring your session...
+        </div>
+        <style>{`@keyframes nexora-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
 
   // Unknown / malformed route -> fall back to dashboard.
   if (!route) {

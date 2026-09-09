@@ -38,10 +38,47 @@ export function getAnalyticsStoreSnapshot() {
   return snapshot
 }
 
+function getScopedAnalyticsKey(userId, courseId) {
+  return `nexora_analytics_${userId || 'anon'}_${courseId || 'default'}`
+}
+
+function loadLocalAnalytics(userId, courseId) {
+  if (!userId || !courseId || typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(getScopedAnalyticsKey(userId, courseId))
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') return parsed
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveLocalAnalytics(userId, courseId, data) {
+  if (!userId || !courseId || !data || typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(getScopedAnalyticsKey(userId, courseId), JSON.stringify(data))
+  } catch {
+    // ignore
+  }
+}
+
 export async function hydrateUserAnalytics(userId, courseId, totalPool = 0) {
   if (!userId || !courseId) return null
 
   const cacheKey = `${userId}_${courseId}`
+
+  // Seed immediately from local cache if map doesn't have it
+  if (!analyticsCache.has(cacheKey)) {
+    const local = loadLocalAnalytics(userId, courseId)
+    if (local) {
+      analyticsCache.set(cacheKey, local)
+      emit()
+    }
+  }
+
   try {
     const progressSnapshot = getUserProgressSnapshot()
     const progressList = progressSnapshot.progressList || []
@@ -54,6 +91,7 @@ export async function hydrateUserAnalytics(userId, courseId, totalPool = 0) {
     )
 
     analyticsCache.set(cacheKey, analytics)
+    saveLocalAnalytics(userId, courseId, analytics)
     emit()
     return analytics
   } catch (err) {
@@ -66,7 +104,7 @@ export async function hydrateUserAnalytics(userId, courseId, totalPool = 0) {
 
 export function getCachedCourseAnalytics(userId, courseId) {
   const cacheKey = `${userId}_${courseId}`
-  return analyticsCache.get(cacheKey) || null
+  return analyticsCache.get(cacheKey) || loadLocalAnalytics(userId, courseId) || null
 }
 
 export function clearAnalyticsStore() {
@@ -77,7 +115,7 @@ export function clearAnalyticsStore() {
 export function useUserAnalytics(userId, courseId, totalPool = 0) {
   const store = useSyncExternalStore(subscribeAnalyticsStore, getAnalyticsStoreSnapshot, getAnalyticsStoreSnapshot)
   const cacheKey = `${userId}_${courseId}`
-  const cached = store.analyticsCache.get(cacheKey)
+  const cached = store.analyticsCache.get(cacheKey) || loadLocalAnalytics(userId, courseId)
 
   return cached || {
     readinessScore: 0,

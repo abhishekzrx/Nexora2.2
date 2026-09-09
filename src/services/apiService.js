@@ -6,6 +6,17 @@
 
 import { env } from '../config/env.js'
 
+function getSavedToken() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('nexora_auth_token') || null
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 async function request(endpoint, options = {}) {
   const cleanEndpoint = endpoint.replace(/^\/+/, '')
   let url
@@ -18,10 +29,13 @@ async function request(endpoint, options = {}) {
     url = `${baseUrl}/${cleanEndpoint}`
   }
 
+  const savedToken = getSavedToken()
+  const authHeader = options.headers?.Authorization || (savedToken ? `Bearer ${savedToken}` : `Bearer ${env.apiKey}`)
+
   const headers = {
     'Content-Type': 'application/json',
     'apikey': env.apiKey,
-    'Authorization': `Bearer ${env.apiKey}`,
+    'Authorization': authHeader,
     'Prefer': 'return=representation',
     ...options.headers,
   }
@@ -74,4 +88,12 @@ export const apiService = {
   put: (endpoint, body, headers) => request(endpoint, { method: 'PUT', body: JSON.stringify(body), headers }),
   patch: (endpoint, body, headers) => request(endpoint, { method: 'PATCH', body: JSON.stringify(body), headers }),
   delete: (endpoint, headers) => request(endpoint, { method: 'DELETE', headers }),
+  getAuthUser: async (token) => {
+    const tok = token || getSavedToken()
+    if (!tok) return { success: false, error: 'No auth token found' }
+    return request('/auth/v1/user', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${tok}` },
+    })
+  },
 }

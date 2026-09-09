@@ -110,7 +110,8 @@ function SubjectsPage({
     let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
     if (memoryAttempts.length === 0) {
       try {
-        const cached = localStorage.getItem(`nexora_recent_mcq_attempts_${effectiveMember?.id || 'anon'}`) || localStorage.getItem('nexora_recent_mcq_attempts')
+        const userId = effectiveMember?.id
+        const cached = userId ? localStorage.getItem(`nexora_attempts_${userId}`) || localStorage.getItem(`nexora_recent_mcq_attempts_${userId}`) : null
         if (cached) {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed)) memoryAttempts = parsed
@@ -163,7 +164,8 @@ function SubjectsPage({
       }
     })
     try {
-      const cachedAccess = localStorage.getItem('nexora_recent_subject_access')
+      const userId = effectiveMember?.id || 'anon'
+      const cachedAccess = localStorage.getItem(`nexora_recent_subject_access_${userId}`) || localStorage.getItem('nexora_recent_subject_access')
       if (cachedAccess) {
         const accessMap = JSON.parse(cachedAccess)
         Object.keys(accessMap).forEach((key) => {
@@ -174,7 +176,7 @@ function SubjectsPage({
       // ignore
     }
     return map
-  }, [pastAttempts])
+  }, [pastAttempts, effectiveMember?.id])
 
   const subjects = useMemo(() => {
     const rawList = [...(registry.subjectsList || [])]

@@ -27,11 +27,38 @@ export function navigate(path) {
   window.location.hash = `/${path.replace(/^\/+/, '')}`
 }
 
-const SESSION_STORAGE_KEY = 'nexora_active_test_session'
-
-function loadSavedSession() {
+function getActiveUserId() {
   try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
+    if (typeof localStorage !== 'undefined') {
+      const viewAs = localStorage.getItem('nexora_view_as_member_profile')
+      if (viewAs) {
+        const parsed = JSON.parse(viewAs)
+        if (parsed?.id) return parsed.id
+      }
+      const prof = localStorage.getItem('nexora_active_member_profile')
+      if (prof) {
+        const parsed = JSON.parse(prof)
+        if (parsed?.id) return parsed.id
+      }
+      const uid = localStorage.getItem('nexora_user_id')
+      if (uid) return uid
+    }
+  } catch {
+    // ignore
+  }
+  return 'usr_super_admin_alpha'
+}
+
+function getSessionKey(userId = null) {
+  const uid = userId || getActiveUserId()
+  return `nexora_active_test_session_${uid || 'anon'}`
+}
+
+function loadSavedSession(userId = null) {
+  try {
+    const key = getSessionKey(userId)
+    const raw = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null) ||
+                (typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null)
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
@@ -71,29 +98,49 @@ export const testSession = {
   attemptHistoryData: saved?.attemptHistoryData || [],
   questions: saved?.questions || null,
 
-  save() {
+  loadForUser(userId = null) {
+    const loaded = loadSavedSession(userId)
+    this.subjectKey = loaded?.subjectKey || null
+    this.chapter = loaded?.chapter || null
+    this.answers = loaded?.answers || {}
+    this.marked = loaded?.marked || new Set()
+    this.visited = loaded?.visited || new Set([0])
+    this.mode = loaded?.mode || 'practice'
+    this.result = loaded?.result || null
+    this.timeTakenSeconds = loaded?.timeTakenSeconds || 0
+    this.attemptHistoryData = loaded?.attemptHistoryData || []
+    this.questions = loaded?.questions || null
+    return this
+  },
+
+  save(userId = null) {
     try {
-      sessionStorage.setItem(
-        SESSION_STORAGE_KEY,
-        JSON.stringify({
-          subjectKey: this.subjectKey,
-          chapter: this.chapter,
-          answers: this.answers,
-          marked: Array.from(this.marked),
-          visited: Array.from(this.visited),
-          mode: this.mode,
-          result: this.result,
-          timeTakenSeconds: this.timeTakenSeconds,
-          attemptHistoryData: this.attemptHistoryData,
-          questions: this.questions,
-        })
-      )
+      const key = getSessionKey(userId)
+      const data = JSON.stringify({
+        subjectKey: this.subjectKey,
+        chapter: this.chapter,
+        answers: this.answers,
+        marked: Array.from(this.marked),
+        visited: Array.from(this.visited),
+        mode: this.mode,
+        result: this.result,
+        timeTakenSeconds: this.timeTakenSeconds,
+        attemptHistoryData: this.attemptHistoryData,
+        questions: this.questions,
+      })
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(key, data)
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, data)
+      }
     } catch {
       // ignore
     }
   },
 
-  reset() {
+  reset(userId = null) {
+    const key = getSessionKey(userId)
     this.subjectKey = null
     this.chapter = null
     this.answers = {}
@@ -105,7 +152,14 @@ export const testSession = {
     this.timeTakenSeconds = 0
     this.attemptHistoryData = []
     try {
-      sessionStorage.removeItem(SESSION_STORAGE_KEY)
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(key)
+        sessionStorage.removeItem('nexora_active_test_session')
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key)
+        localStorage.removeItem('nexora_active_test_session')
+      }
     } catch {
       // ignore
     }

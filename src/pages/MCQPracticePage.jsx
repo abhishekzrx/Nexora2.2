@@ -1034,11 +1034,25 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
     const updatedHistory = [...pastAttempts, currentAttemptRecord]
     testSession.attemptHistoryData = updatedHistory
+    testSession.result = {
+      score,
+      total: totalCount,
+      percentage,
+      accuracy,
+      correct: correctCount,
+      incorrect: incorrectCount,
+      unanswered: unansweredCount,
+      answeredCount,
+      markedCount,
+      timeTakenSeconds: testSession.timeTakenSeconds,
+      timestamp: Date.now(),
+    }
+    testSession.save(userId)
 
     try {
       const recentAttemptsKey = `nexora_recent_mcq_attempts_${userId || 'anon'}`
       localStorage.setItem(recentAttemptsKey, JSON.stringify(updatedHistory))
-      localStorage.setItem('nexora_recent_mcq_attempts', JSON.stringify(updatedHistory))
+      localStorage.setItem(`nexora_attempts_${userId || 'anon'}`, JSON.stringify(updatedHistory))
     } catch {
       // ignore
     }

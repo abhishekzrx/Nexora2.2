@@ -53,6 +53,11 @@ function TestResultsPage({
   const courseId = activeWorkspace?.id || 'course_default'
   const userId = getCurrentUserId()
 
+  // Ensure test session is loaded for the active user if not already in memory
+  if (!testSession.result && userId) {
+    testSession.loadForUser(userId)
+  }
+
   const subject = registry.subjectCatalog[subjectKey || testSession.subjectKey] || null
   const subjectTitle = subject?.title || 'Subject Practice'
   const chapter = testSession.chapter || null
