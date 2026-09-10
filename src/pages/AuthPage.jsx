@@ -23,7 +23,7 @@ export default function AuthPage({
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Signup fields (Academic Fast Registration with Mobile SMS OTP)
+  // Signup fields (Academic Registration with Mobile SMS OTP)
   const [signupStep, setSignupStep] = useState('form') // 'form' | 'otp'
   const [signupName, setSignupName] = useState('')
   const [signupCourseId, setSignupCourseId] = useState('')
@@ -75,7 +75,7 @@ export default function AuthPage({
     }
   }, [resendCooldown])
 
-  // Sync mode prop when changed externally (via hash routing #/login vs #/signup)
+  // Sync mode prop when changed externally
   useEffect(() => {
     setLocalMode(mode)
     setSignupStep('form')
@@ -89,7 +89,7 @@ export default function AuthPage({
     }
   }, [activeCourses, signupCourseId])
 
-  // Auto-fill suggested username when name is entered if username hasn't been manually edited
+  // Auto-fill suggested username when name is entered
   const handleNameChange = (val) => {
     setSignupName(val)
     if (!signupUsername || signupUsername.startsWith('STU_')) {
@@ -130,12 +130,12 @@ export default function AuthPage({
     const trimmedPassword = password.trim()
 
     if (!trimmedUser) {
-      setErrorMessage('Please enter your mobile number, email, or username.')
+      setErrorMessage('Please enter your identity key, email, or mobile.')
       return
     }
 
     if (!trimmedPassword) {
-      setErrorMessage('Please enter your password.')
+      setErrorMessage('Please enter your passcode.')
       return
     }
 
@@ -157,11 +157,11 @@ export default function AuthPage({
 
       const member = authRes.data
       setIsLoading(false)
-      setSuccessMessage(`Welcome back, ${member.display_name || member.username}!`)
+      setSuccessMessage(`Access granted. Welcome back, ${member.display_name || member.username}!`)
 
       timerRef.current = setTimeout(() => {
         onLoginSuccess?.()
-      }, 700)
+      }, 600)
     } catch (err) {
       setIsLoading(false)
       setErrorMessage(err.message || 'Login failed. Please check network connection.')
@@ -207,12 +207,12 @@ export default function AuthPage({
     }
 
     if (!trimmedPass || trimmedPass.length < 6) {
-      setErrorMessage('Password must be at least 6 characters.')
+      setErrorMessage('Passcode must be at least 6 characters.')
       return
     }
 
     if (trimmedPass !== trimmedConfirmPass) {
-      setErrorMessage('Passwords do not match. Please re-enter.')
+      setErrorMessage('Passcodes do not match. Please re-enter.')
       return
     }
 
@@ -284,7 +284,7 @@ export default function AuthPage({
       timerRef.current = setTimeout(() => {
         onSignupSuccess?.()
         onLoginSuccess?.()
-      }, 850)
+      }, 750)
     } catch (err) {
       setIsLoading(false)
       setErrorMessage(err.message || 'SMS verification failed.')
@@ -321,32 +321,49 @@ export default function AuthPage({
         password: 'password',
       })
       if (res.success) {
-        setSuccessMessage('Supreme Alpha Admin verified. Loading console...')
+        setSuccessMessage('Supreme Alpha Admin authorized. Loading console...')
         timerRef.current = setTimeout(() => {
           onLoginSuccess?.()
-        }, 600)
+        }, 500)
       } else {
         setIsLoading(false)
-        setErrorMessage(res.error || 'Failed to authenticate Supreme Admin.')
+        setErrorMessage(res.error || 'Failed to authenticate Administrator.')
       }
     } catch (err) {
       setIsLoading(false)
-      setErrorMessage(err.message || 'Supreme Admin login error.')
+      setErrorMessage(err.message || 'Administrator login error.')
     }
   }
 
   return (
     <div className="alpha-auth-root">
+      {/* Top-Right Administrator Access Quick Button with Tooltip */}
+      <div className="auth-top-admin-container">
+        <button
+          type="button"
+          className="auth-top-admin-btn"
+          aria-label="Administrator Access"
+          title="Administrator Access"
+          onClick={handleSupremeAdminQuickLogin}
+        >
+          <AppIcon name="adminPanelSettings" size={20} />
+          <span className="auth-top-admin-tooltip">Admin Access</span>
+        </button>
+      </div>
+
+      {/* Subtle Warm Orange Glow Halo */}
+      <div className="auth-halo-glow" />
+
+      {/* Central Sovereign Card */}
       <div className="alpha-scene">
         <div className="alpha-card">
-          {/* Logo inside the card at the top */}
+          {/* Sovereign glowing logo mark */}
           <div
-            className={`logo-wrap${focusedField ? ' active' : ''}`}
-            id="logoWrap"
+            className={`auth-logo-wrap${focusedField ? ' active' : ''}`}
             title="Nexora Academic Portal"
           >
-            <div className="logo-glow"></div>
-            <img className="logo-img" src="/alpha-logo.png" alt="Nexora Alpha" />
+            <div className="auth-logo-glow" />
+            <img className="auth-logo-img" src="/alpha-logo.png" alt="Nexora Alpha" />
           </div>
 
           {/* Feedback messages */}
@@ -377,142 +394,133 @@ export default function AuthPage({
           >
             {!isSignup ? (
               <>
-                {/* Mobile / Email / Username */}
-                <div className="field">
-                  <label htmlFor="username">
-                    <AppIcon name="person" size={13} color="#FB923C" />
-                    <span>Mobile Number, Email or Username</span>
-                  </label>
-                  <div className={`field-input-wrap${focusedField === 'username' ? ' focused' : ''}`}>
-                    <span className="field-prefix-icon">
-                      <AppIcon name="person" size={16} color="#64748B" />
-                    </span>
-                    <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      placeholder="e.g. 9876543210 or adminalpha"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      onFocus={() => setFocusedField('username')}
-                      onBlur={() => setFocusedField(null)}
-                      required
-                    />
+                {/* 1. Identity Key Input (Username / Phone / Email) */}
+                <div className="auth-field">
+                  <div className="auth-field-icon">
+                    <AppIcon name="person" size={18} />
                   </div>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    className="auth-input"
+                    placeholder="Identity Key"
+                    aria-label="Identity Credential"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onFocus={() => setFocusedField('username')}
+                    onBlur={() => setFocusedField(null)}
+                    required
+                  />
                 </div>
 
-                {/* Password */}
-                <div className="field">
-                  <label htmlFor="password">
-                    <AppIcon name="key" size={13} color="#FB923C" />
-                    <span>Password</span>
-                  </label>
-                  <div className={`field-input-wrap${focusedField === 'password' ? ' focused' : ''}`}>
-                    <span className="field-prefix-icon">
-                      <AppIcon name="key" size={16} color="#64748B" />
-                    </span>
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onFocus={() => setFocusedField('password')}
-                      onBlur={() => setFocusedField(null)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="field-toggle-btn"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={-1}
-                    >
-                      <AppIcon name={showPassword ? 'visibilityOff' : 'visibility'} size={17} />
-                    </button>
+                {/* 2. Passcode Input */}
+                <div className="auth-field">
+                  <div className="auth-field-icon">
+                    <AppIcon name="key" size={18} />
                   </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    className="auth-input has-toggle"
+                    placeholder="Passcode"
+                    aria-label="Passcode Key"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField(null)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="auth-toggle-btn"
+                    aria-label="Toggle password visibility"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1}
+                  >
+                    <AppIcon name={showPassword ? 'visibilityOff' : 'visibility'} size={18} />
+                  </button>
                 </div>
 
-                {/* Submit Button */}
+                {/* 3. Primary Gradient Submit Button */}
                 <button
                   type="submit"
-                  className={`submit${isLoading ? ' loading' : ''}`}
+                  className="auth-submit-btn"
                   id="submitBtn"
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <span className="spinner"></span>
+                    <span className="auth-spinner" />
                   ) : (
-                    <AppIcon name="logout" size={16} />
+                    <>
+                      <span>Login</span>
+                      <AppIcon name="arrowForward" size={16} />
+                    </>
                   )}
-                  <span className="btn-text">{isLoading ? 'Signing in...' : 'Log in'}</span>
                 </button>
               </>
             ) : signupStep === 'otp' ? (
-              <div className="alpha-otp-container">
-                <div className="alpha-otp-badge">
-                  <AppIcon name="security" size={14} />
-                  <span>SMS VERIFICATION</span>
+              <div className="alpha-card">
+                <div className="auth-otp-badge">
+                  <AppIcon name="security" size={13} />
+                  <span>SMS Verification</span>
                 </div>
-                <h2 className="alpha-otp-title">Enter SMS Code</h2>
-                <p className="alpha-otp-subtitle">
-                  Enter the 6-digit SMS verification code sent to{' '}
-                  <span className="alpha-otp-highlight">{signupDisplayPhone || signupPhone}</span>
+                <h2 className="auth-otp-title">Enter SMS Code</h2>
+                <p className="auth-otp-subtitle">
+                  Enter the 6-digit SMS code sent to{' '}
+                  <strong style={{ color: '#fff' }}>{signupDisplayPhone || signupPhone}</strong>
                 </p>
 
-                <div className="field">
-                  <div className={`field-input-wrap alpha-otp-input-wrap${focusedField === 'otpCode' ? ' focused' : ''}`}>
-                    <input
-                      id="otpCode"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={6}
-                      className="alpha-otp-input"
-                      placeholder="••••••"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      onFocus={() => setFocusedField('otpCode')}
-                      onBlur={() => setFocusedField(null)}
-                      autoFocus
-                      required
-                    />
-                  </div>
+                <div className="auth-field">
+                  <input
+                    id="otpCode"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    className="auth-input auth-otp-input"
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onFocus={() => setFocusedField('otpCode')}
+                    onBlur={() => setFocusedField(null)}
+                    autoFocus
+                    required
+                  />
                 </div>
 
-                {/* Verify Submit Button */}
                 <button
                   type="submit"
-                  className={`submit${isLoading ? ' loading' : ''}`}
+                  className="auth-submit-btn"
                   id="verifyOtpBtn"
                   disabled={isLoading || otpCode.length < 6}
                 >
                   {isLoading ? (
-                    <span className="spinner"></span>
+                    <span className="auth-spinner" />
                   ) : (
-                    <AppIcon name="rocket" size={16} />
+                    <>
+                      <span>Verify &amp; Create Account</span>
+                      <AppIcon name="arrowForward" size={16} />
+                    </>
                   )}
-                  <span className="btn-text">
-                    {isLoading ? 'Verifying SMS Code...' : 'Verify & Create Account'}
-                  </span>
                 </button>
 
-                <div className="alpha-otp-footer">
+                <div className="auth-otp-footer">
                   <button
                     type="button"
-                    className="alpha-link-btn"
+                    className="auth-otp-footer-btn"
                     onClick={handleResendOtp}
                     disabled={resendCooldown > 0 || isLoading}
                   >
                     {resendCooldown > 0 ? `Resend SMS in ${resendCooldown}s` : 'Resend SMS'}
                   </button>
-                  <span className="alpha-otp-dot">•</span>
+                  <span className="auth-otp-dot">•</span>
                   <button
                     type="button"
-                    className="alpha-link-btn"
+                    className="auth-otp-footer-btn"
                     onClick={() => {
                       setSignupStep('form')
                       setErrorMessage('')
@@ -524,47 +532,34 @@ export default function AuthPage({
               </div>
             ) : (
               <>
-                {/* 1. Academic Track / Class Dynamic Selection */}
-                <div className="alpha-class-section">
-                  <div className="alpha-class-section-header">
-                    <span className="alpha-class-section-title">
-                      <AppIcon name="school" size={14} color="#FB923C" />
+                {/* 1. Academic Track Selection */}
+                <div className="auth-class-section">
+                  <div className="auth-class-section-header">
+                    <span className="auth-class-section-title">
+                      <AppIcon name="school" size={13} color="#f97316" />
                       <span>Academic Course / Class</span>
                     </span>
-                    <span className="alpha-class-section-badge">{activeCourses.length} Available</span>
+                    <span className="auth-class-section-badge">{activeCourses.length} Available</span>
                   </div>
-                  <div className="alpha-class-grid">
+                  <div className="auth-class-grid">
                     {activeCourses.map((course) => {
                       const isSelected = signupCourseId === course.id
-                      const lower = course.name.toLowerCase()
-                      const iconName = lower.includes('9')
-                        ? 'bolt'
-                        : lower.includes('10')
-                        ? 'chapters'
-                        : lower.includes('11')
-                        ? 'physics'
-                        : lower.includes('12') || lower.includes('cs')
-                        ? 'computer'
-                        : 'school'
-
                       return (
                         <button
                           key={course.id}
                           type="button"
-                          className={`alpha-class-chip${isSelected ? ' active' : ''}`}
+                          className={`auth-class-chip${isSelected ? ' active' : ''}`}
                           onClick={() => setSignupCourseId(course.id)}
                         >
-                          <span className="alpha-class-chip-icon">
-                            <AppIcon name={iconName} size={15} color={isSelected ? '#FB923C' : '#94A3B8'} />
-                          </span>
-                          <span className="alpha-class-chip-name" title={course.name}>
+                          <AppIcon
+                            name="school"
+                            size={14}
+                            color={isSelected ? '#f97316' : '#94a3b8'}
+                          />
+                          <span className="auth-class-chip-name" title={course.name}>
                             {course.name}
                           </span>
-                          {isSelected && (
-                            <span className="alpha-class-chip-check">
-                              <AppIcon name="check" size={13} />
-                            </span>
-                          )}
+                          {isSelected && <AppIcon name="check" size={12} color="#f97316" />}
                         </button>
                       )
                     })}
@@ -572,166 +567,146 @@ export default function AuthPage({
                 </div>
 
                 {/* 2. Full Name */}
-                <div className="field">
-                  <label htmlFor="signupName">
-                    <AppIcon name="badge" size={13} color="#FB923C" />
-                    <span>Full Name</span>
-                  </label>
-                  <div className={`field-input-wrap${focusedField === 'signupName' ? ' focused' : ''}`}>
-                    <span className="field-prefix-icon">
-                      <AppIcon name="badge" size={16} color="#64748B" />
-                    </span>
-                    <input
-                      id="signupName"
-                      type="text"
-                      placeholder="e.g. Abhishek Kumar"
-                      value={signupName}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      onFocus={() => setFocusedField('signupName')}
-                      onBlur={() => setFocusedField(null)}
-                      required
-                    />
+                <div className="auth-field">
+                  <div className="auth-field-icon">
+                    <AppIcon name="badge" size={18} />
                   </div>
+                  <input
+                    id="signupName"
+                    type="text"
+                    className="auth-input"
+                    placeholder="Full Name (e.g. Abhishek Kumar)"
+                    value={signupName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    onFocus={() => setFocusedField('signupName')}
+                    onBlur={() => setFocusedField(null)}
+                    required
+                  />
                 </div>
 
                 {/* 3. Mobile Number */}
-                <div className="field">
-                  <label htmlFor="signupPhone">
-                    <AppIcon name="phone" size={13} color="#FB923C" />
-                    <span>Mobile Number (for SMS OTP)</span>
-                  </label>
-                  <div className={`field-input-wrap alpha-phone-wrap${focusedField === 'signupPhone' ? ' focused' : ''}`}>
-                    <span className="alpha-phone-prefix">+91</span>
+                <div className="auth-field">
+                  <div className="auth-field-icon">
+                    <AppIcon name="phone" size={18} />
+                  </div>
+                  <span className="auth-phone-prefix">+91</span>
+                  <input
+                    id="signupPhone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={14}
+                    className="auth-input has-prefix"
+                    placeholder="Mobile Number"
+                    value={signupPhone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d+ ]/g, '')
+                      setSignupPhone(val)
+                    }}
+                    onFocus={() => setFocusedField('signupPhone')}
+                    onBlur={() => setFocusedField(null)}
+                    required
+                  />
+                </div>
+
+                {/* 4. Passwords */}
+                <div className="auth-field-grid">
+                  <div className="auth-field">
+                    <div className="auth-field-icon">
+                      <AppIcon name="key" size={16} />
+                    </div>
                     <input
-                      id="signupPhone"
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={14}
-                      placeholder="98765 43210"
-                      value={signupPhone}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^\d+ ]/g, '')
-                        setSignupPhone(val)
-                      }}
-                      onFocus={() => setFocusedField('signupPhone')}
+                      id="signupPassword"
+                      type={showSignupPassword ? 'text' : 'password'}
+                      className="auth-input has-toggle"
+                      placeholder="Passcode"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      onFocus={() => setFocusedField('signupPassword')}
                       onBlur={() => setFocusedField(null)}
                       required
                     />
+                    <button
+                      type="button"
+                      className="auth-toggle-btn"
+                      onClick={() => setShowSignupPassword((prev) => !prev)}
+                      tabIndex={-1}
+                    >
+                      <AppIcon name={showSignupPassword ? 'visibilityOff' : 'visibility'} size={16} />
+                    </button>
+                  </div>
+
+                  <div className="auth-field">
+                    <div className="auth-field-icon">
+                      <AppIcon name="key" size={16} />
+                    </div>
+                    <input
+                      id="signupConfirmPassword"
+                      type={showSignupConfirmPassword ? 'text' : 'password'}
+                      className="auth-input has-toggle"
+                      placeholder="Confirm Passcode"
+                      value={signupConfirmPassword}
+                      onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                      onFocus={() => setFocusedField('signupConfirmPassword')}
+                      onBlur={() => setFocusedField(null)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="auth-toggle-btn"
+                      onClick={() => setShowSignupConfirmPassword((prev) => !prev)}
+                      tabIndex={-1}
+                    >
+                      <AppIcon name={showSignupConfirmPassword ? 'visibilityOff' : 'visibility'} size={16} />
+                    </button>
                   </div>
                 </div>
 
-                {/* 4. Password & Confirm Password */}
-                <div className="field-grid-row">
-                  <div className="field">
-                    <label htmlFor="signupPassword">
-                      <AppIcon name="key" size={13} color="#FB923C" />
-                      <span>Password</span>
-                    </label>
-                    <div className={`field-input-wrap${focusedField === 'signupPassword' ? ' focused' : ''}`}>
-                      <input
-                        id="signupPassword"
-                        type={showSignupPassword ? 'text' : 'password'}
-                        placeholder="Min 6 chars"
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                        onFocus={() => setFocusedField('signupPassword')}
-                        onBlur={() => setFocusedField(null)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="field-toggle-btn"
-                        onClick={() => setShowSignupPassword((prev) => !prev)}
-                        aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
-                        tabIndex={-1}
-                      >
-                        <AppIcon name={showSignupPassword ? 'visibilityOff' : 'visibility'} size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="signupConfirmPassword">
-                      <AppIcon name="key" size={13} color="#FB923C" />
-                      <span>Confirm Password</span>
-                    </label>
-                    <div className={`field-input-wrap${focusedField === 'signupConfirmPassword' ? ' focused' : ''}`}>
-                      <input
-                        id="signupConfirmPassword"
-                        type={showSignupConfirmPassword ? 'text' : 'password'}
-                        placeholder="Re-enter password"
-                        value={signupConfirmPassword}
-                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                        onFocus={() => setFocusedField('signupConfirmPassword')}
-                        onBlur={() => setFocusedField(null)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="field-toggle-btn"
-                        onClick={() => setShowSignupConfirmPassword((prev) => !prev)}
-                        aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                        tabIndex={-1}
-                      >
-                        <AppIcon name={showSignupConfirmPassword ? 'visibilityOff' : 'visibility'} size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Send Mobile OTP Submit Button */}
+                {/* 5. Submit Button */}
                 <button
                   type="submit"
-                  className={`submit${isLoading ? ' loading' : ''}`}
+                  className="auth-submit-btn"
                   id="sendOtpBtn"
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <span className="spinner"></span>
+                    <span className="auth-spinner" />
                   ) : (
-                    <AppIcon name="phone" size={16} />
+                    <>
+                      <span>Send Mobile OTP</span>
+                      <AppIcon name="arrowForward" size={16} />
+                    </>
                   )}
-                  <span className="btn-text">
-                    {isLoading ? 'Sending SMS OTP...' : 'Send Mobile OTP'}
-                  </span>
                 </button>
               </>
             )}
           </form>
 
-          {/* Mode Switch Footer Link */}
-          <div className="alpha-mode-switch">
-            <span>
-              {isSignup ? 'Already have an account?' : "Don't have an account?"}
+          {/* Bottom Actions */}
+          <div className="auth-bottom-nav">
+            {!isSignup && (
               <button
                 type="button"
-                className="alpha-switch-btn"
+                className="auth-admin-portal-btn"
+                onClick={handleSupremeAdminQuickLogin}
+              >
+                <AppIcon name="shieldPerson" size={15} />
+                <span>Admin Portal</span>
+              </button>
+            )}
+
+            <div className="auth-mode-switch-link">
+              <span>{isSignup ? 'Already have an account?' : "Don't have an account?"}</span>
+              <button
+                type="button"
+                className="auth-switch-text-btn"
                 onClick={isSignup ? handleSwitchToLogin : handleSwitchToSignup}
               >
                 {isSignup ? 'Log in' : 'Create Account'}
               </button>
-            </span>
-          </div>
-
-          {/* Supreme Alpha Admin Quick Login Chip (on Login screen) */}
-          {!isSignup && (
-            <div
-              className="alpha-admin-badge"
-              onClick={handleSupremeAdminQuickLogin}
-              title="Click to sign in instantly as Supreme Alpha Admin"
-            >
-              <div className="alpha-admin-badge-left">
-                <AppIcon name="lock" size={14} color="#ff741f" />
-                <span className="alpha-admin-badge-text">Supreme Alpha Admin Access</span>
-              </div>
-              <span className="alpha-admin-badge-tag">ADMINALPHA</span>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
   )
 }
-
-
-

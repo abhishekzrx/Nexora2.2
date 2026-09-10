@@ -3,10 +3,13 @@
  * Production Supabase-First Member & Profile Management Service.
  *
  * Hardened Architecture:
- * 1. Supabase Live Directory: Only Supabase database user records are displayed.
+ * 1. Supabase as Source of Truth with Resilient Client Persistence:
+ *    - Database members are always loaded and prioritized.
+ *    - Created members (MEMBER06+) are never wiped by default seed lists or network drops.
  * 2. Super Admin Lockout Immunity: Root adminalpha is permanently protected (cannot be deleted/disabled/archived/demoted).
- * 3. Single Course Constraint: Students are restricted to exactly 1 academic course track.
- * 4. Supabase Auth Integration: Passwords/Credentials are securely managed via Supabase Auth.
+ * 3. Stable Member Identity: Immutable auth.users.id (UUID) anchors all analytics, attempts, and progress.
+ * 4. Single Course Constraint: Students are restricted to exactly 1 academic course track (Super Admin has global * access).
+ * 5. Supabase Auth Integration: Passwords/Credentials are securely managed via Supabase Auth.
  */
 
 import { apiService } from './apiService.js'
@@ -14,6 +17,8 @@ import { identityService } from './identityService.js'
 import { auditService } from './auditService.js'
 
 const MEMBERS_CACHE_KEY = 'nexora_supabase_users_directory_v3'
+const LEGACY_CACHE_KEY_1 = 'nexora_members_directory_v2'
+const LEGACY_CACHE_KEY_2 = 'nexora_members_directory'
 
 // Supreme Root Super Admin Anchor (Immune to deletion/lockout)
 export const PRIMARY_SUPER_ADMIN = {
@@ -37,7 +42,190 @@ export const PRIMARY_SUPER_ADMIN = {
   last_active_at: new Date().toISOString(),
 }
 
-export const SEED_MEMBERS = [PRIMARY_SUPER_ADMIN]
+// Baseline Production Seed & Bootstrap Profiles
+export const SEED_MEMBERS = [
+  PRIMARY_SUPER_ADMIN,
+  {
+    id: 'usr_member_01_rahul',
+    username: 'MEMBER01',
+    public_user_id: 'NEX-WAR-001',
+    warrior_name: 'IRONPHOENIX',
+    display_name: 'Rahul',
+    email: 'rahul@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'bpsc_prelims',
+    assigned_courses: ['bpsc_prelims', 'bpsc_cs'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-01-15T00:00:00.000Z',
+    updated_at: '2026-01-15T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_02_priya',
+    username: 'MEMBER02',
+    public_user_id: 'NEX-WAR-002',
+    warrior_name: 'SHADOWWOLF',
+    display_name: 'Priya',
+    email: 'priya@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'bpsc_prelims',
+    assigned_courses: ['bpsc_prelims'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-01-16T00:00:00.000Z',
+    updated_at: '2026-01-16T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_03_amit',
+    username: 'MEMBER03',
+    public_user_id: 'NEX-WAR-003',
+    warrior_name: 'STORMRIDER',
+    display_name: 'Amit',
+    email: 'amit@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'bpsc_cs',
+    assigned_courses: ['bpsc_cs'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-01-17T00:00:00.000Z',
+    updated_at: '2026-01-17T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_04_sneha',
+    username: 'MEMBER04',
+    public_user_id: 'NEX-WAR-004',
+    warrior_name: 'FIRETITAN',
+    display_name: 'Sneha',
+    email: 'sneha@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'bpsc_prelims',
+    assigned_courses: ['bpsc_prelims'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-01-18T00:00:00.000Z',
+    updated_at: '2026-01-18T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_05_rohan',
+    username: 'MEMBER05',
+    public_user_id: 'NEX-WAR-005',
+    warrior_name: 'NIGHTHAWK',
+    display_name: 'Rohan',
+    email: 'rohan@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'bpsc_cs',
+    assigned_courses: ['bpsc_cs'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-01-19T00:00:00.000Z',
+    updated_at: '2026-01-19T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_06_ansh',
+    username: 'ansh09',
+    public_user_id: 'NEX-WAR-006',
+    warrior_name: 'THUNDERFANG',
+    display_name: 'Ansh',
+    email: 'ansh@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'cbse-9',
+    assigned_courses: ['cbse-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-01T00:00:00.000Z',
+    updated_at: '2026-02-01T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_07_abhinash',
+    username: 'abhinash09',
+    public_user_id: 'NEX-WAR-007',
+    warrior_name: 'BLAZELION',
+    display_name: 'Abhinash',
+    email: 'abhinash@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'cbse-9',
+    assigned_courses: ['cbse-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-02T00:00:00.000Z',
+    updated_at: '2026-02-02T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_08_sahil',
+    username: 'sahil09',
+    public_user_id: 'NEX-WAR-008',
+    warrior_name: 'FROSTDRAGON',
+    display_name: 'Sahil',
+    email: 'sahil@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'cbse-9',
+    assigned_courses: ['cbse-9'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-03T00:00:00.000Z',
+    updated_at: '2026-02-03T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+  {
+    id: 'usr_member_09_ankit',
+    username: 'ankit10',
+    public_user_id: 'NEX-WAR-009',
+    warrior_name: 'CYBERSHARK',
+    display_name: 'Ankit',
+    email: 'ankit@student.nexora.io',
+    role: 'MEMBER',
+    status: 'ACTIVE',
+    assigned_course_id: 'cbse-10',
+    assigned_courses: ['cbse-10'],
+    permissions: {
+      all_courses: false,
+      subject_overrides: {},
+      content_overrides: {},
+    },
+    created_at: '2026-02-04T00:00:00.000Z',
+    updated_at: '2026-02-04T00:00:00.000Z',
+    last_active_at: new Date().toISOString(),
+  },
+]
 
 export function normalizeMember(member) {
   if (!member) return member
@@ -67,8 +255,8 @@ export function normalizeMember(member) {
     if (c === 'cbse-9' || c === 'cbse-c9' || c === 'cbse-class-9' || c.includes('class 9') || c.includes('class-9')) return 'cbse-9'
     if (c === 'cbse-10' || c === 'cbse-c10' || c === 'cbse-class-10' || c.includes('class 10') || c.includes('class-10')) return 'cbse-10'
     if (c === 'cbse-12-cs' || c.includes('class 12')) return 'cbse-12-cs'
-    if (c === 'bpsc_prelims' || c === 'bpsc-prelims' || c.includes('prelims') || c.includes('pre lims')) return 'bpsc-prelims'
-    if (c === 'bpsc_cs' || c === 'bpsc-tre-4' || c === 'bpsc-4-cs' || c.includes('bpsc') || c.includes('tre')) return 'bpsc-tre-4'
+    if (c === 'bpsc_prelims' || c === 'bpsc-prelims' || c.includes('prelims') || c.includes('pre lims')) return 'bpsc_prelims'
+    if (c === 'bpsc_cs' || c === 'bpsc-tre-4' || c === 'bpsc-4-cs' || c.includes('bpsc') || c.includes('tre')) return 'bpsc_cs'
     return cid
   }
 
@@ -85,24 +273,52 @@ export function normalizeMember(member) {
   return {
     ...member,
     assigned_course_id: singleCourse || null,
-    assigned_courses: singleCourse ? [singleCourse] : [],
+    assigned_courses: singleCourse ? [singleCourse] : (Array.isArray(member.assigned_courses) ? member.assigned_courses : []),
   }
 }
 
-let memoryMembers = [PRIMARY_SUPER_ADMIN]
+let memoryMembers = SEED_MEMBERS.map(normalizeMember)
 
+/**
+ * Intelligent local member loader:
+ * Merges localStorage records with baseline SEED_MEMBERS.
+ * Guarantees that dynamically created members (e.g. MEMBER06+) are NEVER dropped.
+ */
 function getLocalMembers() {
   try {
     if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(MEMBERS_CACHE_KEY)
+      let saved = localStorage.getItem(MEMBERS_CACHE_KEY)
+      if (!saved) {
+        saved = localStorage.getItem(LEGACY_CACHE_KEY_1) || localStorage.getItem(LEGACY_CACHE_KEY_2)
+      }
+
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const normalized = parsed.map(normalizeMember)
-          const hasAdmin = normalized.some((m) => m.username === 'adminalpha' || m.role === 'SUPER_ADMIN')
-          const merged = hasAdmin ? normalized : [PRIMARY_SUPER_ADMIN, ...normalized]
-          memoryMembers = merged
-          return merged
+          const storedNormalized = parsed.map(normalizeMember)
+
+          // Build dictionary keyed by ID and uppercase username
+          const memberMap = new Map()
+
+          // 1. Seed baseline accounts first
+          SEED_MEMBERS.forEach((seed) => {
+            const normSeed = normalizeMember(seed)
+            memberMap.set(normSeed.id, normSeed)
+            if (normSeed.username) memberMap.set(normSeed.username.toUpperCase(), normSeed)
+          })
+
+          // 2. Overlay stored members (including updates and dynamically created members)
+          storedNormalized.forEach((stored) => {
+            const normStored = normalizeMember(stored)
+            memberMap.set(normStored.id, normStored)
+            if (normStored.username) memberMap.set(normStored.username.toUpperCase(), normStored)
+          })
+
+          // Extract unique list
+          const uniqueList = Array.from(new Set(Array.from(memberMap.values())))
+          const finalMerged = ensureRootAdminAnchor(uniqueList)
+          memoryMembers = finalMerged
+          return finalMerged
         }
       }
     }
@@ -110,18 +326,41 @@ function getLocalMembers() {
     // ignore
   }
 
-  saveLocalMembers(memoryMembers)
-  return memoryMembers
+  const initial = ensureRootAdminAnchor(SEED_MEMBERS.map(normalizeMember))
+  saveLocalMembers(initial)
+  return initial
+}
+
+/**
+ * Ensures Primary Root Super Admin is always anchored and active.
+ */
+function ensureRootAdminAnchor(list = []) {
+  const normalized = list.map(normalizeMember)
+  const adminIndex = normalized.findIndex((m) => m.username === 'adminalpha' || m.id === 'usr_super_admin_alpha')
+
+  if (adminIndex !== -1) {
+    normalized[adminIndex] = {
+      ...normalized[adminIndex],
+      ...PRIMARY_SUPER_ADMIN,
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      assigned_courses: ['*'],
+      assigned_course_id: '*',
+      permissions: { all_courses: true, subject_overrides: {}, content_overrides: {} },
+    }
+    return normalized
+  }
+
+  return [PRIMARY_SUPER_ADMIN, ...normalized]
 }
 
 function saveLocalMembers(members) {
-  const normalized = members.map(normalizeMember)
-  const hasAdmin = normalized.some((m) => m.username === 'adminalpha' || m.role === 'SUPER_ADMIN')
-  memoryMembers = hasAdmin ? normalized : [PRIMARY_SUPER_ADMIN, ...normalized]
+  const merged = ensureRootAdminAnchor(members)
+  memoryMembers = merged
 
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(MEMBERS_CACHE_KEY, JSON.stringify(memoryMembers))
+      localStorage.setItem(MEMBERS_CACHE_KEY, JSON.stringify(merged))
     }
   } catch {
     // ignore
@@ -130,30 +369,46 @@ function saveLocalMembers(members) {
 
 export const memberService = {
   /**
-   * Retrieves all member profiles from Supabase user_profiles table.
-   * Only Supabase users are shown (plus Super Admin anchor).
+   * Retrieves all member profiles with Supabase as Permanent Source of Truth.
+   * Merges database records with local members so dynamic records are never lost.
    */
   async getAllMembers(includeArchived = true) {
+    let local = getLocalMembers()
+
     try {
       const res = await apiService.get('/user_profiles?order=created_at.asc')
-      if (res && res.success && Array.isArray(res.data)) {
-        const normalizedSupabase = res.data.map(normalizeMember)
-        const hasAdmin = normalizedSupabase.some((m) => m.username === 'adminalpha' || m.role === 'SUPER_ADMIN')
-        const finalProfiles = hasAdmin ? normalizedSupabase : [PRIMARY_SUPER_ADMIN, ...normalizedSupabase]
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const dbProfiles = res.data.map(normalizeMember)
 
-        saveLocalMembers(finalProfiles)
+        // Build merged dictionary: Supabase is source of truth, but preserve local records not yet synced
+        const memberMap = new Map()
+
+        // 1. Load local records
+        local.forEach((m) => {
+          memberMap.set(m.id, m)
+          if (m.username) memberMap.set(m.username.toUpperCase(), m)
+        })
+
+        // 2. Overlay Supabase database records (Database wins)
+        dbProfiles.forEach((dbM) => {
+          memberMap.set(dbM.id, dbM)
+          if (dbM.username) memberMap.set(dbM.username.toUpperCase(), dbM)
+        })
+
+        const uniqueMerged = ensureRootAdminAnchor(Array.from(new Set(Array.from(memberMap.values()))))
+        saveLocalMembers(uniqueMerged)
+
         return {
           success: true,
-          data: includeArchived ? finalProfiles : finalProfiles.filter((m) => m.status !== 'ARCHIVED'),
+          data: includeArchived ? uniqueMerged : uniqueMerged.filter((m) => m.status !== 'ARCHIVED'),
           fromDatabase: true,
         }
       }
     } catch (err) {
-      console.warn('[memberService] Supabase user_profiles fetch notice:', err)
+      console.warn('[memberService] Supabase user_profiles fetch notice (using resilient local store):', err)
     }
 
-    // Return local cache / root Super Admin if Supabase is initializing
-    const local = getLocalMembers()
+    // Return resilient local cache if Supabase is offline or initializing
     return {
       success: true,
       data: includeArchived ? local : local.filter((m) => m.status !== 'ARCHIVED'),
@@ -381,7 +636,7 @@ export const memberService = {
 
     const existing = all[index]
 
-    // Super Admin Lockout Protection: Primary adminalpha cannot be deactivated or demoted
+    // Super Admin Lockout Protection: Primary adminalpha cannot be deactivated, demoted, or stripped of access
     if (existing.username === 'adminalpha' || existing.id === 'usr_super_admin_alpha') {
       if (updates.role && updates.role !== 'SUPER_ADMIN') {
         return { success: false, error: 'Super Admin Lockout Protection: Cannot remove SUPER_ADMIN role from primary adminalpha.' }
@@ -555,7 +810,7 @@ export const memberService = {
     const member = all.find((m) => m.id === memberId)
     if (!member) return { success: false, error: 'Member not found.' }
 
-    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN') {
+    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN' || member.id === 'usr_super_admin_alpha') {
       return { success: false, error: 'Super Admin Lockout Protection: Cannot disable Super Admin.' }
     }
 
@@ -582,7 +837,7 @@ export const memberService = {
     const member = all.find((m) => m.id === memberId)
     if (!member) return { success: false, error: 'Member not found.' }
 
-    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN') {
+    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN' || member.id === 'usr_super_admin_alpha') {
       return { success: false, error: 'Super Admin Lockout Protection: Cannot archive Super Admin.' }
     }
 
@@ -628,7 +883,7 @@ export const memberService = {
     const member = all.find((m) => m.id === memberId)
     if (!member) return { success: false, error: 'Member not found.' }
 
-    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN') {
+    if (member.username === 'adminalpha' || member.role === 'SUPER_ADMIN' || member.id === 'usr_super_admin_alpha') {
       return { success: false, error: 'Super Admin Lockout Protection: Super Admin account cannot be deleted.' }
     }
 
@@ -661,3 +916,4 @@ export const memberService = {
     return this.archiveMember(memberId, adminUserId)
   },
 }
+

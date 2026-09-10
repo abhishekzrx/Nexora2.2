@@ -1,0 +1,74 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AUREUS ARCHIVES &amp; VAULT - Portal</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#f97316",
+            "primary-hover": "#ea580c",
+            "primary-container": "#ea580c",
+            "primary-glow": "rgba(249, 115, 22, 0.15)",
+            surface: "#0b111a",
+            "surface-dim": "#080d14",
+            "surface-container": "#131b26",
+            "surface-container-high": "#1c2636",
+            "surface-container-lowest": "#06090e",
+            "outline-variant": "rgba(249, 115, 22, 0.18)",
+            "on-surface": "#e2e8f0",
+            "on-surface-variant": "#94a3b8",
+            outline: "#64748b"
+          },
+          borderRadius: {
+            DEFAULT: "0.25rem",
+            lg: "0.375rem",
+            xl: "0.5rem"
+          },
+          fontFamily: {
+            display: ["Playfair Display", "serif"],
+            sans: ["Manrope", "sans-serif"]
+          }
+        }
+      }
+    }
+</script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+    .guilloche-canvas {
+      background-color: #070c13;
+      background-image: 
+        radial-gradient(circle at 50% 45%, rgba(249, 115, 22, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at top, rgba(19, 27, 38, 0.85) 0%, #070c13 100%),
+        repeating-linear-gradient(45deg, rgba(249, 115, 22, 0.015) 0px, rgba(249, 115, 22, 0.015) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(-45deg, rgba(249, 115, 22, 0.015) 0px, rgba(249, 115, 22, 0.015) 1px, transparent 1px, transparent 20px);
+    }
+    .sanctum-shadow {
+      box-shadow: 0 25px 50px -12px rgba(4, 8, 14, 0.95), 0 0 45px -8px rgba(249, 115, 22, 0.12);
+    }
+</style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen h-screen w-full flex flex-col selection:bg-orange-500 selection:text-white font-sans overflow-hidden guilloche-canvas items-center justify-center m-0 p-0">
+<!-- Header Minimal Navigation -->
+
+<!-- Central Authentication Canvas -->
+<main class="w-full h-full flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative"><div class="absolute top-6 right-6 z-20 flex items-center gap-2"><button aria-label="Administrator Access" class="group relative flex items-center justify-center w-10 h-10 rounded border border-orange-500/25 bg-surface-container/70 text-orange-500/70 hover:text-orange-500 hover:border-orange-500/60 hover:bg-surface-container transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-orange-500 shadow-lg" title="Administrator Access" type="button"><span class="material-symbols-outlined text-xl" data-icon="admin_panel_settings">admin_panel_settings</span><span class="absolute right-0 top-12 scale-0 group-hover:scale-100 transition-all duration-150 origin-top-right whitespace-nowrap bg-surface-container border border-orange-500/30 text-orange-500/90 text-xs px-2.5 py-1 rounded shadow-xl pointer-events-none tracking-wider uppercase font-medium">Admin Access</span></button></div>
+<!-- Subtle Warm Orange Glow Halo -->
+<div class="absolute w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<!-- Icon-Centric Sovereign Card -->
+<div class="w-full max-w-[24rem] relative z-10"><form class="space-y-4 relative z-10" onsubmit="event.preventDefault();"><div class="relative group"><div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-orange-500/60 group-focus-within:text-orange-500 transition-colors"><span class="material-symbols-outlined text-lg" data-icon="person">person</span></div><input aria-label="Identity Credential" class="w-full bg-surface-container/70 border border-orange-500/25 rounded py-3 pl-11 pr-4 text-on-surface placeholder:text-slate-500 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition-all duration-150" placeholder="Identity Key" required="" type="text"></div><div class="relative group"><div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-orange-500/60 group-focus-within:text-orange-500 transition-colors"><span class="material-symbols-outlined text-lg" data-icon="key">key</span></div><input aria-label="Passcode Key" class="w-full bg-surface-container/70 border border-orange-500/25 rounded py-3 pl-11 pr-11 text-on-surface placeholder:text-slate-500 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition-all duration-150" id="vault-key" placeholder="Passcode" required="" type="password"><button aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-orange-500 transition-colors duration-150 focus:outline-none" onclick="const p = document.getElementById('vault-key'); const icon = document.getElementById('pw-icon'); p.type = p.type === 'password' ? 'text' : 'password'; icon.textContent = p.type === 'password' ? 'visibility' : 'visibility_off';" type="button"><span class="material-symbols-outlined text-lg" data-icon="visibility" id="pw-icon">visibility</span></button></div><div class="pt-2"><button class="w-full py-3 px-6 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 hover:from-orange-400 hover:to-orange-500 text-white font-semibold text-sm tracking-wider uppercase rounded shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:brightness-105 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2" type="submit"><span class="">Login</span><span class="material-symbols-outlined text-base" data-icon="arrow_forward">arrow_forward</span></button></div><div class="pt-1 flex items-center justify-center"><button class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-orange-500 transition-colors duration-150 tracking-wider uppercase focus:outline-none" type="button"><span class="material-symbols-outlined text-sm" data-icon="shield_person">shield_person</span><span class="">Admin Portal</span></button></div></form></div>
+</main>
+<!-- Minimal Icon Footer -->
+
+
+
+</body></html>
