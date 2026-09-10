@@ -7,7 +7,7 @@ import { useMemberStore } from '../../data/memberStore'
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'DASHBOARD', icon: 'adminDashboard' },
-  { key: 'members', label: 'MEMBER MANAGEMENT', icon: 'profile' },
+  { key: 'users', label: 'USERS', icon: 'profile' },
   { key: 'courses', label: 'COURSE MANAGER', icon: 'folder' },
   { key: 'subjects', label: 'SUBJECTS', icon: 'chapters' },
   { key: 'notes', label: 'NOTES EDITOR', icon: 'notesTab' },
@@ -33,7 +33,7 @@ function AdminSidebar({ activeSection, onNavigate, courseName, onBackHome, onLog
 
       <div className="admin-sidebar-menu">
         {NAV_ITEMS.map((item) => {
-          const isActive = activeSection === item.key
+          const isActive = activeSection === item.key || (item.key === 'users' && activeSection === 'members')
           const isDisabled = item.disabled
 
           return (

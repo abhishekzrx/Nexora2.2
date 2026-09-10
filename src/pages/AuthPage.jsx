@@ -379,8 +379,14 @@ export default function AuthPage({
               <>
                 {/* Mobile / Email / Username */}
                 <div className="field">
-                  <label htmlFor="username">Mobile Number, Email or Username</label>
+                  <label htmlFor="username">
+                    <AppIcon name="person" size={13} color="#FB923C" />
+                    <span>Mobile Number, Email or Username</span>
+                  </label>
                   <div className={`field-input-wrap${focusedField === 'username' ? ' focused' : ''}`}>
+                    <span className="field-prefix-icon">
+                      <AppIcon name="person" size={16} color="#64748B" />
+                    </span>
                     <input
                       id="username"
                       name="username"
@@ -398,8 +404,14 @@ export default function AuthPage({
 
                 {/* Password */}
                 <div className="field">
-                  <label htmlFor="password">Password</label>
+                  <label htmlFor="password">
+                    <AppIcon name="key" size={13} color="#FB923C" />
+                    <span>Password</span>
+                  </label>
                   <div className={`field-input-wrap${focusedField === 'password' ? ' focused' : ''}`}>
+                    <span className="field-prefix-icon">
+                      <AppIcon name="key" size={16} color="#64748B" />
+                    </span>
                     <input
                       id="password"
                       name="password"
@@ -431,7 +443,11 @@ export default function AuthPage({
                   id="submitBtn"
                   disabled={isLoading}
                 >
-                  {isLoading && <span className="spinner"></span>}
+                  {isLoading ? (
+                    <span className="spinner"></span>
+                  ) : (
+                    <AppIcon name="logout" size={16} />
+                  )}
                   <span className="btn-text">{isLoading ? 'Signing in...' : 'Log in'}</span>
                 </button>
               </>
@@ -474,9 +490,13 @@ export default function AuthPage({
                   id="verifyOtpBtn"
                   disabled={isLoading || otpCode.length < 6}
                 >
-                  {isLoading && <span className="spinner"></span>}
+                  {isLoading ? (
+                    <span className="spinner"></span>
+                  ) : (
+                    <AppIcon name="rocket" size={16} />
+                  )}
                   <span className="btn-text">
-                    {isLoading ? 'Verifying SMS Code...' : 'Verify & Create Account 🚀'}
+                    {isLoading ? 'Verifying SMS Code...' : 'Verify & Create Account'}
                   </span>
                 </button>
 
@@ -507,12 +527,26 @@ export default function AuthPage({
                 {/* 1. Academic Track / Class Dynamic Selection */}
                 <div className="alpha-class-section">
                   <div className="alpha-class-section-header">
-                    <span className="alpha-class-section-title">🎓 Academic Course / Class</span>
+                    <span className="alpha-class-section-title">
+                      <AppIcon name="school" size={14} color="#FB923C" />
+                      <span>Academic Course / Class</span>
+                    </span>
                     <span className="alpha-class-section-badge">{activeCourses.length} Available</span>
                   </div>
                   <div className="alpha-class-grid">
                     {activeCourses.map((course) => {
                       const isSelected = signupCourseId === course.id
+                      const lower = course.name.toLowerCase()
+                      const iconName = lower.includes('9')
+                        ? 'bolt'
+                        : lower.includes('10')
+                        ? 'chapters'
+                        : lower.includes('11')
+                        ? 'physics'
+                        : lower.includes('12') || lower.includes('cs')
+                        ? 'computer'
+                        : 'school'
+
                       return (
                         <button
                           key={course.id}
@@ -521,15 +555,7 @@ export default function AuthPage({
                           onClick={() => setSignupCourseId(course.id)}
                         >
                           <span className="alpha-class-chip-icon">
-                            {course.name.toLowerCase().includes('9')
-                              ? '⚡'
-                              : course.name.toLowerCase().includes('10')
-                              ? '📘'
-                              : course.name.toLowerCase().includes('11')
-                              ? '⚛️'
-                              : course.name.toLowerCase().includes('12')
-                              ? '💻'
-                              : '🎓'}
+                            <AppIcon name={iconName} size={15} color={isSelected ? '#FB923C' : '#94A3B8'} />
                           </span>
                           <span className="alpha-class-chip-name" title={course.name}>
                             {course.name}
@@ -547,8 +573,14 @@ export default function AuthPage({
 
                 {/* 2. Full Name */}
                 <div className="field">
-                  <label htmlFor="signupName">Full Name</label>
+                  <label htmlFor="signupName">
+                    <AppIcon name="badge" size={13} color="#FB923C" />
+                    <span>Full Name</span>
+                  </label>
                   <div className={`field-input-wrap${focusedField === 'signupName' ? ' focused' : ''}`}>
+                    <span className="field-prefix-icon">
+                      <AppIcon name="badge" size={16} color="#64748B" />
+                    </span>
                     <input
                       id="signupName"
                       type="text"
@@ -564,7 +596,10 @@ export default function AuthPage({
 
                 {/* 3. Mobile Number */}
                 <div className="field">
-                  <label htmlFor="signupPhone">Mobile Number (for SMS OTP)</label>
+                  <label htmlFor="signupPhone">
+                    <AppIcon name="phone" size={13} color="#FB923C" />
+                    <span>Mobile Number (for SMS OTP)</span>
+                  </label>
                   <div className={`field-input-wrap alpha-phone-wrap${focusedField === 'signupPhone' ? ' focused' : ''}`}>
                     <span className="alpha-phone-prefix">+91</span>
                     <input
@@ -588,7 +623,10 @@ export default function AuthPage({
                 {/* 4. Password & Confirm Password */}
                 <div className="field-grid-row">
                   <div className="field">
-                    <label htmlFor="signupPassword">Password</label>
+                    <label htmlFor="signupPassword">
+                      <AppIcon name="key" size={13} color="#FB923C" />
+                      <span>Password</span>
+                    </label>
                     <div className={`field-input-wrap${focusedField === 'signupPassword' ? ' focused' : ''}`}>
                       <input
                         id="signupPassword"
@@ -613,7 +651,10 @@ export default function AuthPage({
                   </div>
 
                   <div className="field">
-                    <label htmlFor="signupConfirmPassword">Confirm Password</label>
+                    <label htmlFor="signupConfirmPassword">
+                      <AppIcon name="key" size={13} color="#FB923C" />
+                      <span>Confirm Password</span>
+                    </label>
                     <div className={`field-input-wrap${focusedField === 'signupConfirmPassword' ? ' focused' : ''}`}>
                       <input
                         id="signupConfirmPassword"
@@ -645,9 +686,13 @@ export default function AuthPage({
                   id="sendOtpBtn"
                   disabled={isLoading}
                 >
-                  {isLoading && <span className="spinner"></span>}
+                  {isLoading ? (
+                    <span className="spinner"></span>
+                  ) : (
+                    <AppIcon name="phone" size={16} />
+                  )}
                   <span className="btn-text">
-                    {isLoading ? 'Sending SMS OTP...' : 'Send Mobile OTP 📱'}
+                    {isLoading ? 'Sending SMS OTP...' : 'Send Mobile OTP'}
                   </span>
                 </button>
               </>

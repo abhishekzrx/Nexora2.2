@@ -101,6 +101,28 @@ import VerticalSplitRounded from '@mui/icons-material/VerticalSplitRounded'
 import TextFieldsRounded from '@mui/icons-material/TextFieldsRounded'
 import NotesRounded from '@mui/icons-material/NotesRounded'
 import InsertDriveFileRounded from '@mui/icons-material/InsertDriveFileRounded'
+import PersonRounded from '@mui/icons-material/PersonRounded'
+import VpnKeyRounded from '@mui/icons-material/VpnKeyRounded'
+import EmailRounded from '@mui/icons-material/EmailRounded'
+import PhoneRounded from '@mui/icons-material/PhoneRounded'
+import ShieldRounded from '@mui/icons-material/ShieldRounded'
+import InsightsRounded from '@mui/icons-material/InsightsRounded'
+import FileDownloadRounded from '@mui/icons-material/FileDownloadRounded'
+import PersonAddRounded from '@mui/icons-material/PersonAddRounded'
+import RestoreRounded from '@mui/icons-material/RestoreRounded'
+import PowerSettingsNewRounded from '@mui/icons-material/PowerSettingsNewRounded'
+import AutoGraphRounded from '@mui/icons-material/AutoGraphRounded'
+import BadgeRounded from '@mui/icons-material/BadgeRounded'
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
+import CancelRounded from '@mui/icons-material/CancelRounded'
+import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded'
+import PublicRounded from '@mui/icons-material/PublicRounded'
+import SpeedRounded from '@mui/icons-material/SpeedRounded'
+import GpsFixedRounded from '@mui/icons-material/GpsFixedRounded'
+import AssignmentTurnedInRounded from '@mui/icons-material/AssignmentTurnedInRounded'
+import AccountBoxRounded from '@mui/icons-material/AccountBoxRounded'
+import FaceRounded from '@mui/icons-material/FaceRounded'
+import HubRounded from '@mui/icons-material/HubRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
@@ -224,6 +246,37 @@ export const iconRegistry = {
   splitScreen: { component: VerticalSplitRounded, optical: 0 },
   notesList: { component: NotesRounded, optical: 0 },
   fileDoc: { component: InsertDriveFileRounded, optical: 0 },
+
+  // ── Users & Identity ───────────────────────────────────────
+  person: { component: PersonRounded, optical: 0 },
+  personAdd: { component: PersonAddRounded, optical: 1 },
+  school: { component: SchoolRounded, optical: 0 },
+  key: { component: VpnKeyRounded, optical: 0 },
+  mail: { component: EmailRounded, optical: 0 },
+  phone: { component: PhoneRounded, optical: 0 },
+  shield: { component: ShieldRounded, optical: 0 },
+  insights: { component: InsightsRounded, optical: 0 },
+  download: { component: FileDownloadRounded, optical: 0 },
+  restore: { component: RestoreRounded, optical: 0 },
+  power: { component: PowerSettingsNewRounded, optical: 0 },
+  autoGraph: { component: AutoGraphRounded, optical: 0 },
+  badge: { component: BadgeRounded, optical: 0 },
+  checkCircle: { component: CheckCircleRounded, optical: 0 },
+  cancel: { component: CancelRounded, optical: 0 },
+  warningAmber: { component: WarningAmberRounded, optical: 0 },
+  public: { component: PublicRounded, optical: 0 },
+  speed: { component: SpeedRounded, optical: 0 },
+  gpsFixed: { component: GpsFixedRounded, optical: 1 },
+  solvedCheck: { component: AssignmentTurnedInRounded, optical: 0 },
+  accountBox: { component: AccountBoxRounded, optical: 0 },
+  face: { component: FaceRounded, optical: 0 },
+  hub: { component: HubRounded, optical: 0 },
+  security: { component: ShieldRounded, optical: 0 },
+  style: { component: StyleRounded, optical: 0 },
+  bolt: { component: BoltRounded, optical: 0 },
+  eye: { component: VisibilityRounded, optical: 0 },
+  eyeOff: { component: VisibilityOffRounded, optical: 0 },
+  editNote: { component: EditNoteRounded, optical: 0 },
 }
 
 export default iconRegistry

@@ -803,9 +803,7 @@ function DashboardPage({
                 className="header-icon-btn"
                 aria-label="Notifications"
               >
-                <svg className="h-btn-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                </svg>
+                <AppIcon name="notifications" size={19} />
               </button>
               {/* Optional unread notification dot/badge */}
               {pastAttempts.length > 0 && (
@@ -841,10 +839,7 @@ function DashboardPage({
           >
             <div className="continue-cta-left">
               <div className="continue-cta-icon-box">
-                <svg className="continue-cta-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-                  <path d="M12 8v4l3 3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-                </svg>
+                <AppIcon name="clock" size={20} color="#FB923C" />
               </div>
               <div className="continue-cta-info">
                 <h2 className="continue-cta-title">
@@ -863,9 +858,7 @@ function DashboardPage({
               className="continue-cta-circle-btn"
               aria-label="Resume session"
             >
-              <svg className="continue-arrow-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-              </svg>
+              <AppIcon name="arrowForward" size={17} />
             </button>
             <div className="continue-cta-glow" />
           </section>
@@ -877,15 +870,15 @@ function DashboardPage({
               {/* Milestone 1: Exam in */}
               <div className="milestone-item">
                 <div className="milestone-icon-box">
-                  <svg className="milestone-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                  </svg>
+                  <AppIcon name="calendar" size={17} color="#EA580C" />
                 </div>
                 <div className="milestone-info">
                   <div className="milestone-lbl">EXAM IN</div>
                   <div className="milestone-val">
                     {!isExamCountdownVisible ? (
-                      <span className="milestone-unit" style={{ fontSize: '13px', color: '#EF4444', fontWeight: '800' }}>🔒 Locked</span>
+                      <span className="milestone-unit" style={{ fontSize: '13px', color: '#EF4444', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <AppIcon name="lock" size={13} color="#EF4444" /> Locked
+                      </span>
                     ) : examCountdown.daysRemaining !== null ? (
                       <>
                         {examCountdown.daysRemaining} <span className="milestone-unit">Days</span>
@@ -905,10 +898,7 @@ function DashboardPage({
               {/* Milestone 2: Today's Goal */}
               <div className="milestone-item border-l">
                 <div className="milestone-icon-box">
-                  <svg className="milestone-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                    <circle cx="12" cy="12" r="3" strokeWidth="2" />
-                  </svg>
+                  <AppIcon name="target" size={17} color="#EA580C" />
                 </div>
                 <div className="milestone-info">
                   <div className="milestone-lbl">TODAY'S GOAL</div>
@@ -922,9 +912,7 @@ function DashboardPage({
               {/* Milestone 3: Study Streak */}
               <div className="milestone-item border-l">
                 <div className="milestone-icon-box">
-                  <svg className="milestone-svg" fill="currentColor" viewBox="0 0 20 20">
-                    <path clipRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.316.492-.533 1.05-.724 1.577a23.36 23.36 0 00-.77 2.658c-.417.062-.834.17-1.233.332C6.18 8.1 5 9.77 5 11.5 5 14.538 7.462 17 10.5 17c3.038 0 5.5-2.462 5.5-5.5 0-1.89-1.01-3.616-2.585-4.664a1 1 0 00-.594-.213c-.026 0-.051.002-.077.006a1 1 0 00-.814.733c-.157.653-.418 1.258-.77 1.8a1 1 0 01-1.62-.27c-.244-.45-.373-.974-.373-1.5 0-1.282.518-2.443 1.228-3.339.294-.37.382-.84.226-1.29a1 1 0 00-.226-.31z" fillRule="evenodd" />
-                  </svg>
+                  <AppIcon name="streak" size={17} color="#EA580C" />
                 </div>
                 <div className="milestone-info">
                   <div className="milestone-lbl">STREAK</div>
@@ -993,7 +981,9 @@ function DashboardPage({
                 <ul className="areas-pill-list">
                   {dynamicStrongAreas.map((area) => (
                     <li className="area-pill-item green" key={area}>
-                      <span className="area-pill-icon green">✓</span>
+                      <span className="area-pill-icon green">
+                        <AppIcon name="check" size={11} color="#16A34A" />
+                      </span>
                       <span className="area-pill-text">{area}</span>
                     </li>
                   ))}
@@ -1009,7 +999,9 @@ function DashboardPage({
                 <ul className="areas-pill-list">
                   {dynamicWeakAreas.map((area) => (
                     <li className="area-pill-item red" key={area}>
-                      <span className="area-pill-icon red">✕</span>
+                      <span className="area-pill-icon red">
+                        <AppIcon name="close" size={11} color="#DC2626" />
+                      </span>
                       <span className="area-pill-text">{area}</span>
                     </li>
                   ))}
@@ -1034,10 +1026,7 @@ function DashboardPage({
               <div className="focus-card card-revision">
                 <div className="focus-card-top-row">
                   <div className="focus-icon-box bg-orange">
-                    <svg className="focus-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect height="12" rx="2" strokeWidth="2" width="18" x="3" y="4" />
-                      <path d="M7 20h10" strokeLinecap="round" strokeWidth="2" />
-                    </svg>
+                    <AppIcon name="style" size={19} color="#EA580C" />
                   </div>
                   <span className="focus-badge badge-orange">Due</span>
                 </div>
@@ -1052,7 +1041,7 @@ function DashboardPage({
                   onClick={onNavigateSubjects}
                 >
                   <span>Review Now</span>
-                  <span>→</span>
+                  <AppIcon name="arrowForward" size={13} />
                 </button>
               </div>
 
@@ -1060,9 +1049,7 @@ function DashboardPage({
               <div className="focus-card card-incorrect">
                 <div className="focus-card-top-row">
                   <div className="focus-icon-box bg-rose">
-                    <svg className="focus-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                    </svg>
+                    <AppIcon name="warning" size={19} color="#E11D48" />
                   </div>
                   <span className="focus-badge badge-rose">Alert</span>
                 </div>
@@ -1077,7 +1064,7 @@ function DashboardPage({
                   onClick={onNavigatePractice}
                 >
                   <span>Review Now</span>
-                  <span>→</span>
+                  <AppIcon name="arrowForward" size={13} />
                 </button>
               </div>
 
@@ -1085,9 +1072,7 @@ function DashboardPage({
               <div className="focus-card card-forgotten">
                 <div className="focus-card-top-row">
                   <div className="focus-icon-box bg-purple">
-                    <svg className="focus-svg" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-                    </svg>
+                    <AppIcon name="bookmark" size={19} color="#9333EA" />
                   </div>
                   <span className="focus-badge badge-purple">Memory</span>
                 </div>
@@ -1102,7 +1087,7 @@ function DashboardPage({
                   onClick={onNavigateSubjects}
                 >
                   <span>Review Now</span>
-                  <span>→</span>
+                  <AppIcon name="arrowForward" size={13} />
                 </button>
               </div>
 
@@ -1111,10 +1096,7 @@ function DashboardPage({
                 <div>
                   <div className="mission-title-row">
                     <div className="mission-icon-box">
-                      <svg className="mission-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="8" strokeWidth="2" />
-                        <circle cx="12" cy="12" r="3" strokeWidth="2" />
-                      </svg>
+                      <AppIcon name="target" size={19} color="#EA580C" />
                     </div>
                     <span className="mission-title-text">Daily Mission</span>
                   </div>
@@ -1124,7 +1106,7 @@ function DashboardPage({
                     <div className="mission-progress-item">
                       <div className="mission-item-header">
                         <span className="mission-item-name">
-                          <span className="mission-check-symbol">✔</span> MCQs
+                          <AppIcon name="check" size={11} color="#16A34A" /> MCQs
                         </span>
                         <span className="mission-item-pct">{dailyFocus.mcqPercent}%</span>
                       </div>
@@ -1140,7 +1122,7 @@ function DashboardPage({
                     <div className="mission-progress-item">
                       <div className="mission-item-header">
                         <span className="mission-item-name">
-                          <span className="mission-check-symbol">✔</span> Cards
+                          <AppIcon name="check" size={11} color="#16A34A" /> Cards
                         </span>
                         <span className="mission-item-pct">{dailyFocus.flashcardPercent}%</span>
                       </div>
@@ -1156,7 +1138,7 @@ function DashboardPage({
                     <div className="mission-progress-item">
                       <div className="mission-item-header">
                         <span className="mission-item-name muted">
-                          <span className="mission-circle-symbol">○</span> Mock
+                          <AppIcon name="target" size={11} color="#94A3B8" /> Mock
                         </span>
                         <span className="mission-item-pct muted">{dailyFocus.mockPercent}%</span>
                       </div>
@@ -1211,9 +1193,7 @@ function DashboardPage({
               <h3 className="perf-section-title">Performance Overview</h3>
               <button type="button" className="perf-filter-pill">
                 <span>This Week</span>
-                <svg className="perf-chevron-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                </svg>
+                <AppIcon name="chevronDown" size={14} />
               </button>
             </div>
 
@@ -1222,9 +1202,7 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-                    </svg>
+                    <AppIcon name="trendingUp" size={16} color="#EA580C" />
                     <span className="perf-stat-label">Accuracy</span>
                   </div>
                   <div className="perf-stat-number">{averageAccuracy}%</div>
@@ -1243,9 +1221,7 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-                    </svg>
+                    <AppIcon name="quiz" size={16} color="#EA580C" />
                     <span className="perf-stat-label">Questions</span>
                   </div>
                   <div className="perf-stat-number">{formatCompactNumber(totalQuestionsAttempted)}</div>
@@ -1264,10 +1240,7 @@ function DashboardPage({
               <div className="perf-stat-card">
                 <div>
                   <div className="perf-stat-label-row">
-                    <svg className="perf-stat-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="9" strokeWidth="2.2" />
-                      <path d="M12 7v5l3 3" strokeWidth="2.2" />
-                    </svg>
+                    <AppIcon name="clock" size={16} color="#C2410C" />
                     <span className="perf-stat-label">Time</span>
                   </div>
                   <div className="perf-stat-number leading-tight">{totalTimeSpentFormatted}</div>
@@ -1300,7 +1273,9 @@ function DashboardPage({
             <div className="activity-feed-list">
               {dynamicActivityItems.length === 0 ? (
                 <div className="activity-empty-state">
-                  <span className="activity-empty-icon">📝</span>
+                  <span className="activity-empty-icon">
+                    <AppIcon name="editNote" size={28} color="#64748B" />
+                  </span>
                   <span className="activity-empty-text">No practice activity yet. Complete a quiz to track your history!</span>
                 </div>
               ) : (
@@ -1316,15 +1291,11 @@ function DashboardPage({
                   >
                     <div className="activity-item-left">
                       <div className={`activity-icon-sq ${item.iconType === 'good' ? 'bg-green' : 'bg-red'}`}>
-                        {item.iconType === 'good' ? (
-                          <svg className="act-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                          </svg>
-                        ) : (
-                          <svg className="act-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                          </svg>
-                        )}
+                        <AppIcon
+                          name={item.iconType === 'good' ? 'check' : 'close'}
+                          size={14}
+                          color="#FFFFFF"
+                        />
                       </div>
                       <div className="activity-item-info">
                         <h4 className="activity-item-title" title={item.title}>
@@ -1348,7 +1319,9 @@ function DashboardPage({
 
           {/* 7. EXAM STRATEGY TIP CARD */}
           <section className="exam-strategy-card">
-            <div className="strategy-icon-box">💡</div>
+            <div className="strategy-icon-box">
+              <AppIcon name="lightbulb" size={22} color="#F59E0B" />
+            </div>
             <p className="strategy-text">
               <strong className="strategy-bold">Exam Strategy:</strong>{' '}
               {dynamicWeakAreas.length > 0

@@ -201,6 +201,26 @@ function SubjectHero({ subject }) {
           </div>
         </div>
 
+        {/* ── Compact 4-Metric Insights: Accuracy | Coverage | Mastery | Remaining ── */}
+        <div className="hero-subject-insights-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', margin: '10px 0', background: 'rgba(15, 23, 42, 0.6)', padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Accuracy</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#34D399', marginTop: '2px' }}>{accuracyPercent}%</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Coverage</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#38BDF8', marginTop: '2px' }}>{coveragePercent}%</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Mastery</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FBBF24', marginTop: '2px' }}>{masteryPercent}%</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>Remaining</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FB923C', marginTop: '2px' }}>{Math.max(0, totalMcqCount - attemptedMcqCount)}</div>
+          </div>
+        </div>
+
         {/* Small Chip UI: Chapters, MCQs, Notes, Flashcards */}
         <div className="hero-pro-chips-row">
           <div className="hero-pro-chip" title={`${chapterCount} Total Chapters`}>

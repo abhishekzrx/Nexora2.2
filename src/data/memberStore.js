@@ -4,7 +4,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import { memberService, SEED_MEMBERS } from '../services/memberService.js'
+import { memberService, PRIMARY_SUPER_ADMIN } from '../services/memberService.js'
 
 let listeners = []
 let version = 0
@@ -41,7 +41,7 @@ function loadSavedViewAs() {
 
 let activeMember = loadSavedMember()
 let viewAsMember = loadSavedViewAs()
-let membersList = [...SEED_MEMBERS]
+let membersList = [PRIMARY_SUPER_ADMIN]
 let isHydrated = false
 
 let snapshot = {

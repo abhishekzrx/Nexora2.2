@@ -11,7 +11,7 @@
 
 import { env } from '../config/env.js'
 import { apiService } from './apiService.js'
-import { memberService, SEED_MEMBERS } from './memberService.js'
+import { memberService, PRIMARY_SUPER_ADMIN } from './memberService.js'
 import { setActiveMember, clearMemberSession, getMemberStoreSnapshot } from '../data/memberStore.js'
 import { clearUserProgressStore, hydrateUserProgressFromSupabase } from '../data/progressStore.js'
 import { clearAnalyticsStore, hydrateUserAnalytics } from '../data/analyticsStore.js'
@@ -272,18 +272,18 @@ export async function authenticateUser({ identifier, password }) {
   const cleanPassword = String(password || '').trim()
 
   if (!cleanIdentifier) {
-    return { success: false, error: 'Please enter your email or username.' }
+    return { success: false, error: 'Please enter your mobile number, email, or username.' }
   }
 
   if (!cleanPassword) {
     return { success: false, error: 'Please enter your password.' }
   }
 
-  // 1. Supreme Alpha Admin Bypass / Supreme Login
+  // 1. Supreme Alpha Admin Login
   const lower = cleanIdentifier.toLowerCase()
   if (lower === 'adminalpha' || lower === 'student01' || lower === 'adminalpha@nexora.io') {
     const adminRes = await memberService.getMemberById('adminalpha')
-    const adminProfile = adminRes?.data || SEED_MEMBERS[0]
+    const adminProfile = adminRes?.data || PRIMARY_SUPER_ADMIN
 
     // Clear user progress & analytics before switching identity
     clearUserProgressStore()
@@ -304,18 +304,18 @@ export async function authenticateUser({ identifier, password }) {
     }
   }
 
-  // 2. Lookup student profile by username or email
+  // 2. Resolve username / mobile / email to authoritative member profile
   const memberRes = await memberService.getMemberById(cleanIdentifier)
   if (!memberRes.success || !memberRes.data) {
     return {
       success: false,
-      error: `Account "${cleanIdentifier}" not found. Please verify your credentials or create an account.`,
+      error: `Account "${cleanIdentifier}" not found. Please verify your credentials or contact Admin.`,
     }
   }
 
   const member = memberRes.data
 
-  // 3. Status checks
+  // 3. Status checks: strictly block disabled or archived accounts
   if (member.status === 'ARCHIVED') {
     return { success: false, error: 'This account has been archived. Please contact Super Admin.' }
   }
@@ -324,7 +324,7 @@ export async function authenticateUser({ identifier, password }) {
     return { success: false, error: 'This account is currently disabled. Please contact Super Admin.' }
   }
 
-  // 4. Supabase Auth Verification
+  // 4. Supabase Auth Verification (Supabase Auth owns credentials)
   if (member.email) {
     try {
       const tokenRes = await apiService.post('/auth/v1/token?grant_type=password', {
@@ -338,10 +338,8 @@ export async function authenticateUser({ identifier, password }) {
         } catch {
           // ignore
         }
-      } else if (!tokenRes.success && tokenRes.error) {
-        if (env.isDev) {
-          console.warn('[userService] Supabase Auth token notice:', tokenRes.error)
-        }
+      } else if (!tokenRes.success && env.isDev) {
+        console.warn('[userService] Supabase Auth notice:', tokenRes.error)
       }
     } catch (err) {
       if (env.isDev) {
@@ -350,7 +348,7 @@ export async function authenticateUser({ identifier, password }) {
     }
   }
 
-  // 5. Establish Session
+  // 5. Establish Session & Hydrate Data for Authenticated User
   clearUserProgressStore()
   clearAnalyticsStore()
 
@@ -366,6 +364,16 @@ export async function authenticateUser({ identifier, password }) {
     localStorage.setItem('nexora_is_authenticated', 'true')
   } catch {
     // ignore
+  }
+
+  // Hydrate user progress from database
+  try {
+    await hydrateUserProgressFromSupabase(member.id, true)
+    if (targetCourseId && targetCourseId !== '*') {
+      await hydrateUserAnalytics(member.id, targetCourseId)
+    }
+  } catch {
+    // ignore hydration errors during login
   }
 
   return { success: true, data: member }

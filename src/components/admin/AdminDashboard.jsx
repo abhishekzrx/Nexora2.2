@@ -186,6 +186,7 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
         return <ChapterMcqInjection key={activeWorkspaceId} />
       case 'courses':
         return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+      case 'users':
       case 'members':
         return <MemberManager onNavigateStudentView={onBackHome} />
       case 'settings':
@@ -241,8 +242,8 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
         onLogout={onLogout}
       />
 
-      <div className={`admin-dashboard-main${activeSection === 'members' ? ' admin-dashboard-main-members' : ''}`}>
-        {activeSection !== 'mcq-manager' && activeSection !== 'courses' && activeSection !== 'members' && (
+      <div className={`admin-dashboard-main${activeSection === 'members' || activeSection === 'users' ? ' admin-dashboard-main-members' : ''}`}>
+        {activeSection !== 'mcq-manager' && activeSection !== 'courses' && activeSection !== 'members' && activeSection !== 'users' && (
           <div className="admin-dashboard-header">
             <div>
               <h1 className="admin-dashboard-greeting">

@@ -61,16 +61,23 @@ export function CircularCoverageRing({ percent = 0, color = '#12B76A', size = 20
   )
 }
 
+function getCoverageColor(coveragePct) {
+  if (coveragePct >= 75) return '#10B981' // High Coverage (Emerald)
+  if (coveragePct >= 50) return '#FB923C' // Strong Coverage (Orange)
+  if (coveragePct >= 25) return '#38BDF8' // Building Coverage (Sky Blue)
+  return '#94A3B8' // Getting Started (Slate)
+}
+
 function ChapterCard({ chapter, showTrends = false, onClick }) {
-  const readinessPercent = Math.round(Number(chapter.readinessScore ?? chapter.progress ?? 0))
-  const coveragePercent = Math.round(Number(chapter.coveragePercent ?? 0))
+  const totalMcqs = Number(chapter.totalMcqs ?? (typeof chapter.mcqs === 'number' ? chapter.mcqs : 0)) || 0
+  const attemptedMcqs = Number(chapter.attemptedMcqs ?? chapter.uniqueAttempted ?? 0) || 0
+
+  const coveragePercent = totalMcqs > 0 ? Math.min(100, Math.round((attemptedMcqs / totalMcqs) * 100)) : Math.round(Number(chapter.coveragePercent ?? 0))
   const masteryPercent = Math.round(Number(chapter.masteryPercent ?? chapter.masteryPercentage ?? 0))
   const accuracyPercent = Math.round(Number(chapter.accuracyPercent ?? chapter.accuracyPercentage ?? 0))
+  const readinessPercent = Math.round(Number(chapter.readinessScore ?? chapter.progress ?? 0))
 
-  const coverageLevel = chapter.coverageLevel || getAttemptCoverageLevel(coveragePercent)
-  const levelColor = coverageLevel.color || '#12B76A'
-
-  const totalMcqs = chapter.totalMcqs ?? (typeof chapter.mcqs === 'number' ? chapter.mcqs : 0)
+  const coverageColor = getCoverageColor(coveragePercent)
 
   const prioMeta = formatPriority(chapter.priority || 'M')
   const priorityCode = prioMeta.code
@@ -78,6 +85,8 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
 
   const trendSymbol = chapter.trendSymbol || (chapter.trendDirection === 'improving' ? '↑' : chapter.trendDirection === 'declining' ? '↓' : '→')
   const trendDir = chapter.trendDirection || 'stable'
+
+  const mcqLabel = attemptedMcqs > 0 ? `${attemptedMcqs} / ${totalMcqs} MCQs` : `${totalMcqs} MCQs`
 
   return (
     <button
@@ -91,18 +100,18 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
         <div className="chapter-body">
           <div className="chapter-title-row">
             <span className="chapter-title">{chapter.title || chapter.name}</span>
-            {showTrends && (
-              <span className="chapter-mcq-tag">{totalMcqs} MCQs</span>
-            )}
+            <span className="chapter-mcq-tag" style={{ color: attemptedMcqs > 0 ? '#FB923C' : '#94A3B8' }}>
+              {mcqLabel}
+            </span>
           </div>
           <div className="chapter-sub">
-            {chapter.sub || chapter.meta || (totalMcqs > 0 ? `${totalMcqs} MCQs available` : 'Practice-ready chapter')}
+            {chapter.sub || chapter.meta || (attemptedMcqs > 0 ? `${attemptedMcqs} of ${totalMcqs} questions practiced` : `${totalMcqs} MCQs available`)}
           </div>
 
           {/* Expanded Trends Details */}
           {showTrends && (
             <div className="chapter-metrics-chips">
-              <span className="chap-chip chip-cov" style={{ color: levelColor }}>
+              <span className="chap-chip chip-cov" style={{ color: coverageColor }}>
                 Cov {coveragePercent}%
               </span>
               <span className="chap-chip chip-mast">
@@ -117,13 +126,13 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
             </div>
           )}
 
-          {/* Progress bar reflects Readiness */}
+          {/* Progress bar reflects Question Coverage */}
           <div className="chapter-progress-track">
             <div
               className="chapter-progress-fill"
               style={{
-                width: `${readinessPercent}%`,
-                backgroundColor: readinessPercent >= 60 ? '#10B981' : readinessPercent >= 35 ? '#F1621B' : '#64748B',
+                width: `${coveragePercent}%`,
+                backgroundColor: coverageColor,
               }}
             />
           </div>
@@ -145,15 +154,15 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
             <span
               className="chapter-pct"
               style={{
-                color: readinessPercent >= 60 ? '#10B981' : readinessPercent >= 35 ? '#F1621B' : '#64748B',
+                color: masteryPercent >= 60 ? '#10B981' : masteryPercent >= 35 ? '#FB923C' : '#94A3B8',
               }}
-              title="Chapter Readiness Score"
+              title={`Mastery: ${masteryPercent}%`}
             >
-              {readinessPercent}%
+              {masteryPercent}%
             </span>
             <CircularCoverageRing
-              percent={readinessPercent}
-              color={readinessPercent >= 60 ? '#10B981' : readinessPercent >= 35 ? '#F1621B' : '#64748B'}
+              percent={coveragePercent}
+              color={coverageColor}
             />
             <span className="chevron">
               <AppIcon name="chevronRight" size={16} />
