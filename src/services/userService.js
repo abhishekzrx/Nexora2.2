@@ -202,7 +202,7 @@ export async function restoreSession() {
       setActiveWorkspace(primaryCourse)
     }
 
-    // 6. Hydrate Progress & Analytics for this authenticated user
+    // 6. Hydrate Progress & Analytics for this authenticated user (cloud-first, await both)
     const courseId = primaryCourse || 'bpsc_prelims'
     await Promise.allSettled([
       hydrateUserProgressFromSupabase(sanitizedMember.id, true),
@@ -285,12 +285,48 @@ export async function authenticateUser({ identifier, password }) {
     const adminRes = await memberService.getMemberById('adminalpha')
     const adminProfile = adminRes?.data || PRIMARY_SUPER_ADMIN
 
+    // Try to obtain Supabase Auth token for adminalpha to enable RLS
+    try {
+      const tokenRes = await apiService.post('/auth/v1/token?grant_type=password', {
+        email: 'adminalpha@nexora.io',
+        password: cleanPassword || 'Adminalpha@Nexora#2024',
+      })
+      if (tokenRes.success && tokenRes.data?.access_token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, tokenRes.data.access_token)
+      }
+    } catch {
+      // If password auth fails, try signup
+      try {
+        const signupRes = await apiService.post('/auth/v1/signup', {
+          email: 'adminalpha@nexora.io',
+          password: cleanPassword || 'Adminalpha@Nexora#2024',
+          data: { username: 'adminalpha' }
+        })
+        if (signupRes.success && signupRes.data?.access_token) {
+          localStorage.setItem(AUTH_TOKEN_KEY, signupRes.data.access_token)
+        }
+      } catch {
+        // Proceed without Supabase Auth token (RLS won't apply, app-level auth still protects)
+      }
+    }
+
     // Clear user progress & analytics before switching identity
     clearUserProgressStore()
     clearAnalyticsStore()
 
     // Bind session
     setActiveMember(adminProfile)
+
+    // Hydrate adminalpha's personal learning progress from cloud
+    const adminCourseId = adminProfile.assigned_course_id || (Array.isArray(adminProfile.assigned_courses) ? adminProfile.assigned_courses[0] : null)
+    if (adminCourseId && adminCourseId !== '*') {
+      setActiveWorkspace(adminCourseId)
+      await Promise.allSettled([
+        hydrateUserProgressFromSupabase(adminProfile.id, true),
+        hydrateUserAnalytics(adminProfile.id, adminCourseId),
+      ])
+    }
+
     try {
       localStorage.setItem('nexora_is_authenticated', 'true')
     } catch {
@@ -506,6 +542,14 @@ export async function createStudentProfile({
   clearAnalyticsStore()
   setActiveMember(newMember)
   setActiveWorkspace(cleanCourse)
+
+  // Hydrate newly created user's progress from cloud
+  try {
+    await hydrateUserProgressFromSupabase(newMember.id, true)
+    await hydrateUserAnalytics(newMember.id, cleanCourse)
+  } catch {
+    // ignore hydration errors during signup
+  }
 
   try {
     localStorage.setItem('nexora_is_authenticated', 'true')
@@ -848,6 +892,14 @@ export async function verifySignupOtp({
   clearAnalyticsStore()
   setActiveMember(newMember)
   setActiveWorkspace(cleanCourse)
+
+  // Hydrate newly created user's progress from cloud
+  try {
+    await hydrateUserProgressFromSupabase(newMember.id, true)
+    await hydrateUserAnalytics(newMember.id, cleanCourse)
+  } catch {
+    // ignore hydration errors during signup
+  }
 
   try {
     localStorage.setItem('nexora_is_authenticated', 'true')

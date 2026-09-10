@@ -356,79 +356,64 @@ export const mcqService = {
     if (!userId) {
       return { success: true, data: [] }
     }
-    let local = []
+
+    let cloudData = []
+    let localData = []
+
+    // 1. Fetch cloud data (primary source of truth)
+    try {
+      const res = await apiService.get(
+        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}&order=updated_at.desc`
+      )
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        cloudData = res.data
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(cloudData))
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // network failure: fall back to local only
+    }
+
+    // 2. Fetch local cache (may contain unsynced or stale records)
     try {
       if (typeof localStorage !== 'undefined') {
         const raw = localStorage.getItem(`nexora_progress_${userId}`)
         if (raw) {
           const parsed = JSON.parse(raw)
-          if (Array.isArray(parsed)) local = parsed
+          if (Array.isArray(parsed)) localData = parsed
         }
       }
     } catch {
       // ignore
     }
 
-    try {
-      const res = await apiService.get(
-        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}`
-      )
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(res.data))
-          }
-        } catch {
-          // ignore
+    // 3. Merge: cloud wins for same mcq_id, preserve local-only records
+    if (cloudData.length > 0 && localData.length > 0) {
+      const cloudMap = new Map(cloudData.map((item) => [String(item.mcq_id || item.mcqId), item]))
+      localData.forEach((item) => {
+        const mcqId = String(item.mcq_id || item.mcqId)
+        if (!cloudMap.has(mcqId)) {
+          cloudData.push(item)
         }
-        return {
-          success: true,
-          data: res.data,
-        }
-      }
-    } catch (err) {
-      // fallback to local
+      })
+    } else if (cloudData.length === 0 && localData.length > 0) {
+      cloudData = localData
     }
 
     return {
       success: true,
-      data: local,
+      data: cloudData,
     }
   },
 
   async updateUserProgress(userId, progressUpdates) {
     if (!userId || !Array.isArray(progressUpdates) || progressUpdates.length === 0) {
       return { success: true, data: [] }
-    }
-
-    let local = []
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const raw = localStorage.getItem(`nexora_progress_${userId}`)
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          if (Array.isArray(parsed)) local = parsed
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    const map = new Map(local.map((item) => [String(item.mcq_id || item.mcqId), item]))
-    progressUpdates.forEach((rec) => {
-      const mcqId = String(rec.mcq_id || rec.mcqId)
-      if (mcqId) {
-        const existing = map.get(mcqId) || {}
-        map.set(mcqId, { ...existing, ...rec, user_id: userId })
-      }
-    })
-    const merged = Array.from(map.values())
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(merged))
-      }
-    } catch {
-      // ignore
     }
 
     const payload = progressUpdates.map((item) => ({
@@ -458,6 +443,16 @@ export const mcqService = {
       )
 
       if (res && res.success) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const allRes = await this.getAllUserProgress(userId)
+            if (allRes.success && Array.isArray(allRes.data)) {
+              localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(allRes.data))
+            }
+          }
+        } catch {
+          // ignore
+        }
         return {
           success: true,
           data: Array.isArray(res.data) ? res.data : [res.data],
@@ -469,7 +464,7 @@ export const mcqService = {
 
     return {
       success: true,
-      data: merged,
+      data: payload,
     }
   },
 

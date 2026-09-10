@@ -15,9 +15,9 @@ import { useWorkspaceStore, hydrateWorkspacesFromSupabase, setActiveWorkspace } 
 import { hydrateAdminStoreFromSupabase } from './data/adminStore'
 import { useMemberStore, exitViewAsMember, clearMemberSession } from './data/memberStore'
 import { permissionService } from './services/permissionService'
-import { clearUserProgressStore } from './data/progressStore'
-import { clearAnalyticsStore } from './data/analyticsStore'
-import { userService } from './services/userService'
+import { clearUserProgressStore, hydrateUserProgressFromSupabase } from './data/progressStore'
+import { clearAnalyticsStore, hydrateUserAnalytics } from './data/analyticsStore'
+import { userService, getAuthUserId } from './services/userService'
 
 const AUTH_ROUTES = new Set(['login', 'signup'])
 
@@ -174,6 +174,38 @@ function App() {
       setActiveWorkspace(assignedId)
     }
   }, [isAuthenticated, effectiveMember, activeWorkspaceId])
+
+  // Cross-device sync: Re-hydrate from cloud when app regains focus
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    let timeoutId
+
+    const handleFocus = () => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(async () => {
+        const userId = getAuthUserId()
+        if (!userId) return
+        const courseId = localStorage.getItem('nexora-active-course') || 'bpsc_prelims'
+        await Promise.allSettled([
+          hydrateUserProgressFromSupabase(userId, true),
+          hydrateUserAnalytics(userId, courseId),
+        ])
+      }, 300)
+    }
+
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleFocus()
+      }
+    })
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      clearTimeout(timeoutId)
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     let isMounted = true

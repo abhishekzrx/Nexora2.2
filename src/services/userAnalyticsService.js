@@ -136,14 +136,52 @@ export const userAnalyticsService = {
       created_at: new Date().toISOString(),
     }
 
-    // 1. Save attempt record to Supabase
+    // 1. Try atomic RPC
+    try {
+      const rpcRes = await apiService.rpc('submit_practice_session', {
+        user_id: userId,
+        submission_id: `att_${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        course_id: courseId,
+        subject_id: subjectId,
+        subject_title: subjectTitle,
+        chapter_id: chapterId,
+        chapter_title: chapterTitle,
+        total_questions: totalQuestions,
+        attempted_count: attemptedCount,
+        correct_count: correctCount,
+        incorrect_count: incorrectCount,
+        skipped_count: skippedCount,
+        score,
+        percentage,
+        accuracy,
+        time_taken_seconds: timeTakenSeconds,
+        progress_updates: [],
+      })
+      if (rpcRes.success) {
+        // Mirror to local cache
+        try {
+          const key = getScopedKey(userId, 'attempts')
+          const saved = getStorageItem(key)
+          const list = saved ? JSON.parse(saved) : []
+          list.push({ ...attemptRecord, id: rpcRes.data?.attempt_id || attemptRecord.id })
+          setStorageItem(key, JSON.stringify(list.slice(-200)))
+        } catch {
+          // ignore
+        }
+        return { success: true, attempt: attemptRecord }
+      }
+    } catch {
+      // fallback to legacy pipeline
+    }
+
+    // 2. Legacy: Save attempt record to Supabase
     try {
       await apiService.post('/user_attempts', [attemptRecord])
     } catch {
       // ignore
     }
 
-    // 2. Update user scoped localStorage
+    // 3. Legacy: Update user scoped localStorage
     try {
       const key = getScopedKey(userId, 'attempts')
       const saved = getStorageItem(key)
@@ -216,16 +254,25 @@ export const userAnalyticsService = {
       // fallback
     }
 
-    // 2. Update user scoped localStorage
+    // 2. Update user scoped localStorage (mirror of cloud state)
     try {
       const key = getScopedKey(userId, `snapshots_${courseId}`)
-      let list = existingSnapshots
+      let list = []
+      try {
+        const saved = getStorageItem(key)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) list = parsed
+        }
+      } catch {
+        // ignore
+      }
       if (todayIndex !== -1) {
         list[todayIndex] = updatedSnapshot
       } else {
         list.push(updatedSnapshot)
       }
-      setStorageItem(key, JSON.stringify(list.slice(-30)))
+      setStorageItem(key, JSON.stringify(list.slice(-60)))
     } catch {
       // ignore
     }
@@ -233,14 +280,15 @@ export const userAnalyticsService = {
 
   /**
    * Retrieves daily performance snapshots for trend graphs.
+   * Default 60 days for cross-device historical analytics.
    */
-  async getUserDailySnapshots(userId, courseId, limit = 7) {
+  async getUserDailySnapshots(userId, courseId, limit = 60) {
     if (!userId || !courseId) return []
 
     // 1. Try Supabase
     try {
       const res = await apiService.get(
-        `/user_analytics_snapshots?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=date.asc`
+        `/user_analytics_snapshots?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=date.asc&limit=${limit}`
       )
       if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
         setStorageItem(getScopedKey(userId, `snapshots_${courseId}`), JSON.stringify(res.data))
@@ -255,7 +303,44 @@ export const userAnalyticsService = {
       const saved = getStorageItem(getScopedKey(userId, `snapshots_${courseId}`))
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) return parsed
+        if (Array.isArray(parsed)) return parsed.slice(-limit)
+      }
+    } catch {
+      // ignore
+    }
+
+    return []
+  },
+
+  /**
+   * Retrieves 60-day detailed MCQ daily snapshots per subject/chapter for trend graphs.
+   */
+  async getMcqDailySnapshots(userId, courseId, days = 60) {
+    if (!userId || !courseId) return []
+
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+    const cutoffIso = cutoffDate.toISOString().split('T')[0]
+
+    try {
+      const res = await apiService.get(
+        `/mcq_daily_snapshots?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&date=gte.${cutoffIso}&order=date.asc`
+      )
+      if (res && res.success && Array.isArray(res.data)) {
+        setStorageItem(getScopedKey(userId, `mcq_snapshots_${courseId}`), JSON.stringify(res.data))
+        return res.data
+      }
+    } catch {
+      // fallback
+    }
+
+    try {
+      const saved = getStorageItem(getScopedKey(userId, `mcq_snapshots_${courseId}`))
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          return parsed.filter((s) => s.date >= cutoffIso).sort((a, b) => a.date.localeCompare(b.date))
+        }
       }
     } catch {
       // ignore
@@ -310,13 +395,20 @@ export const userAnalyticsService = {
       else weakAreas.push(sub)
     })
 
-    // Construct persistent graph trend (minimum 5 days or historical records)
-    let trendHistory = snapshots.map((s) => ({
-      date: s.date,
-      accuracy: s.accuracy || 0,
-      questions: s.questions_solved || 0,
-    }))
+    // Construct persistent graph trend from stored cloud snapshots (60 days)
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+    const cutoffIso = sixtyDaysAgo.toISOString().split('T')[0]
 
+    let trendHistory = snapshots
+      .filter((s) => s.date >= cutoffIso)
+      .map((s) => ({
+        date: s.date,
+        accuracy: s.accuracy || 0,
+        questions: s.questions_solved || 0,
+      }))
+
+    // Fallback to attempts only if no cloud snapshots exist yet
     if (trendHistory.length === 0 && totalAttemptsCount > 0) {
       trendHistory = attempts.slice(-7).map((a) => ({
         date: (a.created_at || '').split('T')[0] || getTodayIsoDate(),

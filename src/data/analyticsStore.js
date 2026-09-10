@@ -70,14 +70,8 @@ export async function hydrateUserAnalytics(userId, courseId, totalPool = 0) {
 
   const cacheKey = `${userId}_${courseId}`
 
-  // Seed immediately from local cache if map doesn't have it
-  if (!analyticsCache.has(cacheKey)) {
-    const local = loadLocalAnalytics(userId, courseId)
-    if (local) {
-      analyticsCache.set(cacheKey, local)
-      emit()
-    }
-  }
+  // CLOUD-FIRST: Do NOT seed from local cache to avoid stale reads
+  // Local cache is written AFTER successful cloud hydration
 
   try {
     const progressSnapshot = getUserProgressSnapshot()
@@ -90,10 +84,13 @@ export async function hydrateUserAnalytics(userId, courseId, totalPool = 0) {
       totalPool
     )
 
-    analyticsCache.set(cacheKey, analytics)
-    saveLocalAnalytics(userId, courseId, analytics)
-    emit()
-    return analytics
+    if (analytics) {
+      analyticsCache.set(cacheKey, analytics)
+      saveLocalAnalytics(userId, courseId, analytics)
+      emit()
+      return analytics
+    }
+    return null
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn('[analyticsStore] Calculation error:', err)
@@ -115,9 +112,13 @@ export function clearAnalyticsStore() {
 export function useUserAnalytics(userId, courseId, totalPool = 0) {
   const store = useSyncExternalStore(subscribeAnalyticsStore, getAnalyticsStoreSnapshot, getAnalyticsStoreSnapshot)
   const cacheKey = `${userId}_${courseId}`
-  const cached = store.analyticsCache.get(cacheKey) || loadLocalAnalytics(userId, courseId)
+  const cached = store.analyticsCache.get(cacheKey)
 
-  return cached || {
+  if (cached) {
+    return cached
+  }
+
+  return {
     readinessScore: 0,
     accuracy: 0,
     coverage: 0,

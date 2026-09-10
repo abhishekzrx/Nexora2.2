@@ -93,15 +93,10 @@ export async function hydrateUserProgressFromSupabase(targetUserId = undefined, 
   // If user changed, clear previous user's cached progress immediately
   if (activeScopedUserId !== userId) {
     activeScopedUserId = userId
-    // Seed immediately from user's local cache
-    const local = loadLocalUserProgress(userId)
-    progressList = local
+    // CLOUD-FIRST: Do NOT seed from local cache to avoid stale reads on new devices
+    progressList = []
     progressMap = new Map()
-    local.forEach((item) => {
-      const mcqId = item.mcq_id || item.mcqId
-      if (mcqId) progressMap.set(String(mcqId), item)
-    })
-    isHydrated = local.length > 0
+    isHydrated = false
     emit()
   }
 
@@ -126,7 +121,10 @@ export async function hydrateUserProgressFromSupabase(targetUserId = undefined, 
             progressMap.set(String(mcqId), item)
           }
         })
-        saveLocalUserProgress(userId, res.data)
+        // Only persist to localStorage if cloud returned non-empty data
+        if (res.data.length > 0) {
+          saveLocalUserProgress(userId, res.data)
+        }
         isHydrated = true
         emit()
         return { success: true, data: res.data }

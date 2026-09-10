@@ -96,4 +96,47 @@ export const apiService = {
       headers: { Authorization: `Bearer ${tok}` },
     })
   },
+  rpc: async (functionName, body) => {
+    const savedToken = getSavedToken()
+    const authHeader = savedToken ? `Bearer ${savedToken}` : `Bearer ${env.apiKey}`
+    const url = `${env.supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/${encodeURIComponent(functionName)}`
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), env.timeoutMs)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': env.apiKey,
+          'Authorization': authHeader,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      if (!res.ok) {
+        const errText = await res.text()
+        let errMsg = `HTTP Error ${res.status}: ${res.statusText}`
+        let rawJson = null
+        try {
+          rawJson = JSON.parse(errText)
+          if (rawJson.message || rawJson.error || rawJson.hint) {
+            errMsg = rawJson.message || rawJson.error || rawJson.hint
+          }
+        } catch {
+          // ignore non-json
+        }
+        return { success: false, error: errMsg, status: res.status, raw: rawJson }
+      }
+      const data = await res.json()
+      return { success: true, data, status: res.status }
+    } catch (err) {
+      clearTimeout(timer)
+      if (err.name === 'AbortError') {
+        return { success: false, error: `Request timed out after ${env.timeoutMs}ms`, status: 408 }
+      }
+      return { success: false, error: err.message || 'Network request failed', status: 0 }
+    }
+  },
 }

@@ -13,6 +13,7 @@ import { userAnalyticsService } from './userAnalyticsService.js'
 import { mcqService } from './mcqService.js'
 import { updateUserProgressStore } from '../data/progressStore.js'
 import { hydrateUserAnalytics } from '../data/analyticsStore.js'
+import { apiService } from './apiService.js'
 
 const PENDING_QUEUE_PREFIX = 'nexora_pending_submissions'
 const PROCESSED_SUBMISSIONS_PREFIX = 'nexora_processed_submissions'
@@ -241,54 +242,106 @@ export const submissionService = {
     }
 
     try {
-      // Step 1: Save Unique Question Progress
-      if (Array.isArray(progressUpdates) && progressUpdates.length > 0) {
-        await mcqService.updateUserProgress(userId, progressUpdates)
-        updateUserProgressStore(progressUpdates)
-      }
-
-      // Step 2: Record Attempt in central analytics pipeline
-      const attemptRes = await userAnalyticsService.recordAttempt({
-        userId,
-        courseId,
-        subjectId,
-        subjectTitle,
-        chapterId,
-        chapterTitle,
-        totalQuestions,
-        attemptedCount,
-        correctCount,
-        incorrectCount,
-        skippedCount,
+      // Step 1: Atomic Supabase RPC (idempotent, handles progress + attempt + snapshots)
+      const rpcPayload = {
+        user_id: userId,
+        submission_id: subId,
+        course_id: courseId,
+        subject_id: subjectId,
+        subject_title: subjectTitle,
+        chapter_id: chapterId,
+        chapter_title: chapterTitle,
+        total_questions: totalQuestions,
+        attempted_count: attemptedCount,
+        correct_count: correctCount,
+        incorrect_count: incorrectCount,
+        skipped_count: skippedCount,
         score,
         percentage,
         accuracy,
-        timeTakenSeconds,
-        isReadOnly: false,
-      })
-
-      // Step 3: Hydrate reactive analytics store
-      if (courseId) {
-        hydrateUserAnalytics(userId, courseId)
+        time_taken_seconds: timeTakenSeconds,
+        progress_updates: progressUpdates || [],
       }
 
-      // Step 4: Confirm success & clean pending queue
-      this.removePendingSubmission(userId, subId)
-      this.markSubmissionProcessed(userId, subId, attemptRes)
+      const rpcRes = await apiService.rpc('submit_practice_session', rpcPayload)
 
-      return {
-        success: true,
-        attempt: attemptRes.attempt,
-        submissionId: subId,
+      if (rpcRes && rpcRes.success) {
+        // Step 2: Update local progress store from cloud
+        if (Array.isArray(progressUpdates) && progressUpdates.length > 0) {
+          updateUserProgressStore(progressUpdates)
+        }
+
+        // Step 3: Refresh analytics from cloud (snapshots are authoritative)
+        if (courseId) {
+          hydrateUserAnalytics(userId, courseId)
+        }
+
+        // Step 4: Clean pending queue
+        this.removePendingSubmission(userId, subId)
+        this.markSubmissionProcessed(userId, subId, rpcRes.data)
+
+        return {
+          success: true,
+          attempt: rpcRes.data,
+          submissionId: subId,
+          idempotent: rpcRes.data?.idempotent || false,
+        }
       }
+
+      // Fallback to legacy pipeline if RPC fails
+      throw new Error(rpcRes?.error || 'RPC submission failed')
     } catch (err) {
-      // Step 5: Network failure resilience: Queue locally for auto-retry
-      this.queuePendingSubmission(userId, payload)
-      return {
-        success: false,
-        pending: true,
-        submissionId: subId,
-        error: err?.message || 'Network error. Submission queued for retry.',
+      // Fallback: legacy pipeline for network resilience
+      try {
+        // Step 1: Save Unique Question Progress
+        if (Array.isArray(progressUpdates) && progressUpdates.length > 0) {
+          await mcqService.updateUserProgress(userId, progressUpdates)
+          updateUserProgressStore(progressUpdates)
+        }
+
+        // Step 2: Record Attempt in central analytics pipeline
+        const attemptRes = await userAnalyticsService.recordAttempt({
+          userId,
+          courseId,
+          subjectId,
+          subjectTitle,
+          chapterId,
+          chapterTitle,
+          totalQuestions,
+          attemptedCount,
+          correctCount,
+          incorrectCount,
+          skippedCount,
+          score,
+          percentage,
+          accuracy,
+          timeTakenSeconds,
+          isReadOnly: false,
+        })
+
+        // Step 3: Hydrate reactive analytics store
+        if (courseId) {
+          hydrateUserAnalytics(userId, courseId)
+        }
+
+        // Step 4: Confirm success & clean pending queue
+        this.removePendingSubmission(userId, subId)
+        this.markSubmissionProcessed(userId, subId, attemptRes)
+
+        return {
+          success: true,
+          attempt: attemptRes.attempt,
+          submissionId: subId,
+        }
+      } catch (fallbackErr) {
+        // Step 5: Network failure resilience: Queue locally for auto-retry
+        this.queuePendingSubmission(userId, { ...payload, error: fallbackErr?.message })
+        return {
+          success: false,
+          pending: true,
+          submissionId: subId,
+          error: fallbackErr?.message || 'Network error. Submission queued for retry.',
+        }
       }
     }
   },
