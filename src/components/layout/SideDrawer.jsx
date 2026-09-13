@@ -80,69 +80,77 @@ function SideDrawer({
         {profile ? (
           <div className="drawer-profile">
             <div className="drawer-profile-glow" aria-hidden="true" />
-            <button
-              type="button"
-              className="drawer-close"
-              onClick={onClose}
-              aria-label="Close menu"
-            >
-              <AppIcon name="close" size={16} />
-            </button>
-            {profile.name ? <div className="drawer-name">{profile.name}</div> : null}
-            {profile.warrior ? (
-              <div className="drawer-warrior-badge">
-                <span>⚔️</span>
-                <span>{profile.warrior}</span>
-              </div>
-            ) : null}
-            {profile.sub ? (
-              <div className="drawer-sub">
-                <span>📚</span>
-                <span>{profile.sub}</span>
-              </div>
-            ) : null}
-            {profile.streak ? (
-              <div className="drawer-streak">
-                <AppIcon name="streak" size={13} />
-                <span>{profile.streak}</span>
-              </div>
-            ) : null}
-
-            {/* Quick Mode Switcher & Member Management ONLY for Super Admin */}
-            {isSuperAdmin && !isViewingAs && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', width: '100%' }}>
-                <div className="drawer-mode-switch-card">
-                  <div className="mode-switch-left">
-                    <span className="mode-role-icon">{isAdmin ? '⚡' : '👑'}</span>
-                    <div className="mode-role-text">
-                      <span className="mode-role-title">{isAdmin ? 'Admin Studio' : 'Super Admin'}</span>
-                      <span className="mode-role-sub">{isAdmin ? 'Content & Syllabus CMS' : 'Student View Active'}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="mode-switch-btn"
-                    onClick={handleToggleMode}
-                    title={isAdmin ? 'Switch to Student Learning' : 'Switch to Admin Studio'}
-                  >
-                    {isAdmin ? 'Student Mode ➔' : 'Admin Mode ➔'}
-                  </button>
+            
+            {/* Top User Info Bar */}
+            <div className="drawer-profile-header">
+              <div className="drawer-avatar-wrap">
+                <div className="drawer-avatar">
+                  {isSuperAdmin ? '👑' : (profile.name ? profile.name.charAt(0).toUpperCase() : '⚡')}
                 </div>
+                <div className="drawer-avatar-status" title="Active" />
+              </div>
 
+              <div className="drawer-user-info">
+                <div className="drawer-name">{profile.name || 'Scholar'}</div>
+                <div className="drawer-role-tag">
+                  {isSuperAdmin ? (isAdmin ? 'Admin Console' : 'Super Admin') : 'Nexora Warrior'}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="drawer-close"
+                onClick={onClose}
+                aria-label="Close menu"
+              >
+                <AppIcon name="close" size={15} />
+              </button>
+            </div>
+
+            {/* Badges / Status Chips Row */}
+            <div className="drawer-chips-wrap">
+              {profile.warrior ? (
+                <div className="drawer-chip drawer-chip-warrior">
+                  <span className="drawer-chip-icon">⚔️</span>
+                  <span>{profile.warrior}</span>
+                </div>
+              ) : null}
+
+              {profile.sub ? (
+                <div className="drawer-chip drawer-chip-sub">
+                  <span className="drawer-chip-icon">📚</span>
+                  <span>{profile.sub}</span>
+                </div>
+              ) : null}
+
+              {profile.streak ? (
+                <div className="drawer-chip drawer-chip-streak">
+                  <span className="drawer-chip-icon">🔥</span>
+                  <span>{profile.streak}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Quick Mode Switcher ONLY for Super Admin */}
+            {isSuperAdmin && !isViewingAs && (
+              <div className="drawer-mode-switch-card">
+                <div className="mode-switch-left">
+                  <div className="mode-role-icon-box">
+                    <span>{isAdmin ? '⚡' : '👑'}</span>
+                  </div>
+                  <div className="mode-role-text">
+                    <span className="mode-role-title">{isAdmin ? 'Admin Studio' : 'Super Admin'}</span>
+                    <span className="mode-role-sub">{isAdmin ? 'Content CMS' : 'Student View Active'}</span>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="drawer-members-quick-btn"
-                  onClick={() => {
-                    onClose?.()
-                    onItemClick?.({ label: 'Member Management', key: 'members' })
-                  }}
-                  title="Open Super Admin Member Management"
+                  className="mode-switch-btn"
+                  onClick={handleToggleMode}
+                  title={isAdmin ? 'Switch to Student Learning' : 'Switch to Admin Studio'}
                 >
-                  <div className="drawer-members-btn-left">
-                    <span className="drawer-members-btn-icon">👥</span>
-                    <span>Member Management</span>
-                  </div>
-                  <span className="drawer-members-btn-arrow">➔</span>
+                  <span>{isAdmin ? 'Student Mode' : 'Admin Mode'}</span>
+                  <span className="mode-btn-arrow">➔</span>
                 </button>
               </div>
             )}

@@ -551,7 +551,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
     if (isSuper) {
       return (
         <span className="mm-single-course-pill global" title="Universal access to all courses">
-          <AppIcon name="public" size={13} color="#38BDF8" />
+          <AppIcon name="public" size={13} color="#E4FD97" />
           <span>Global (All Courses)</span>
         </span>
       )
@@ -578,7 +578,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
         onClick={() => handleOpenAccessModal(m)}
         title="Click to change course track"
       >
-        <AppIcon name="school" size={13} color="#FB923C" />
+        <AppIcon name="school" size={13} color="#E4FD97" />
         <span>{courseName}</span>
       </span>
     )
@@ -748,295 +748,296 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
         </div>
       </div>
 
-      {/* ── 3. Content View (Smart Cards / Table) ────────────────────── */}
-      {filteredMembers.length === 0 ? (
-        <div className="mm-empty-state">
-          <div className="mm-empty-icon">
-            <AppIcon name="person" size={38} color="#64748B" />
+      {/* ── 3. Scrollable Viewport (Smart Cards / Table in Window View) ─── */}
+      <div className="mm-scroll-viewport">
+        {filteredMembers.length === 0 ? (
+          <div className="mm-empty-state">
+            <div className="mm-empty-icon">
+              <AppIcon name="person" size={38} color="#759F74" />
+            </div>
+            <div className="mm-empty-title">No Users Found in Supabase</div>
+            <p className="mm-empty-sub">
+              {searchQuery || selectedCourseFilter !== 'ALL' || filterStatus !== 'ALL'
+                ? 'No users match your active filter criteria.'
+                : 'No students registered in Supabase yet. Click "+ Add User" to register your first student via Supabase Auth.'}
+            </p>
+            <button
+              type="button"
+              className="mm-btn-primary"
+              onClick={() => {
+                setSelectedCourseFilter('ALL')
+                setSearchQuery('')
+                setFilterStatus('ALL')
+                setFilterRole('ALL')
+                if (members.length === 0) handleOpenAdd()
+              }}
+            >
+              {members.length === 0 ? '+ Add First User' : 'Reset Filters'}
+            </button>
           </div>
-          <div className="mm-empty-title">No Users Found in Supabase</div>
-          <p className="mm-empty-sub">
-            {searchQuery || selectedCourseFilter !== 'ALL' || filterStatus !== 'ALL'
-              ? 'No users match your active filter criteria.'
-              : 'No students registered in Supabase yet. Click "+ Add User" to register your first student via Supabase Auth.'}
-          </p>
-          <button
-            type="button"
-            className="mm-btn-primary"
-            onClick={() => {
-              setSelectedCourseFilter('ALL')
-              setSearchQuery('')
-              setFilterStatus('ALL')
-              setFilterRole('ALL')
-              if (members.length === 0) handleOpenAdd()
-            }}
-          >
-            {members.length === 0 ? '+ Add First User' : 'Reset Filters'}
-          </button>
-        </div>
-      ) : viewMode === 'cards' ? (
-        /* ── 🌟 ULTRA-PREMIUM FROSTED GLASSROOM (GLASSMORPHISM) STUDENT CARDS ── */
-        <div className="mm-cards-grid">
-          {filteredMembers.map((m) => {
-            const isSuper = m.role === 'SUPER_ADMIN' || m.username === 'adminalpha'
-            const isArchived = m.status === 'ARCHIVED'
-            const isDisabled = m.status === 'DISABLED'
-            const isDropdownOpen = activeDropdownMemberId === m.id
-            const metrics = memberMetricsMap[m.id] || { accuracy: 0, solved: 0, readiness: 0 }
+        ) : viewMode === 'cards' ? (
+          /* ── 🌟 ULTRA-PREMIUM FROSTED GLASSROOM (COMPACT & TRANSPARENT) ── */
+          <div className="mm-cards-grid">
+            {filteredMembers.map((m) => {
+              const isSuper = m.role === 'SUPER_ADMIN' || m.username === 'adminalpha'
+              const isArchived = m.status === 'ARCHIVED'
+              const isDisabled = m.status === 'DISABLED'
+              const isDropdownOpen = activeDropdownMemberId === m.id
+              const metrics = memberMetricsMap[m.id] || { accuracy: 0, solved: 0, readiness: 0 }
 
-            return (
-              <div
-                key={m.id}
-                className={`mm-card-smart mm-card-glass${isSuper ? ' super-admin' : ''}${isArchived ? ' archived' : ''}`}
-              >
-                {/* Ambient dynamic radial mesh glow */}
-                <div className="mm-card-glass-glow" />
+              return (
+                <div
+                  key={m.id}
+                  className={`mm-card-smart mm-card-glass${isSuper ? ' super-admin' : ''}${isArchived ? ' archived' : ''}`}
+                >
+                  {/* Ambient dynamic radial mesh glow */}
+                  <div className="mm-card-glass-glow" />
 
-                {/* Top Frosted Rim Reflection */}
-                <div className="mm-card-glass-rim" />
+                  {/* Top Frosted Rim Reflection */}
+                  <div className="mm-card-glass-rim" />
 
-                <div className="mm-card-content-wrap">
-                  {/* Top Header: Student Profile Avatar + Name + Live Status */}
-                  <div className="mm-card-smart-top">
-                    <div className="mm-user-cell">
-                      <StudentProfileAvatar member={m} size="lg" />
+                  <div className="mm-card-content-wrap">
+                    {/* Top Header: Student Profile Avatar + Name + Live Status */}
+                    <div className="mm-card-smart-top">
+                      <div className="mm-user-cell">
+                        <StudentProfileAvatar member={m} size="md" />
 
-                      <div className="mm-user-details">
-                        <div className="mm-user-name-row">
-                          <span className="mm-user-display-name">
-                            {m.display_name || m.username}
-                          </span>
-                          {isSuper ? (
-                            <span className="mm-role-badge super-admin">
-                              <AppIcon name="hundred" size={11} color="#FDBA74" />
-                              SUPER ADMIN
+                        <div className="mm-user-details">
+                          <div className="mm-user-name-row">
+                            <span className="mm-user-display-name">
+                              {m.display_name || m.username}
                             </span>
-                          ) : m.role && m.role !== 'MEMBER' ? (
-                            <span className="mm-role-badge role-faculty">
-                              <AppIcon name="shield" size={10} />
-                              {m.role}
-                            </span>
-                          ) : (
-                            <span className="mm-role-badge student">
-                              <AppIcon name="school" size={10} color="#38BDF8" />
-                              STUDENT
-                            </span>
-                          )}
+                            {isSuper ? (
+                              <span className="mm-role-badge super-admin">
+                                <AppIcon name="hundred" size={11} color="#E4FD97" />
+                                SUPER ADMIN
+                              </span>
+                            ) : m.role && m.role !== 'MEMBER' ? (
+                              <span className="mm-role-badge role-faculty">
+                                <AppIcon name="shield" size={10} />
+                                {m.role}
+                              </span>
+                            ) : (
+                              <span className="mm-role-badge student">
+                                <AppIcon name="school" size={10} color="#E4FD97" />
+                                STUDENT
+                              </span>
+                            )}
+                          </div>
+                          <span className="mm-user-username">@{m.username}</span>
                         </div>
-                        <span className="mm-user-username">@{m.username}</span>
+                      </div>
+
+                      <span className={`mm-status-indicator ${m.status.toLowerCase()}`}>
+                        <span className={`mm-status-dot ${m.status.toLowerCase()}`} />
+                        <span>{m.status}</span>
+                      </span>
+                    </div>
+
+                    {/* Warrior Identity & Public ID Glass Strip */}
+                    <div className="mm-warrior-glass-row">
+                      <span className="mm-warrior-title-text">
+                        <AppIcon name="shield" size={13} color="#E4FD97" />
+                        <span>{m.warrior_name}</span>
+                      </span>
+                      <span className="mm-public-id-badge">
+                        <AppIcon name="badge" size={11} color="#94A3B8" />
+                        <span>{m.public_user_id}</span>
+                      </span>
+                    </div>
+
+                    {/* Dedicated Single Course Track Glass Capsule */}
+                    <div className="mm-course-track-row">
+                      {renderCourseTrack(m)}
+                    </div>
+
+                    {/* 3 Floating Frosted Glass Micro-KPI Widgets */}
+                    <div className="mm-card-stats-strip">
+                      <div className="mm-card-stat-box accuracy">
+                        <span className="mm-card-stat-label">
+                          <AppIcon name="gpsFixed" size={11} color="#34D399" />
+                          Accuracy
+                        </span>
+                        <span className="mm-card-stat-val accuracy">
+                          {metrics.accuracy > 0 ? `${metrics.accuracy}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="mm-card-stat-box solved">
+                        <span className="mm-card-stat-label">
+                          <AppIcon name="solvedCheck" size={11} color="#38BDF8" />
+                          Solved
+                        </span>
+                        <span className="mm-card-stat-val solved">
+                          {metrics.solved > 0 ? `${metrics.solved}` : '0'}
+                        </span>
+                      </div>
+                      <div className="mm-card-stat-box readiness">
+                        <span className="mm-card-stat-label">
+                          <AppIcon name="speed" size={11} color="#E4FD97" />
+                          Readiness
+                        </span>
+                        <span className="mm-card-stat-val streak">
+                          {metrics.readiness > 0 ? `${metrics.readiness}%` : (isSuper ? '100%' : '—')}
+                        </span>
                       </div>
                     </div>
 
-                    <span className={`mm-status-indicator ${m.status.toLowerCase()}`}>
-                      <span className={`mm-status-dot ${m.status.toLowerCase()}`} />
-                      <span>{m.status}</span>
-                    </span>
-                  </div>
-
-                  {/* Warrior Identity & Public ID Glass Strip */}
-                  <div className="mm-warrior-glass-row">
-                    <span className="mm-warrior-title-text">
-                      <AppIcon name="shield" size={13} color="#FB923C" />
-                      <span>{m.warrior_name}</span>
-                    </span>
-                    <span className="mm-public-id-badge">
-                      <AppIcon name="badge" size={11} color="#94A3B8" />
-                      <span>{m.public_user_id}</span>
-                    </span>
-                  </div>
-
-                  {/* Dedicated Single Course Track Glass Capsule */}
-                  <div className="mm-course-track-row">
-                    {renderCourseTrack(m)}
-                  </div>
-
-                  {/* 3 Floating Frosted Glass Micro-KPI Widgets */}
-                  <div className="mm-card-stats-strip">
-                    <div className="mm-card-stat-box accuracy">
-                      <span className="mm-card-stat-label">
-                        <AppIcon name="gpsFixed" size={11} color="#34D399" />
-                        Accuracy
-                      </span>
-                      <span className="mm-card-stat-val accuracy">
-                        {metrics.accuracy > 0 ? `${metrics.accuracy}%` : '—'}
-                      </span>
+                    {/* Visual Trend Progress Bar with Neon Glow */}
+                    <div className="mm-card-trend-wrap">
+                      <div className="mm-card-trend-header">
+                        <span className="mm-trend-label">
+                          <AppIcon name="trendingUp" size={12} color="#34D399" />
+                          <span>Practice Mastery</span>
+                        </span>
+                        <span className={`mm-trend-badge ${metrics.accuracy >= 70 ? 'high' : metrics.accuracy > 0 ? 'progress' : 'new'}`}>
+                          {metrics.accuracy >= 70 ? 'Mastery' : metrics.accuracy > 0 ? 'In Progress' : 'New'}
+                        </span>
+                      </div>
+                      <div className="mm-card-trend-bar-bg">
+                        <div
+                          className={`mm-card-trend-bar-fill ${metrics.accuracy >= 70 ? 'high' : metrics.accuracy > 0 ? 'progress' : 'default'}`}
+                          style={{
+                            width: `${Math.max(metrics.accuracy, isSuper ? 100 : 8)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="mm-card-stat-box solved">
-                      <span className="mm-card-stat-label">
-                        <AppIcon name="solvedCheck" size={11} color="#38BDF8" />
-                        Solved
-                      </span>
-                      <span className="mm-card-stat-val solved">
-                        {metrics.solved > 0 ? `${metrics.solved} MCQs` : '0'}
-                      </span>
-                    </div>
-                    <div className="mm-card-stat-box readiness">
-                      <span className="mm-card-stat-label">
-                        <AppIcon name="speed" size={11} color="#FB923C" />
-                        Readiness
-                      </span>
-                      <span className="mm-card-stat-val streak">
-                        {metrics.readiness > 0 ? `${metrics.readiness}%` : (isSuper ? '100%' : '—')}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Visual Trend Progress Bar with Neon Glow */}
-                  <div className="mm-card-trend-wrap">
-                    <div className="mm-card-trend-header">
-                      <span className="mm-trend-label">
-                        <AppIcon name="trendingUp" size={12} color="#34D399" />
-                        <span>Practice Mastery</span>
-                      </span>
-                      <span className={`mm-trend-badge ${metrics.accuracy >= 70 ? 'high' : metrics.accuracy > 0 ? 'progress' : 'new'}`}>
-                        {metrics.accuracy >= 70 ? 'Mastery' : metrics.accuracy > 0 ? 'In Progress' : 'New'}
-                      </span>
-                    </div>
-                    <div className="mm-card-trend-bar-bg">
-                      <div
-                        className={`mm-card-trend-bar-fill ${metrics.accuracy >= 70 ? 'high' : metrics.accuracy > 0 ? 'progress' : 'default'}`}
-                        style={{
-                          width: `${Math.max(metrics.accuracy, isSuper ? 100 : 8)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contact Strip */}
-                  {(m.email || m.phone) && (
-                    <div className="mm-card-contact-strip">
-                      {m.email && (
-                        <div className="mm-contact-item">
-                          <AppIcon name="mail" size={12} color="#64748B" />
-                          <span className="mm-contact-text">{m.email}</span>
-                        </div>
-                      )}
-                      {m.phone && (
-                        <div className="mm-contact-item">
-                          <AppIcon name="phone" size={12} color="#64748B" />
-                          <span className="mm-contact-text">{m.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Card Smart Footer Actions */}
-                <div className="mm-card-smart-footer">
-                  <div className="mm-card-actions-left">
-                    <button
-                      type="button"
-                      className="mm-btn-glass pass-btn"
-                      onClick={() => handleOpenResetPassword(m)}
-                      title="Reset password & copy credentials"
-                    >
-                      <AppIcon name="key" size={13} color="#FB923C" />
-                      <span>Pass</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="mm-btn-glass edit-btn"
-                      onClick={() => handleOpenEditModal(m)}
-                      title="Edit profile"
-                    >
-                      <AppIcon name="edit" size={13} />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="mm-btn-glass icon-btn"
-                      onClick={() => handleViewAsMember(m)}
-                      title="Simulate student dashboard in read-only mode"
-                    >
-                      <AppIcon name="visibility" size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="mm-btn-glass icon-btn"
-                      onClick={() => handleOpenIntelligence(m)}
-                      title="Learning Analytics & Accuracy"
-                    >
-                      <AppIcon name="insights" size={15} />
-                    </button>
-                  </div>
-
-                  {/* Smart Dropdown for Secondary Actions */}
-                  <div className="mm-action-menu-wrap">
-                    <button
-                      type="button"
-                      className={`mm-btn-glass icon-btn${isDropdownOpen ? ' active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setActiveDropdownMemberId(isDropdownOpen ? null : m.id)
-                      }}
-                      title="More options"
-                    >
-                      <AppIcon name="moreVert" size={15} />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="mm-action-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="mm-action-menu-item"
-                          onClick={() => handleOpenAccessModal(m)}
-                        >
-                          <AppIcon name="school" size={14} color="#FB923C" />
-                          <span>Change Course Track</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className="mm-action-menu-item"
-                          onClick={() => handleOpenIdentityModal(m)}
-                        >
-                          <AppIcon name="shield" size={14} color="#38BDF8" />
-                          <span>Warrior Identity</span>
-                        </button>
-
-                        {isArchived ? (
-                          <button
-                            type="button"
-                            className="mm-action-menu-item success"
-                            onClick={() => handleRestoreMember(m)}
-                          >
-                            <AppIcon name="restore" size={14} color="#34D399" />
-                            <span>Restore User</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isSuper}
-                            className={`mm-action-menu-item ${isDisabled ? 'success' : 'danger'}`}
-                            onClick={() => handleToggleStatus(m)}
-                          >
-                            <AppIcon name="power" size={14} color={isDisabled ? '#34D399' : '#F87171'} />
-                            <span>{isDisabled ? 'Enable User' : 'Disable User'}</span>
-                          </button>
+                    {/* Contact Strip */}
+                    {(m.email || m.phone) && (
+                      <div className="mm-card-contact-strip">
+                        {m.email && (
+                          <div className="mm-contact-item">
+                            <AppIcon name="mail" size={12} color="#94A3B8" />
+                            <span className="mm-contact-text">{m.email}</span>
+                          </div>
                         )}
-
-                        {!isSuper && (
-                          <button
-                            type="button"
-                            className="mm-action-menu-item danger"
-                            onClick={() => {
-                              setActiveDropdownMemberId(null)
-                              setDeleteModalMember(m)
-                            }}
-                          >
-                            <AppIcon name="delete" size={14} color="#F87171" />
-                            <span>Delete User...</span>
-                          </button>
+                        {m.phone && (
+                          <div className="mm-contact-item">
+                            <AppIcon name="phone" size={12} color="#94A3B8" />
+                            <span className="mm-contact-text">{m.phone}</span>
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
+
+                  {/* Card Smart Footer Actions */}
+                  <div className="mm-card-smart-footer">
+                    <div className="mm-card-actions-left">
+                      <button
+                        type="button"
+                        className="mm-btn-glass pass-btn"
+                        onClick={() => handleOpenResetPassword(m)}
+                        title="Reset password & copy credentials"
+                      >
+                        <AppIcon name="key" size={13} color="#E4FD97" />
+                        <span>Pass</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mm-btn-glass edit-btn"
+                        onClick={() => handleOpenEditModal(m)}
+                        title="Edit profile"
+                      >
+                        <AppIcon name="edit" size={13} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mm-btn-glass icon-btn"
+                        onClick={() => handleViewAsMember(m)}
+                        title="Simulate student dashboard in read-only mode"
+                      >
+                        <AppIcon name="visibility" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="mm-btn-glass icon-btn"
+                        onClick={() => handleOpenIntelligence(m)}
+                        title="Learning Analytics & Accuracy"
+                      >
+                        <AppIcon name="insights" size={15} />
+                      </button>
+                    </div>
+
+                    {/* Smart Dropdown for Secondary Actions */}
+                    <div className="mm-action-menu-wrap">
+                      <button
+                        type="button"
+                        className={`mm-btn-glass icon-btn${isDropdownOpen ? ' active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveDropdownMemberId(isDropdownOpen ? null : m.id)
+                        }}
+                        title="More options"
+                      >
+                        <AppIcon name="moreVert" size={15} />
+                      </button>
+
+                      {isDropdownOpen && (
+                        <div className="mm-action-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="mm-action-menu-item"
+                            onClick={() => handleOpenAccessModal(m)}
+                          >
+                            <AppIcon name="school" size={14} color="#E4FD97" />
+                            <span>Change Course Track</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="mm-action-menu-item"
+                            onClick={() => handleOpenIdentityModal(m)}
+                          >
+                            <AppIcon name="shield" size={14} color="#38BDF8" />
+                            <span>Warrior Identity</span>
+                          </button>
+
+                          {isArchived ? (
+                            <button
+                              type="button"
+                              className="mm-action-menu-item success"
+                              onClick={() => handleRestoreMember(m)}
+                            >
+                              <AppIcon name="restore" size={14} color="#34D399" />
+                              <span>Restore User</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isSuper}
+                              className={`mm-action-menu-item ${isDisabled ? 'success' : 'danger'}`}
+                              onClick={() => handleToggleStatus(m)}
+                            >
+                              <AppIcon name="power" size={14} color={isDisabled ? '#34D399' : '#F87171'} />
+                              <span>{isDisabled ? 'Enable User' : 'Disable User'}</span>
+                            </button>
+                          )}
+
+                          {!isSuper && (
+                            <button
+                              type="button"
+                              className="mm-action-menu-item danger"
+                              onClick={() => {
+                                setActiveDropdownMemberId(null)
+                                setDeleteModalMember(m)
+                              }}
+                            >
+                              <AppIcon name="delete" size={14} color="#F87171" />
+                              <span>Delete User...</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
+              )
+            })}
+          </div>
+        ) : (
         /* ── 📋 HIGH-DENSITY COMPACT TABLE VIEW ──────────────────── */
         <div className="mm-table-wrapper">
           <table className="mm-table">
@@ -1072,13 +1073,13 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
                             </span>
                             {isSuper ? (
                               <span className="mm-role-badge super-admin">
-                                <AppIcon name="hundred" size={10} color="#FDBA74" />
+                                <AppIcon name="hundred" size={10} color="#E4FD97" />
                                 ADMIN
                               </span>
                             ) : m.role && m.role !== 'MEMBER' ? (
                               <span
                                 className="mm-role-badge"
-                                style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8' }}
+                                style={{ background: 'rgba(228, 253, 151, 0.15)', color: '#E4FD97' }}
                               >
                                 {m.role}
                               </span>
@@ -1093,11 +1094,11 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
                     <td>
                       <div className="mm-warrior-pill">
                         <span className="mm-warrior-title-text">
-                          <AppIcon name="shield" size={12} color="#FB923C" />
+                          <AppIcon name="shield" size={12} color="#E4FD97" />
                           <span>{m.warrior_name}</span>
                         </span>
                         <span className="mm-public-id-badge">
-                          <AppIcon name="badge" size={10} color="#64748B" />
+                          <AppIcon name="badge" size={10} color="#94A3B8" />
                           <span>{m.public_user_id}</span>
                         </span>
                       </div>
@@ -1116,11 +1117,11 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
                             <AppIcon
                               name="gpsFixed"
                               size={11}
-                              color={metrics.accuracy >= 70 ? '#34D399' : metrics.accuracy > 0 ? '#FBBF24' : '#94A3B8'}
+                              color={metrics.accuracy >= 70 ? '#34D399' : metrics.accuracy > 0 ? '#E4FD97' : '#94A3B8'}
                             />
                             <span>{metrics.accuracy > 0 ? `${metrics.accuracy}%` : 'New'}</span>
                           </span>
-                          <span style={{ color: '#64748B', fontSize: '0.7rem' }}>
+                          <span style={{ color: '#94A3B8', fontSize: '0.7rem' }}>
                             {metrics.solved > 0 ? `${metrics.solved} Qs` : '0 Qs'}
                           </span>
                         </div>
@@ -1175,7 +1176,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
                           onClick={() => handleOpenResetPassword(m)}
                           title="Reset password & copy credentials"
                         >
-                          <AppIcon name="key" size={12} />
+                          <AppIcon name="key" size={12} color="#E4FD97" />
                           <span>Pass</span>
                         </button>
 
@@ -1227,7 +1228,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
                                 className="mm-action-menu-item"
                                 onClick={() => handleOpenAccessModal(m)}
                               >
-                                <AppIcon name="school" size={14} color="#FB923C" />
+                                <AppIcon name="school" size={14} color="#E4FD97" />
                                 <span>Change Course Track</span>
                               </button>
 
@@ -1286,6 +1287,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
           </table>
         </div>
       )}
+      </div>
 
       {/* ── MODAL 1: ADD USER (Single Course Selection) ─────────────── */}
       {addModalOpen && (

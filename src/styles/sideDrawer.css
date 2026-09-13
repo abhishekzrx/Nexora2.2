@@ -49,198 +49,270 @@
 
 /* ── Top Profile Header (Fresh Canopy & Lime Sprout) ─────────────────── */
 .drawer-profile {
-  background: linear-gradient(135deg, #121B11 0%, #1E2B1D 35%, #2D3E2C 75%, #384E37 100%);
-  padding: 24px 20px 20px;
+  background: linear-gradient(155deg, #0F170E 0%, #172416 38%, #253723 75%, #30442E 100%);
+  padding: 20px 18px 18px;
   color: #FFFFFF;
   position: relative;
-  border-bottom: 1px solid rgba(228, 253, 151, 0.25);
+  border-bottom: 1px solid rgba(228, 253, 151, 0.22);
   border-top: 4px solid #E4FD97;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 4px 20px rgba(18, 27, 17, 0.3);
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(18, 27, 17, 0.4);
+  overflow: hidden;
 }
 
 .drawer-profile-glow {
   position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 140px;
-  height: 140px;
-  background: radial-gradient(circle, rgba(228, 253, 151, 0.28) 0%, rgba(228, 253, 151, 0) 70%);
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(228, 253, 151, 0.22) 0%, rgba(228, 253, 151, 0) 70%);
   pointer-events: none;
 }
 
-.drawer-close {
+/* Profile Header Row */
+.drawer-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.drawer-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.drawer-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(228, 253, 151, 0.25) 0%, rgba(45, 62, 44, 0.9) 100%);
+  border: 1.5px solid #E4FD97;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #E4FD97;
+  box-shadow: 0 0 16px rgba(228, 253, 151, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.drawer-avatar-status {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: #E4FD97;
+  border: 2px solid #172416;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #E4FD97;
+}
+
+.drawer-user-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-role-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #E4FD97;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.drawer-close {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(228, 253, 151, 0.16);
-  border: 1px solid rgba(228, 253, 151, 0.35);
+  background: rgba(228, 253, 151, 0.12);
+  border: 1px solid rgba(228, 253, 151, 0.3);
   color: #E4FD97;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 0;
-  z-index: 10;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .drawer-close:hover {
-  background: rgba(228, 253, 151, 0.3);
-  transform: rotate(90deg) scale(1.05);
+  background: rgba(228, 253, 151, 0.28);
+  border-color: #E4FD97;
+  transform: rotate(90deg) scale(1.08);
+  box-shadow: 0 0 12px rgba(228, 253, 151, 0.35);
 }
 
-.drawer-name {
-  font-size: 1.2rem;
-  font-weight: 900;
-  color: #FFFFFF;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+/* ── Badges / Status Chips Row ─────────────────────────────────────── */
+.drawer-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
 }
 
-.drawer-warrior-badge {
+.drawer-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(228, 253, 151, 0.16);
-  border: 1px solid rgba(228, 253, 151, 0.35);
-  color: #E4FD97;
-  padding: 3px 9px;
   border-radius: 8px;
-  font-size: 0.74rem;
+  padding: 4px 9px;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  width: fit-content;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  transition: all 0.2s ease;
 }
 
-.drawer-sub {
-  font-size: 0.78rem;
-  font-weight: 700;
+.drawer-chip-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.drawer-chip-warrior {
+  background: rgba(228, 253, 151, 0.14);
+  border: 1px solid rgba(228, 253, 151, 0.32);
   color: #E4FD97;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  letter-spacing: 0.02em;
+}
+
+.drawer-chip-warrior:hover {
+  background: rgba(228, 253, 151, 0.22);
+}
+
+.drawer-chip-sub {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #F1F6F1;
   text-transform: uppercase;
 }
 
-.drawer-streak {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.drawer-chip-streak {
   background: rgba(228, 253, 151, 0.18);
-  border: 1px solid rgba(228, 253, 151, 0.35);
+  border: 1px solid rgba(228, 253, 151, 0.45);
   color: #E4FD97;
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 0.74rem;
-  font-weight: 800;
-  width: fit-content;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(228, 253, 151, 0.12);
 }
 
-/* ── Mode Switcher Card ────────────────────────────────────────────── */
+/* ── Executive Mode Switcher Card ──────────────────────────────────── */
 .drawer-mode-switch-card {
-  margin-top: 6px;
-  background: rgba(18, 27, 17, 0.6);
-  border: 1px solid rgba(228, 253, 151, 0.25);
-  border-radius: 12px;
+  margin-top: 2px;
+  background: rgba(15, 23, 14, 0.72);
+  border: 1px solid rgba(228, 253, 151, 0.28);
+  border-radius: 14px;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(228, 253, 151, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 2;
 }
 
 .mode-switch-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.mode-role-icon {
-  font-size: 1.1rem;
+.mode-role-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(228, 253, 151, 0.14);
+  border: 1px solid rgba(228, 253, 151, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .mode-role-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .mode-role-title {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #FFFFFF;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .mode-role-sub {
-  font-size: 0.68rem;
-  color: #E4FD97;
-  margin-top: 1px;
+  font-size: 0.67rem;
+  color: #C4E875;
+  font-weight: 600;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mode-switch-btn {
-  background: linear-gradient(135deg, #E4FD97 0%, #D0F568 100%);
-  color: #1E2B1D;
+  background: linear-gradient(135deg, #E4FD97 0%, #C9F356 100%);
+  color: #121D11;
   border: none;
   font-size: 0.74rem;
-  font-weight: 800;
-  padding: 6px 11px;
-  border-radius: 8px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  padding: 7px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(228, 253, 151, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 3px 10px rgba(228, 253, 151, 0.35);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .mode-switch-btn:hover {
   transform: translateY(-1px) scale(1.03);
-  box-shadow: 0 4px 14px rgba(228, 253, 151, 0.55);
+  box-shadow: 0 6px 16px rgba(228, 253, 151, 0.55);
+  background: #E4FD97;
 }
 
-.drawer-members-quick-btn {
-  background: rgba(228, 253, 151, 0.14);
-  border: 1px solid rgba(228, 253, 151, 0.28);
-  border-radius: 12px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  cursor: pointer;
-  color: #FFFFFF;
+.mode-btn-arrow {
   font-size: 0.78rem;
-  font-weight: 700;
-  transition: all 0.2s ease;
-  width: 100%;
+  font-weight: 900;
+  transition: transform 0.2s ease;
 }
 
-.drawer-members-quick-btn:hover {
-  background: rgba(228, 253, 151, 0.22);
-  border-color: rgba(228, 253, 151, 0.45);
-  transform: translateY(-1px);
-}
-
-.drawer-members-btn-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drawer-members-btn-icon {
-  font-size: 1rem;
-}
-
-.drawer-members-btn-arrow {
-  color: #E4FD97;
-  font-weight: 800;
-  font-size: 0.85rem;
+.mode-switch-btn:hover .mode-btn-arrow {
+  transform: translateX(2px);
 }
 
 /* ── Menu List ─────────────────────────────────────────────────────── */
