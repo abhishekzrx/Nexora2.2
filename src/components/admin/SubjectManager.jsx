@@ -2596,7 +2596,7 @@ function SubjectManager({ courseName: _courseName, onNavigate }) {
   // Subjects belonging strictly to the active course
   const courseSubjects = useMemo(() => {
     if (!activeCourse) return []
-    return subjects.filter((s) => s.courseId === activeCourse.id)
+    return subjects.filter((s) => (s.courseId || s.course_id) === activeCourse.id)
   }, [subjects, activeCourse])
 
   useEffect(() => {

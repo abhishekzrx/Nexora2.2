@@ -14,6 +14,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../styles/mcqPractice.css'
 import PhoneFrame from '../components/layout/PhoneFrame'
 import { useContentRegistry } from '../data/contentRegistry'
+import { useCourseRegistry } from '../data/courseRegistry'
 import AppIcon from '../components/ui/AppIcon'
 import { testSession } from '../utils/navigation'
 import { showToast } from '../data/feedbackStore'
@@ -29,6 +30,7 @@ import { hydrateUserAnalytics } from '../data/analyticsStore'
 import { useMemberStore } from '../data/memberStore'
 import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
+import { buildAdaptivePracticeSet, analyzePracticeSessionErrors } from '../services/adaptivePracticeEngine'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -82,9 +84,42 @@ const QuestionPanel = memo(function QuestionPanel({
   return (
     <div className={`question-panel${examMode && isMobile ? ' exam-mode' : ''}`}>
       <div className="qpanel-top">
-        <div className="qpanel-title">
+        <div className="qpanel-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span>Question {questionNumber} of {totalQuestions}</span>
           <PyqBadge question={question} size="sm" />
+          {question.conceptName && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 6,
+                background: 'rgba(249, 115, 22, 0.12)',
+                color: '#f97316',
+                border: '1px solid rgba(249, 115, 22, 0.25)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {question.conceptName}
+            </span>
+          )}
+          {question.questionAngle && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: 6,
+                background: 'rgba(100, 116, 139, 0.15)',
+                color: '#94a3b8',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                textTransform: 'capitalize',
+              }}
+            >
+              {String(question.questionAngle).replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
         <div className="qpanel-actions">
           <button type="button" className="action-btn" onClick={onToggleMark} disabled={reviewMode} aria-label="Mark for review">
@@ -506,27 +541,37 @@ function getIsMobile() {
 }
 
 function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChapterId, chapter, onBack, onSubmit, reviewMode = false }) {
-  const registry = useContentRegistry()
+  const contentRegistry = useContentRegistry()
   const { activeWorkspaceId } = useWorkspaceStore()
+  const courseRegistry = useCourseRegistry(activeWorkspaceId)
   const { isViewingAs } = useMemberStore()
-  const subject = registry.subjectCatalog[subjectKey] || null
-  const subjectTitle = subject?.title || 'Subject'
+  const subject = courseRegistry?.subjectCatalog?.[subjectKey] || contentRegistry?.subjectCatalog?.[subjectKey] || null
+  const subjectTitle = subject?.title || subject?.name || 'Subject'
 
-  const isUuid = useCallback((str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str), [])
-
-  // Resolve authoritative target chapter ID
+  // Resolve authoritative target chapter ID using stable database IDs
   const targetChapterId = useMemo(() => {
-    if (propChapterId && isUuid(propChapterId)) return propChapterId
-    if (chapter?.id && isUuid(chapter.id)) return chapter.id
-    if (testSession.chapter?.id && isUuid(testSession.chapter.id)) return testSession.chapter.id
-    if (typeof chapter === 'string' && isUuid(chapter)) return chapter
+    if (propChapterId && String(propChapterId).trim()) return String(propChapterId).trim()
+    if (chapter?.id && String(chapter.id).trim()) return String(chapter.id).trim()
+    if (testSession.chapter?.id && String(testSession.chapter.id).trim()) return String(testSession.chapter.id).trim()
+    if (typeof chapter === 'string' && chapter.trim()) return chapter.trim()
 
     if (subject?.chapters && Array.isArray(subject.chapters) && subject.chapters.length > 0) {
-      const match = subject.chapters.find((c) => c.name === chapter?.name || c.title === chapter?.title || c.number === chapter?.number) || subject.chapters[0]
-      if (match?.id && isUuid(match.id)) return match.id
+      const match = subject.chapters.find((c) =>
+        (chapter?.id && String(c.id) === String(chapter.id))
+      )
+      if (match?.id) return String(match.id)
     }
     return null
-  }, [propChapterId, chapter, subject, isUuid])
+  }, [propChapterId, chapter, subject])
+
+  const resolvedChapter = useMemo(() => {
+    if (chapter && typeof chapter === 'object') return chapter
+    if (testSession.chapter && typeof testSession.chapter === 'object') return testSession.chapter
+    if (subject?.chapters && targetChapterId) {
+      return subject.chapters.find((c) => String(c.id) === String(targetChapterId)) || null
+    }
+    return null
+  }, [chapter, subject, targetChapterId])
 
   const [dbQuestions, setDbQuestions] = useState([])
   const [userProgressMap, setUserProgressMap] = useState(new Map())
@@ -548,13 +593,14 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       setMcqError(null)
       setLoadingMcqs(true)
 
-      if (!activeWorkspaceId || !targetChapterId) {
+      const effectiveCourseId = activeWorkspaceId || subject?.courseId || subject?.course_id || null
+      const subjectId = subject?.id || subject?.subjectId || subjectKey
+      const userId = getUserId()
+
+      if (!targetChapterId && !subjectId && !subjectKey) {
         setLoadingMcqs(false)
         return
       }
-
-      const subjectId = subject?.subjectId || subjectKey
-      const userId = getUserId()
 
       abortController = new AbortController()
 
@@ -563,13 +609,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         let progressData = []
 
         const [mcqRes, progressRes] = await Promise.all([
-          mcqService.getMcqs(activeWorkspaceId, subjectId, targetChapterId),
-          mcqService.getUserProgress(userId, targetChapterId),
+          mcqService.getMcqs(effectiveCourseId, subjectId, targetChapterId),
+          mcqService.getUserProgress(userId, targetChapterId || subjectId),
         ])
 
         if (mcqRes.success && Array.isArray(mcqRes.data)) {
-          // Strictly chapter-scoped defensive filtering
-          rawMcqs = mcqRes.data.filter((m) => m && String(m.chapter_id || m.chapterId) === String(targetChapterId))
+          rawMcqs = mcqRes.data
         } else if (!mcqRes.success && mcqRes.error) {
           if (import.meta.env.DEV) {
             console.warn('[MCQPracticePage] Failed to fetch MCQs:', mcqRes.error)
@@ -613,6 +658,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
           let correctIdx = 0
           if (typeof m.correct === 'number') correctIdx = m.correct
           else if (typeof m.correct_answer === 'number') correctIdx = m.correct_answer
+          else if (typeof m.correctAnswer === 'number') correctIdx = m.correctAnswer
           else if (typeof m.correct_answer === 'string' || typeof m.correctAnswer === 'string') {
             const strKey = String(m.correct_answer || m.correctAnswer || 'A').trim().toUpperCase()
             const map = { A: 0, B: 1, C: 2, D: 3, E: 4, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4 }
@@ -623,11 +669,18 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
           validList.push({
             id: qId,
             text: questionText,
+            question: questionText,
             options: opts,
             correct: correctIdx,
+            correct_answer: correctIdx,
+            correctAnswer: correctIdx,
             explanation: m.explanation || 'No detailed explanation provided for this question.',
-            chapterId: m.chapter_id || targetChapterId,
-            subjectId: m.subject_id || subjectId,
+            chapterId: m.chapter_id || m.chapterId || targetChapterId,
+            subjectId: m.subject_id || m.subjectId || subjectId,
+            courseId: m.course_id || m.courseId || effectiveCourseId,
+            difficulty: m.difficulty || 'Medium',
+            pyq_year: m.pyq_year || m.pyqYear,
+            exam_profile: m.exam_profile,
           })
         })
 
@@ -664,7 +717,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         abortController.abort()
       }
     }
-  }, [activeWorkspaceId, subjectKey, subjectTitle, subject, targetChapterId, isUuid])
+  }, [activeWorkspaceId, subjectKey, subjectTitle, subject, targetChapterId])
 
   // Practice session pool logic with persistent question retirement & mastery prioritization
   const { activeQuestions, newCount, practicedCount, masteredCount, totalPool } = useMemo(() => {
@@ -697,7 +750,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     })
 
     if (isReviewModeState) {
-      const reviewList = masteredList.length > 0 ? masteredList : dbQuestions
+      const reviewList = testSession.questions && testSession.questions.length > 0 ? testSession.questions : (masteredList.length > 0 ? masteredList : dbQuestions)
       return {
         activeQuestions: reviewList,
         newCount: 0,
@@ -707,20 +760,16 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       }
     }
 
-    // Normal Practice Mode: Exclude MASTERED, prioritize UNSEEN, then INCORRECT
-    const shuffledUnseen = shuffleArray(unseenList)
-    const shuffledIncorrect = shuffleArray(incorrectList)
-    const eligiblePool = [...shuffledUnseen, ...shuffledIncorrect]
+    // Adaptive Chapter Practice Selection (Target 20 Qs standard)
+    const practiceMode = testSession.practiceMode || testSession.mode || 'adaptive'
+    const targetSize = 20
 
-    // Practice Set Size: Up to 10 MCQs
-    let selected = eligiblePool.slice(0, 10)
-
-    // If eligible pool has fewer than 10 questions, backfill from mastered within THIS chapter only
-    if (selected.length < 10 && masteredList.length > 0) {
-      const needed = 10 - selected.length
-      const extraMastered = shuffleArray(masteredList).slice(0, needed)
-      selected = [...selected, ...extraMastered]
-    }
+    const selected = buildAdaptivePracticeSet(dbQuestions, Array.from(userProgressMap.values()), {
+      mode: practiceMode,
+      targetCount: targetSize,
+      selectedConceptId: testSession.selectedConceptId || null,
+      chapter: resolvedChapter,
+    })
 
     const sessionUnseenCount = selected.filter((q) => {
       const p = userProgressMap.get(q.id)
@@ -734,7 +783,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       masteredCount: masteredList.length,
       totalPool: poolSize,
     }
-  }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState])
+  }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState, resolvedChapter])
 
   const availableCount = activeQuestions.length
   const totalGridSize = availableCount
@@ -1023,7 +1072,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     }
 
     testSession.subjectKey = subjectKey
-    testSession.chapter = chapter
+    testSession.chapter = resolvedChapter || chapter
     testSession.answers = { ...answers }
     testSession.marked = new Set(marked)
     testSession.visited = new Set(visited)
@@ -1034,6 +1083,14 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
     const updatedHistory = [...pastAttempts, currentAttemptRecord]
     testSession.attemptHistoryData = updatedHistory
+    // Compute deep Error Intelligence for this session
+    const errorAnalysis = analyzePracticeSessionErrors({
+      questions: questionList,
+      answers,
+      chapter: resolvedChapter || chapter,
+    })
+    testSession.errorAnalysis = errorAnalysis
+
     testSession.result = {
       score,
       total: totalCount,
@@ -1046,6 +1103,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       markedCount,
       timeTakenSeconds: testSession.timeTakenSeconds,
       timestamp: Date.now(),
+      errorAnalysis,
     }
     testSession.save(userId)
 
@@ -1285,6 +1343,15 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
             <div className="mcq-state-card">
               <div className="mcq-spinner" />
               <p>Loading questions from database...</p>
+            </div>
+          ) : !targetChapterId ? (
+            <div className="mcq-state-card empty">
+              <AppIcon name="warning" size={40} />
+              <h2>Chapter Not Found</h2>
+              <p>The requested chapter could not be located in this subject.</p>
+              <button type="button" className="btn btn-primary" onClick={onBack}>
+                Go Back
+              </button>
             </div>
           ) : totalPool === 0 ? (
             <div className="mcq-state-card empty">

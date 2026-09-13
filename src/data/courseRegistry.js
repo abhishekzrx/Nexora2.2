@@ -134,6 +134,10 @@ function buildSubjectEntry(key, subject, index, progressList = []) {
           : 'HARD'
 
   return {
+    id: subject.id,
+    subject_id: subject.id,
+    courseId: subject.courseId || subject.course_id,
+    course_id: subject.courseId || subject.course_id,
     subjectKey: key,
     subjectId: subject.id,
     title: subject.name,
@@ -196,27 +200,42 @@ export function useCourseRegistry(courseId) {
 
   const courseSubjects = useMemo(() => {
     if (!courseId) return subjects
-    return subjects.filter((s) => !s.courseId || s.courseId === courseId)
+    return subjects.filter((s) => {
+      const cId = s.courseId || s.course_id
+      return !cId || cId === courseId
+    })
   }, [courseId, subjects])
 
   const courseChapters = useMemo(() => {
     if (!courseId) return chapters
-    return chapters.filter((c) => !c.courseId || c.courseId === courseId)
+    return chapters.filter((c) => {
+      const cId = c.courseId || c.course_id
+      return !cId || cId === courseId
+    })
   }, [courseId, chapters])
 
   const courseMcqs = useMemo(() => {
     if (!courseId) return mcqs
-    return mcqs.filter((m) => !m.courseId || m.courseId === courseId)
+    return mcqs.filter((m) => {
+      const cId = m.courseId || m.course_id
+      return !cId || cId === courseId
+    })
   }, [courseId, mcqs])
 
   const courseFlashcards = useMemo(() => {
     if (!courseId) return flashcards
-    return flashcards.filter((f) => !f.courseId || f.courseId === courseId)
+    return flashcards.filter((f) => {
+      const cId = f.courseId || f.course_id
+      return !cId || cId === courseId
+    })
   }, [courseId, flashcards])
 
   const courseNotes = useMemo(() => {
     if (!courseId) return notes
-    return notes.filter((n) => !n.courseId || n.courseId === courseId)
+    return notes.filter((n) => {
+      const cId = n.courseId || n.course_id
+      return !cId || cId === courseId
+    })
   }, [courseId, notes])
 
   const snapshot = useMemo(() => {
@@ -227,58 +246,26 @@ export function useCourseRegistry(courseId) {
       const key = subjectKeyFor(sub.name, sub.id)
       const subChapters = courseChapters.filter((c) => {
         if (!c) return false
-        const chSubKey = subjectKeyFor(c.subject || c.subjectName, c.subjectId || c.subject_id)
-        return (
-          c.subject === sub.name ||
-          c.subjectId === sub.id ||
-          c.subject === sub.id ||
-          c.subject_id === sub.id ||
-          c.subject === key ||
-          c.subjectId === key ||
-          chSubKey === key
-        )
+        const chSubId = c.subjectId || c.subject_id
+        return chSubId && sub.id && String(chSubId) === String(sub.id)
       })
 
       const subMcqs = courseMcqs.filter((m) => {
         if (!m) return false
-        const mSubKey = subjectKeyFor(m.subject || m.subjectName, m.subjectId || m.subject_id)
-        return (
-          m.subject === sub.name ||
-          m.subjectId === sub.id ||
-          m.subject === sub.id ||
-          m.subject_id === sub.id ||
-          m.subject === key ||
-          m.subjectId === key ||
-          mSubKey === key
-        )
+        const mSubId = m.subjectId || m.subject_id
+        return mSubId && sub.id && String(mSubId) === String(sub.id)
       })
 
       const subFlashcards = courseFlashcards.filter((f) => {
         if (!f) return false
-        const fSubKey = subjectKeyFor(f.subject || f.subjectName, f.subjectId || f.subject_id)
-        return (
-          f.subject === sub.name ||
-          f.subjectId === sub.id ||
-          f.subject === sub.id ||
-          f.subject_id === sub.id ||
-          f.subject === key ||
-          f.subjectId === key ||
-          fSubKey === key
-        )
+        const fSubId = f.subjectId || f.subject_id
+        return fSubId && sub.id && String(fSubId) === String(sub.id)
       })
 
       const subNotes = courseNotes.filter((n) => {
         if (!n) return false
-        const nSubKey = subjectKeyFor(n.subject || n.subjectName, n.subjectId || n.subject_id)
-        return (
-          n.subject === sub.name ||
-          n.subjectId === sub.id ||
-          n.subject === sub.id ||
-          n.subject_id === sub.id ||
-          n.subject === key ||
-          n.subjectId === key ||
-          nSubKey === key
-        )
+        const nSubId = n.subjectId || n.subject_id
+        return nSubId && sub.id && String(nSubId) === String(sub.id)
       })
 
       const enrichedChapters = subChapters.map((ch) => {
@@ -287,9 +274,7 @@ export function useCourseRegistry(courseId) {
         const chNotes = subNotes.filter((n) => {
           return (
             matchContentToChapter(n, ch) ||
-            String(n.chapterId || n.chapter_id) === String(ch.id) ||
-            (n.title && ch.name && n.title.toLowerCase().includes(ch.name.toLowerCase())) ||
-            (n.chapterName && ch.name && n.chapterName.toLowerCase() === ch.name.toLowerCase())
+            String(n.chapterId || n.chapter_id) === String(ch.id)
           )
         })
 
@@ -345,27 +330,31 @@ export function useCourseRegistry(courseId) {
 }
 
 export function getCourseSnapshot(courseId, subjects, chapters, mcqs, flashcards, notes = [], progressList = []) {
-  const courseSubjects = subjects.filter((s) => s.courseId === courseId)
-  const courseChapters = chapters.filter((c) => c.courseId === courseId)
-  const courseMcqs = mcqs.filter((m) => m.courseId === courseId)
-  const courseFlashcards = flashcards.filter((f) => f.courseId === courseId)
-  const courseNotes = notes.filter((n) => n.courseId === courseId)
+  const courseSubjects = subjects.filter((s) => !courseId || s.courseId === courseId || s.course_id === courseId)
+  const courseChapters = chapters.filter((c) => !courseId || c.courseId === courseId || c.course_id === courseId)
+  const courseMcqs = mcqs.filter((m) => !courseId || m.courseId === courseId || m.course_id === courseId)
+  const courseFlashcards = flashcards.filter((f) => !courseId || f.courseId === courseId || f.course_id === courseId)
+  const courseNotes = notes.filter((n) => !courseId || n.courseId === courseId || n.course_id === courseId)
 
   const catalog = {}
   const orderedKeys = []
   courseSubjects.forEach((sub, index) => {
     const key = subjectKeyFor(sub.name, sub.id)
     const subChapters = courseChapters.filter(
-      (c) => c.subjectId === sub.id || c.subject_id === sub.id || c.subject === sub.name
+      (c) => (c.subjectId && String(c.subjectId) === String(sub.id)) ||
+             (c.subject_id && String(c.subject_id) === String(sub.id))
     )
     const subMcqs = courseMcqs.filter(
-      (m) => m.subjectId === sub.id || m.subject_id === sub.id || m.subject === sub.name
+      (m) => (m.subjectId && String(m.subjectId) === String(sub.id)) ||
+             (m.subject_id && String(m.subject_id) === String(sub.id))
     )
     const subFlashcards = courseFlashcards.filter(
-      (f) => f.subjectId === sub.id || f.subject_id === sub.id || f.subject === sub.name
+      (f) => (f.subjectId && String(f.subjectId) === String(sub.id)) ||
+             (f.subject_id && String(f.subject_id) === String(sub.id))
     )
     const subNotes = courseNotes.filter(
-      (n) => n.subjectId === sub.id || n.subject_id === sub.id || n.subject === sub.name
+      (n) => (n.subjectId && String(n.subjectId) === String(sub.id)) ||
+             (n.subject_id && String(n.subject_id) === String(sub.id))
     )
 
     const enrichedChapters = subChapters.map((ch) => {

@@ -14,10 +14,10 @@ export function calculateCourseAnalytics(activeCourse, subjects = [], chapters =
   const courseId = activeCourse?.id
 
   // 1. Filter items belonging to the active course
-  const courseSubjects = subjects.filter((s) => !courseId || s.courseId === courseId)
-  const courseChapters = chapters.filter((c) => !courseId || c.courseId === courseId)
-  const courseMcqs = mcqs.filter((m) => !courseId || m.courseId === courseId)
-  const courseFlashcards = flashcards.filter((f) => !courseId || f.courseId === courseId)
+  const courseSubjects = subjects.filter((s) => !courseId || s.courseId === courseId || s.course_id === courseId)
+  const courseChapters = chapters.filter((c) => !courseId || c.courseId === courseId || c.course_id === courseId)
+  const courseMcqs = mcqs.filter((m) => !courseId || m.courseId === courseId || m.course_id === courseId)
+  const courseFlashcards = flashcards.filter((f) => !courseId || f.courseId === courseId || f.course_id === courseId)
 
   const totalSubjects = courseSubjects.length
   const totalChapters = courseChapters.length

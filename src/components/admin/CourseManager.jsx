@@ -1141,10 +1141,10 @@ function CourseManager({ courseName: _courseName }) {
 
   // 3. Helper to get stats for a course (100% data-bound)
   const getCourseStats = (courseId) => {
-    const sCount = (allSubjects || []).filter((s) => s.courseId === courseId).length
-    const cCount = (allChapters || []).filter((c) => c.courseId === courseId).length
-    const mCount = (allMcqs || []).filter((m) => m.courseId === courseId).length
-    const fCount = (allFlashcards || []).filter((f) => f.courseId === courseId).length
+    const sCount = (allSubjects || []).filter((s) => (s.courseId || s.course_id) === courseId).length
+    const cCount = (allChapters || []).filter((c) => (c.courseId || c.course_id) === courseId).length
+    const mCount = (allMcqs || []).filter((m) => (m.courseId || m.course_id) === courseId).length
+    const fCount = (allFlashcards || []).filter((f) => (f.courseId || f.course_id) === courseId).length
 
     return {
       subjects: sCount,

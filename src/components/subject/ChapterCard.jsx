@@ -68,7 +68,7 @@ function getCoverageColor(coveragePct) {
   return '#94A3B8' // Getting Started (Slate)
 }
 
-function ChapterCard({ chapter, showTrends = false, onClick }) {
+function ChapterCard({ chapter, showTrends = false, onClick, onSelectMode }) {
   const totalMcqs = Number(chapter.totalMcqs ?? (typeof chapter.mcqs === 'number' ? chapter.mcqs : 0)) || 0
   const attemptedMcqs = Number(chapter.attemptedMcqs ?? chapter.uniqueAttempted ?? 0) || 0
 
@@ -93,6 +93,7 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
       type="button"
       className={`chapter-item${showTrends ? ' trends-expanded' : ' clean-view'}`}
       onClick={() => onClick?.(chapter)}
+      title={`Click to start MCQ Practice for ${chapter.title || chapter.name}`}
     >
       <div className="chapter-row-inner">
         <div className="chapter-num">{chapter.num || '01'}</div>
@@ -148,6 +149,28 @@ function ChapterCard({ chapter, showTrends = false, onClick }) {
                 {priorityLabel}
               </span>
             </div>
+          )}
+
+          {onSelectMode && (
+            <span
+              role="button"
+              tabIndex={0}
+              className="chapter-mode-select-pill"
+              title="Select Specialized Practice Mode (Targeted Concept, Rapid Revision, High Difficulty, Flashcards)"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelectMode(chapter, e)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation()
+                  onSelectMode(chapter, e)
+                }
+              }}
+            >
+              <AppIcon name="target" size={11} />
+              <span>Modes</span>
+            </span>
           )}
 
           <div className="chapter-status">

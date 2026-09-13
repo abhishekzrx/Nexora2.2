@@ -27,13 +27,23 @@ import { useMemberStore } from '../../data/memberStore'
 import { getExamProfile, getActiveExamKey, setActiveExam, resolveExamProfile } from '../../data/examProfiles'
 import { getRelevantPYQs, analyzePYQs } from '../../data/pyqRepository'
 import { getCourseConfig } from '../../data/courseConfigs'
-import { generateExamPrompt, buildMCQPrompt, validateBPSCBatch, buildTargetedRegenerationPrompt, autoFixBPSCItems, cleanChapterDescriptionForPrompt } from '../../utils/aiContentStudio'
+import {
+  cleanChapterDescriptionForPrompt,
+  generateExamPrompt,
+  validateBPSCBatch,
+  autoFixBPSCItems,
+  buildTargetedRegenerationPrompt,
+} from '../../utils/aiContentStudio'
 import {
   parseContext,
-  createBatchedExecutionPlan,
+  synthesizePrompt,
   parseAndEnforceBatchOutput,
   auditMcqBatch,
 } from '../../utils/masterContentEngine'
+import {
+  analyzeChapterQuestionGaps,
+  buildContinuousExpansionPrompt,
+} from '../../utils/chapterPracticeEngine'
 
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
@@ -104,7 +114,7 @@ export default function ChapterMcqInjection() {
   const [selectedCourseId, setSelectedCourseId] = useState(activeWorkspaceId || workspaces[0]?.id || '')
 
   const currentCourseSubjects = useMemo(() => {
-    return adminState.allSubjects.filter((s) => s.courseId === selectedCourseId)
+    return adminState.allSubjects.filter((s) => s.courseId === selectedCourseId || s.course_id === selectedCourseId)
   }, [adminState.allSubjects, selectedCourseId])
 
   const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
@@ -123,7 +133,7 @@ export default function ChapterMcqInjection() {
   }, [currentCourseSubjects, selectedSubjectId])
 
   const activeSubject = useMemo(() => {
-    return currentCourseSubjects.find((s) => s.id === selectedSubjectId) || currentCourseSubjects[0] || null
+    return currentCourseSubjects.find((s) => s.id === selectedSubjectId) || null
   }, [currentCourseSubjects, selectedSubjectId])
 
   const selectedCourse = useMemo(() => {
@@ -131,13 +141,15 @@ export default function ChapterMcqInjection() {
   }, [workspaces, selectedCourseId])
 
   const currentChapters = useMemo(() => {
-    if (!activeSubject) return []
-    return adminState.allChapters.filter(
-      (c) =>
-        (c.subjectId === activeSubject.id || c.subject_id === activeSubject.id || c.subject === activeSubject.name) &&
-        (!selectedCourseId || c.courseId === selectedCourseId)
-    )
-  }, [adminState.allChapters, activeSubject, selectedCourseId])
+    if (!selectedSubjectId) return []
+    return adminState.allChapters
+      .filter(
+        (c) =>
+          (c.subjectId === selectedSubjectId || c.subject_id === selectedSubjectId) &&
+          (!selectedCourseId || c.courseId === selectedCourseId || c.course_id === selectedCourseId)
+      )
+      .sort((a, b) => (a.number || 0) - (b.number || 0))
+  }, [adminState.allChapters, selectedSubjectId, selectedCourseId])
 
   const [selectedChapterId, setSelectedChapterId] = useState(() => {
     return currentChapters[0]?.id || ''
@@ -155,7 +167,7 @@ export default function ChapterMcqInjection() {
   }, [currentChapters, selectedChapterId])
 
   const activeChapter = useMemo(() => {
-    return currentChapters.find((c) => c.id === selectedChapterId) || currentChapters[0] || null
+    return currentChapters.find((c) => c.id === selectedChapterId) || null
   }, [currentChapters, selectedChapterId])
 
   // Chapter Description state (loaded automatically when a chapter of any subject is chosen)
@@ -175,22 +187,24 @@ export default function ChapterMcqInjection() {
 
   // ── 2. Top Right Statistics Metrics ──────────────────────────────
   const chapterMcqs = useMemo(() => {
-    if (!activeSubject || !activeChapter) return []
+    if (!selectedSubjectId || !selectedChapterId) return []
     return adminState.allMcqs.filter(
       (m) =>
-        (m.chapter_id === activeChapter.id || m.chapterId === activeChapter.id) &&
-        (m.subject_id === activeSubject.id || m.subjectId === activeSubject.id)
+        (m.chapter_id === selectedChapterId || m.chapterId === selectedChapterId) &&
+        (m.subject_id === selectedSubjectId || m.subjectId === selectedSubjectId) &&
+        (!selectedCourseId || m.courseId === selectedCourseId || m.course_id === selectedCourseId)
     )
-  }, [adminState.allMcqs, activeSubject, activeChapter])
+  }, [adminState.allMcqs, selectedCourseId, selectedSubjectId, selectedChapterId])
 
   const chapterFlashcards = useMemo(() => {
-    if (!activeSubject || !activeChapter) return []
+    if (!selectedSubjectId || !selectedChapterId) return []
     return adminState.allFlashcards.filter(
       (f) =>
-        (f.chapter_id === activeChapter.id || f.chapterId === activeChapter.id) &&
-        (f.subject_id === activeSubject.id || f.subjectId === activeSubject.id)
+        (f.chapter_id === selectedChapterId || f.chapterId === selectedChapterId) &&
+        (f.subject_id === selectedSubjectId || f.subjectId === selectedSubjectId) &&
+        (!selectedCourseId || f.courseId === selectedCourseId || f.course_id === selectedCourseId)
     )
-  }, [adminState.allFlashcards, activeSubject, activeChapter])
+  }, [adminState.allFlashcards, selectedCourseId, selectedSubjectId, selectedChapterId])
 
   const chapterNotesCount = useMemo(() => {
     return Math.max(4, Math.round((chapterMcqs.length + chapterFlashcards.length) / 3))
@@ -231,18 +245,19 @@ export default function ChapterMcqInjection() {
     setActiveWorkspace(newCourseId)
     applyCourseConfig(newCourseId)
 
-    const subs = adminState.allSubjects.filter((s) => s.courseId === newCourseId)
+    const subs = adminState.allSubjects.filter((s) => s.courseId === newCourseId || s.course_id === newCourseId)
     const firstSubId = subs[0]?.id || ''
     setSelectedSubjectId(firstSubId)
     const chs = adminState.allChapters.filter(
-      (c) => (c.subjectId === firstSubId || c.subject_id === firstSubId) && c.courseId === newCourseId
-    )
+      (c) =>
+        (c.subjectId === firstSubId || c.subject_id === firstSubId) &&
+        (c.courseId === newCourseId || c.course_id === newCourseId)
+    ).sort((a, b) => (a.number || 0) - (b.number || 0))
     setSelectedChapterId(chs[0]?.id || '')
   }, [adminState.allSubjects, adminState.allChapters, setActiveWorkspace, applyCourseConfig])
 
   // ── 5. Generator Parameters ─────────────────────────────────────
   const [promptEngineMode, setPromptEngineMode] = useState('master_unified') // 'master_unified' | 'exam_profile'
-  const [selectedBatchIdx, setSelectedBatchIdx] = useState(0)
   const [qualityAuditResult, setQualityAuditResult] = useState(null)
 
   const [mcqCount, setMcqCount] = useState(30)
@@ -329,17 +344,6 @@ export default function ChapterMcqInjection() {
     specialInstructions,
   ])
 
-  const batchedPlan = useMemo(() => {
-    return createBatchedExecutionPlan(masterContext, 25)
-  }, [masterContext])
-
-  // Reset batch index if total batches changes
-  useEffect(() => {
-    if (selectedBatchIdx >= batchedPlan.totalBatches) {
-      setSelectedBatchIdx(0)
-    }
-  }, [batchedPlan.totalBatches, selectedBatchIdx])
-
   const matchedPYQs = useMemo(() => {
     if (contentMode !== 'mcqs' || !activeExamProfile || !activeSubject || !activeChapter) return []
     return getRelevantPYQs({
@@ -353,11 +357,47 @@ export default function ChapterMcqInjection() {
 
   const pyqAnalysis = useMemo(() => analyzePYQs(matchedPYQs), [matchedPYQs])
 
+  const currentChapterMcqs = useMemo(() => {
+    if (!activeChapter) return []
+    const all = adminState.allMcqs || []
+    return all.filter((m) => String(m.chapter_id || m.chapterId) === String(activeChapter.id))
+  }, [adminState.allMcqs, activeChapter])
+
+  const chapterGaps = useMemo(() => {
+    if (!activeChapter) return null
+    return analyzeChapterQuestionGaps(activeChapter, currentChapterMcqs, 250)
+  }, [activeChapter, currentChapterMcqs])
+
+  const [gapExpansionPrompt, setGapExpansionPrompt] = useState('')
+
+  const handleGenerateGapExpansionPrompt = () => {
+    if (!activeChapter) return
+    const prompt = buildContinuousExpansionPrompt({
+      course: selectedCourse?.name || 'Academic Course',
+      subject: activeSubject?.name || 'General Studies',
+      chapter: activeChapter,
+      gapAnalysis: chapterGaps,
+      batchQuantity: 30,
+      language: mcqLanguage,
+      specialInstructions,
+    })
+    setGapExpansionPrompt(prompt)
+    setShowPromptPreview(true)
+    showToast({
+      type: 'success',
+      title: 'Gap Prompt Synthesized',
+      message: 'Loaded continuous expansion prompt targeting untested concepts & missing angles.',
+    })
+  }
+
   const generatedPromptText = useMemo(() => {
     try {
+      if (gapExpansionPrompt) {
+        return gapExpansionPrompt
+      }
+
       if (promptEngineMode === 'master_unified') {
-        const batch = batchedPlan.batches[selectedBatchIdx] || batchedPlan.batches[0]
-        return batch?.prompt || ''
+        return synthesizePrompt(masterContext)
       }
 
       if (contentMode === 'mcqs') {
@@ -427,8 +467,7 @@ export default function ChapterMcqInjection() {
     }
   }, [
     promptEngineMode,
-    batchedPlan,
-    selectedBatchIdx,
+    masterContext,
     contentMode,
     courseTitle,
     subjectTitle,
@@ -563,14 +602,13 @@ export default function ChapterMcqInjection() {
   const handleCopyPrompt = useCallback(() => {
     navigator.clipboard.writeText(generatedPromptText)
     setCopied(true)
-    const batchInfo = batchedPlan.totalBatches > 1 ? ` (Batch ${selectedBatchIdx + 1}/${batchedPlan.totalBatches})` : ''
     showToast({
       type: 'success',
       title: '✓ Prompt Copied',
-      message: `Prompt for ${contentMode.toUpperCase()}${batchInfo} copied to clipboard.`,
+      message: `Prompt for ${contentMode.toUpperCase()} (${finalQuantity} items) copied to clipboard.`,
     })
     setTimeout(() => setCopied(false), 2000)
-  }, [generatedPromptText, contentMode, batchedPlan.totalBatches, selectedBatchIdx])
+  }, [generatedPromptText, contentMode, finalQuantity])
 
   const handleClearJson = useCallback(() => {
     setJsonText('')
@@ -600,19 +638,26 @@ export default function ChapterMcqInjection() {
       return
     }
 
-    if (!selectedCourseId || !activeSubject || !activeChapter) {
+    if (!selectedCourseId || !selectedSubjectId || !selectedChapterId || !activeSubject || !activeChapter) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Please select a valid Course, Subject, and Chapter.' })
       return
     }
 
-    if (activeSubject.courseId && activeSubject.courseId !== selectedCourseId) {
+    const subCourseId = activeSubject.courseId || activeSubject.course_id
+    if (subCourseId && String(subCourseId) !== String(selectedCourseId)) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Subject does not belong to the selected Course.' })
       return
     }
 
     const chapSubId = activeChapter.subject_id || activeChapter.subjectId
-    if (chapSubId && String(chapSubId) !== String(activeSubject.id)) {
+    if (chapSubId && String(chapSubId) !== String(selectedSubjectId)) {
       showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Chapter does not belong to the selected Subject.' })
+      return
+    }
+
+    const chapCourseId = activeChapter.courseId || activeChapter.course_id
+    if (chapCourseId && String(chapCourseId) !== String(selectedCourseId)) {
+      showToast({ type: 'error', title: 'Hierarchy Error', message: 'Selected Chapter does not belong to the selected Course.' })
       return
     }
 
@@ -709,11 +754,13 @@ export default function ChapterMcqInjection() {
                 onChange={(e) => {
                   const newSubId = e.target.value
                   setSelectedSubjectId(newSubId)
-                  const chs = adminState.allChapters.filter(
-                    (c) =>
-                      (c.subjectId === newSubId || c.subject_id === newSubId || c.subject === activeSubject?.name) &&
-                      c.courseId === selectedCourseId
-                  )
+                  const chs = adminState.allChapters
+                    .filter(
+                      (c) =>
+                        (c.subjectId === newSubId || c.subject_id === newSubId) &&
+                        (c.courseId === selectedCourseId || c.course_id === selectedCourseId)
+                    )
+                    .sort((a, b) => (a.number || 0) - (b.number || 0))
                   setSelectedChapterId(chs[0]?.id || '')
                 }}
                 disabled={currentCourseSubjects.length === 0}
@@ -841,13 +888,91 @@ export default function ChapterMcqInjection() {
               title="Copy prompt for external generation"
             >
               <AppIcon name={copied ? "check" : "copy"} size={14} />
-              {copied ? 'Copied!' : batchedPlan.totalBatches > 1 ? `Copy Batch ${selectedBatchIdx + 1}/${batchedPlan.totalBatches}` : 'Copy Prompt'}
+              {copied ? 'Copied!' : `Copy Prompt (${finalQuantity} ${contentMode === 'mcqs' ? 'MCQs' : 'Cards'})`}
             </Button>
           </div>
 
           {/* Form Scroll Area */}
           <div className="studio-form-scrollable">
-            {/* Engine Mode Banner & Sub-batch Switcher */}
+            {/* ── Continuous Question Bank Expansion Studio Card (200-300 Target) ── */}
+            {contentMode === 'mcqs' && chapterGaps && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(19, 27, 38, 0.5) 100%)',
+                  border: '1px solid rgba(249, 115, 22, 0.25)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#f97316' }}>
+                      🎯 200–300 Target Bank Engine
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'rgba(249, 115, 22, 0.15)', color: '#f97316' }}>
+                      {chapterGaps.currentTotal} / {chapterGaps.targetBankSize} MCQs ({chapterGaps.coveragePercent}%)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateGapExpansionPrompt}
+                    style={{
+                      background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '5px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: '0 2px 8px rgba(249, 115, 22, 0.25)',
+                    }}
+                  >
+                    <AppIcon name="bolt" size={12} />
+                    Auto-Fill Gap Prompt (30 Qs)
+                  </button>
+                </div>
+
+                <div style={{ fontSize: 11.5, color: '#94a3b8', lineHeight: 1.4 }}>
+                  {chapterGaps.uncoveredConcepts.length > 0 ? (
+                    <span>
+                      ⚠️ <strong>{chapterGaps.uncoveredConcepts.length} Untested Concepts</strong> detected ({chapterGaps.uncoveredConcepts.slice(0, 3).map((c) => c.name).join(', ')}...).
+                    </span>
+                  ) : (
+                    <span>✓ All core concepts have baseline questions!</span>
+                  )}
+                  {chapterGaps.missingAngles.length > 0 && (
+                    <span style={{ marginLeft: 6 }}>
+                      Missing angles: {chapterGaps.missingAngles.slice(0, 3).map((a) => a.name).join(', ')}.
+                    </span>
+                  )}
+                </div>
+
+                {gapExpansionPrompt && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>
+                      ✓ Gap Expansion Prompt Active & Loaded in Output
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGapExpansionPrompt('')}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Reset Standard
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Engine Mode Banner */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -869,7 +994,7 @@ export default function ChapterMcqInjection() {
                     }}
                     onClick={() => setPromptEngineMode('master_unified')}
                   >
-                    ⭐ Master Unified (NCERT/Grad)
+                    ⭐ Master Unified (Direct up to 200)
                   </button>
                   <button
                     type="button"
@@ -890,43 +1015,6 @@ export default function ChapterMcqInjection() {
                   </button>
                 </div>
               </div>
-
-              {/* Sub-Batches Strip if requested count > 25 */}
-              {batchedPlan.totalBatches > 1 && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#EEF2FF',
-                  padding: '6px 10px',
-                  borderRadius: '10px',
-                  border: '1px solid #C7D2FE',
-                  flexWrap: 'wrap',
-                }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#3730A3' }}>
-                    📦 Bulk Batches ({batchedPlan.totalBatches} x ~25):
-                  </span>
-                  {batchedPlan.batches.map((b, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      style={{
-                        border: selectedBatchIdx === idx ? '1.5px solid #4F46E5' : '1px solid #CBD5E1',
-                        background: selectedBatchIdx === idx ? '#4F46E5' : '#FFFFFF',
-                        color: selectedBatchIdx === idx ? '#FFFFFF' : '#334155',
-                        fontWeight: 700,
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => setSelectedBatchIdx(idx)}
-                    >
-                      B{b.batchNumber} ({b.startIndex}-{b.endIndex})
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Primary Parameters Row */}

@@ -682,29 +682,20 @@ export default function AuthPage({
           </form>
 
           {/* Bottom Actions */}
-          <div className="auth-bottom-nav">
-            {!isSignup && (
-              <button
-                type="button"
-                className="auth-admin-portal-btn"
-                onClick={handleSupremeAdminQuickLogin}
-              >
-                <AppIcon name="shieldPerson" size={15} />
-                <span>Admin Portal</span>
-              </button>
-            )}
-
-            <div className="auth-mode-switch-link">
-              <span>{isSignup ? 'Already have an account?' : "Don't have an account?"}</span>
-              <button
-                type="button"
-                className="auth-switch-text-btn"
-                onClick={isSignup ? handleSwitchToLogin : handleSwitchToSignup}
-              >
-                {isSignup ? 'Log in' : 'Create Account'}
-              </button>
+          {isSignup && (
+            <div className="auth-bottom-nav">
+              <div className="auth-mode-switch-link">
+                <span>Already have an account?</span>
+                <button
+                  type="button"
+                  className="auth-switch-text-btn"
+                  onClick={handleSwitchToLogin}
+                >
+                  Log in
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

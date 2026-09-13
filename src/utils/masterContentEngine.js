@@ -183,9 +183,9 @@ function buildUnifiedMcqPrompt({
   }
   lines.push('')
 
-  if (quantity >= 50) {
+  if (quantity >= 40) {
     lines.push('==================================================================')
-    lines.push('3. HIGH-CAPACITY 100-MCQ PACED COVERAGE BLUEPRINT')
+    lines.push(`3. HIGH-CAPACITY ${quantity}-MCQ PACED COVERAGE BLUEPRINT (UP TO 200 AT ONCE)`)
     lines.push('==================================================================')
     lines.push('To ensure 100% comprehensive syllabus coverage without repetition across all questions, pace your generation through these 4 thematic quadrants:')
     lines.push(`- Quadrant 1 (Items 1 to ${Math.round(quantity * 0.25)}): Core Foundations, Definitions, Classifications, Basic Properties & Fundamental Laws.`)

@@ -26,7 +26,9 @@ import AppIcon from '../components/ui/AppIcon'
 import ChapterNotesView from '../components/student/ChapterNotesView'
 import SubjectAnalysisTab from '../components/subject/SubjectAnalysisTab'
 import SubjectFlashcardsTab from '../components/subject/SubjectFlashcardsTab'
-import { subjectTabs } from '../utils/navigation'
+import ChapterMasterViewModal from '../components/subject/ChapterMasterViewModal'
+import ChapterPracticeModeModal from '../components/practice/ChapterPracticeModeModal'
+import { subjectTabs, testSession } from '../utils/navigation'
 import { getEnrichedSubjectIntelligence } from '../services/performanceEngine'
 import { recordSubjectSnapshot } from '../services/trendService'
 
@@ -59,6 +61,8 @@ function SubjectDetailPage({
     return getEnrichedSubjectIntelligence(baseSubject, progressList) || baseSubject
   }, [baseSubject, progressSnapshot.progressList])
   const [activeTab, setActiveTab] = useState(() => subjectTabs[subjectKey] || 'chapters')
+  const [masterViewChapter, setMasterViewChapter] = useState(null)
+  const [practiceModalChapter, setPracticeModalChapter] = useState(null)
   const trendPreferenceKey = useMemo(() => {
     const memberId = effectiveMember?.id || 'anon'
     return `nexora_subject_trends_${memberId}_${subjectKey || 'subject'}`
@@ -184,7 +188,15 @@ function SubjectDetailPage({
                   key={chapter.id || chapter.num}
                   chapter={chapter}
                   showTrends={showChapterTrends}
-                  onClick={onChapterClick}
+                  onClick={(ch) => {
+                    testSession.practiceMode = 'adaptive'
+                    testSession.mode = 'adaptive'
+                    testSession.selectedConceptId = null
+                    onChapterClick(ch)
+                  }}
+                  onSelectMode={(ch) => {
+                    setPracticeModalChapter(ch)
+                  }}
                 />
               ))}
             </div>
@@ -301,6 +313,48 @@ function SubjectDetailPage({
           <div className="tab-content-wrapper">{renderContent()}</div>
         </main>
       </MobileLayout>
+
+      {/* Chapter Practice Mode Selector Modal */}
+      {practiceModalChapter && (
+        <ChapterPracticeModeModal
+          chapter={practiceModalChapter}
+          subjectTitle={subject.title || subject.name}
+          isOpen={Boolean(practiceModalChapter)}
+          onClose={() => setPracticeModalChapter(null)}
+          onLaunchPractice={(mode, opts) => {
+            testSession.practiceMode = mode
+            testSession.mode = mode
+            testSession.selectedConceptId = opts?.selectedConceptId || null
+            onChapterClick(practiceModalChapter)
+          }}
+          onOpenMasterView={(ch) => {
+            setMasterViewChapter(ch)
+          }}
+          onOpenFlashcards={(ch) => {
+            subjectTabs[subjectKey] = 'flashcards'
+            setActiveTab('flashcards')
+          }}
+        />
+      )}
+
+      {/* Chapter Master Health & Concept Breakdown Modal */}
+      {masterViewChapter && (
+        <ChapterMasterViewModal
+          chapter={masterViewChapter}
+          subjectTitle={subject.title || subject.name}
+          onClose={() => setMasterViewChapter(null)}
+          onStartPractice={(mode, opts) => {
+            testSession.practiceMode = mode
+            testSession.mode = mode
+            testSession.selectedConceptId = opts?.selectedConceptId || null
+            onChapterClick(masterViewChapter)
+          }}
+          onOpenFlashcards={(ch) => {
+            subjectTabs[subjectKey] = 'flashcards'
+            setActiveTab('flashcards')
+          }}
+        />
+      )}
     </div>
   )
 }

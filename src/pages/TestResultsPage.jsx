@@ -21,6 +21,7 @@ import { useWorkspaceStore } from '../data/workspaceStore'
 import { userAnalyticsService } from '../services/userAnalyticsService'
 import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
+import { ERROR_CATEGORIES } from '../services/adaptivePracticeEngine'
 
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds || 0))
@@ -483,6 +484,84 @@ function TestResultsPage({
                 <div className="ai-insight-body">{aiInsightText}</div>
               </div>
             </div>
+
+            {/* 4. Error Intelligence & Concept Recovery Studio */}
+            {testSession.errorAnalysis?.hasErrors && (
+              <div className="card ai-insight-compact anim" style={{ animationDelay: '0.15s', borderColor: 'rgba(239, 68, 68, 0.3)', background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, rgba(19, 27, 38, 0.6) 100%)' }}>
+                <div className="ai-insight-icon-compact" style={{ color: '#ef4444' }}>
+                  <AppIcon name="warning" size={18} />
+                </div>
+                <div className="ai-insight-content" style={{ width: '100%' }}>
+                  <div className="ai-insight-heading" style={{ color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Error Intelligence ({testSession.errorAnalysis.totalMistakes} Mistakes)</span>
+                  </div>
+                  
+                  {/* Error type badges */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {Object.entries(testSession.errorAnalysis.errorTypeBreakdown || {})
+                      .filter(([_, count]) => count > 0)
+                      .map(([errKey, count]) => {
+                        const meta = ERROR_CATEGORIES[errKey] || { label: errKey, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
+                        return (
+                          <span
+                            key={errKey}
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: meta.bg,
+                              color: meta.color,
+                              border: `1px solid ${meta.color}40`,
+                            }}
+                          >
+                            {meta.label}: {count}
+                          </span>
+                        )
+                      })}
+                  </div>
+
+                  {/* Top Weak Concepts */}
+                  {testSession.errorAnalysis.weakConcepts?.length > 0 && (
+                    <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
+                      <strong style={{ color: '#e2e8f0' }}>Target Weak Areas: </strong>
+                      {testSession.errorAnalysis.weakConcepts.map((c) => c.name).join(', ')}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button
+                      type="button"
+                      style={{
+                        flex: 1,
+                        background: 'rgba(249, 115, 22, 0.15)',
+                        border: '1px solid rgba(249, 115, 22, 0.3)',
+                        color: '#f97316',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                      }}
+                      onClick={() => {
+                        testSession.mode = 'retest'
+                        testSession.practiceMode = 'retest'
+                        testSession.save(userId)
+                        onPracticeAgain()
+                      }}
+                    >
+                      <AppIcon name="refresh" size={13} />
+                      Retest Weak ({testSession.errorAnalysis.totalMistakes})
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </aside>
 
           {/* ── RIGHT PANE (60%): Question Map (Just Above Question) + Question Review ── */}

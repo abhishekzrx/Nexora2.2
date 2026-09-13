@@ -71,25 +71,25 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
   const analyticsSubjects = useMemo(() => {
     if (!activeWorkspaceId) return []
     const subList = allSubjects && allSubjects.length > 0 ? allSubjects : subjects
-    return subList.filter((s) => s.courseId === activeWorkspaceId)
+    return subList.filter((s) => (s.courseId || s.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, subjects, allSubjects])
 
   const analyticsChapters = useMemo(() => {
     if (!activeWorkspaceId) return []
     const chapList = allChapters && allChapters.length > 0 ? allChapters : chapters
-    return chapList.filter((c) => c.courseId === activeWorkspaceId)
+    return chapList.filter((c) => (c.courseId || c.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, chapters, allChapters])
 
   const analyticsMcqs = useMemo(() => {
     if (!activeWorkspaceId) return []
     const mcqList = allMcqs && allMcqs.length > 0 ? allMcqs : mcqs
-    return mcqList.filter((m) => m.courseId === activeWorkspaceId)
+    return mcqList.filter((m) => (m.courseId || m.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, mcqs, allMcqs])
 
   const analyticsFlashcards = useMemo(() => {
     if (!activeWorkspaceId) return []
     const flashList = allFlashcards && allFlashcards.length > 0 ? allFlashcards : flashcards
-    return flashList.filter((f) => f.courseId === activeWorkspaceId)
+    return flashList.filter((f) => (f.courseId || f.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, flashcards, allFlashcards])
 
   const analytics = useMemo(() => {

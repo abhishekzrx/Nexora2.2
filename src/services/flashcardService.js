@@ -1,12 +1,15 @@
 /**
  * flashcardService.js
- * Intelligence & Spaced Repetition engine for Subject Flashcards.
+ * Intelligence & Spaced Repetition engine for Subject & Concept Flashcards in Nexora.
  *
  * Provides:
- * - Curated flashcard generation for any subject chapter
+ * - Concept-driven flashcard generation for any chapter knowledge point
+ * - Dedicated mistake revision deck synthesis
  * - Spaced repetition intervals (Again, Hard, Good, Easy)
  * - LocalStorage persistence for user deck mastery and recent activity
  */
+
+import { getFlatConceptsForChapter } from './knowledgeHierarchyService.js'
 
 const STORAGE_KEY_PROGRESS = 'nexora_flashcard_progress_v1'
 const STORAGE_KEY_RECENT_DECK = 'nexora_recent_flashcard_deck'
@@ -47,17 +50,66 @@ const TOPIC_FLASHCARD_TEMPLATES = {
 }
 
 /**
- * Get or synthesize flashcards for a specific chapter.
+ * Get or synthesize deep concept-derived flashcards for a specific chapter.
  */
 export function getChapterFlashcards(chapter, subjectTitle = '') {
   if (!chapter) return []
 
-  // 1. If chapter already has specific flashcards attached
+  // 1. If chapter already has specific flashcards attached in DB/store
   if (Array.isArray(chapter.flashcardsList) && chapter.flashcardsList.length > 0) {
     return chapter.flashcardsList
   }
 
-  // 2. Synthesize thematic flashcards from chapter name/desc
+  // 2. Derive flashcards directly from the chapter's conceptual knowledge points
+  const flatConcepts = getFlatConceptsForChapter(chapter, subjectTitle)
+  if (flatConcepts.length > 0) {
+    const cards = []
+    let cardIdx = 1
+
+    flatConcepts.forEach((c) => {
+      // Concept definition card
+      cards.push({
+        id: `fc-${chapter.id || chapter.number || 1}-${cardIdx++}`,
+        chapterId: chapter.id,
+        chapterNumber: chapter.number || chapter.num || 1,
+        chapterTitle: chapter.name || chapter.title,
+        subjectTitle: subjectTitle || chapter.subject || 'General Studies',
+        conceptId: c.id,
+        conceptName: c.name,
+        front: `What is the core definition & principle of "${c.name}"?`,
+        back: (c.knowledgePoints && c.knowledgePoints[0])
+          ? `${c.knowledgePoints[0]}. Key aspects include: ${c.knowledgePoints.slice(1, 3).join('; ')}.`
+          : `Core concept in ${c.topicName}: ${c.fullName || c.name}.`,
+        tag: c.topicName || 'Concept',
+      })
+
+      // Concept rule / edge-case card
+      if (c.knowledgePoints && c.knowledgePoints.length > 1) {
+        cards.push({
+          id: `fc-${chapter.id || chapter.number || 1}-${cardIdx++}`,
+          chapterId: chapter.id,
+          chapterNumber: chapter.number || chapter.num || 1,
+          chapterTitle: chapter.name || chapter.title,
+          subjectTitle: subjectTitle || chapter.subject || 'General Studies',
+          conceptId: c.id,
+          conceptName: c.name,
+          front: `What rules, properties, and exceptions apply to "${c.name}"?`,
+          back: c.knowledgePoints.slice(1).join('\n• ') ? `• ${c.knowledgePoints.slice(1).join('\n• ')}` : `Governing principles of ${c.name}.`,
+          tag: 'Rules & Traps',
+        })
+      }
+    })
+
+    if (cards.length > 0) {
+      return cards.map((card, i) => ({
+        ...card,
+        cardIndex: i + 1,
+        totalInDeck: cards.length,
+      }))
+    }
+  }
+
+  // 3. Fallback: Synthesize thematic flashcards from chapter name/desc
   const name = String(chapter.name || chapter.title || '').toLowerCase()
   const desc = String(chapter.desc || chapter.description || '')
 
@@ -74,8 +126,7 @@ export function getChapterFlashcards(chapter, subjectTitle = '') {
     pool = TOPIC_FLASHCARD_TEMPLATES.generic
   }
 
-  // Generate 5-8 tailored flashcards
-  const count = Math.max(5, Math.min(12, Number(chapter.flashcards || chapter.totalFlashcards || 8)))
+  const count = Math.max(6, Math.min(15, Number(chapter.flashcards || chapter.totalFlashcards || 10)))
   const cards = []
 
   for (let i = 0; i < count; i++) {
@@ -95,6 +146,37 @@ export function getChapterFlashcards(chapter, subjectTitle = '') {
   }
 
   return cards
+}
+
+/**
+ * Synthesizes an instant revision flashcard deck tailored specifically to questions missed in practice.
+ */
+export function generateRevisionFlashcardsForErrors(missedQuestions = [], chapter = null, subjectTitle = '') {
+  if (!Array.isArray(missedQuestions) || missedQuestions.length === 0) {
+    return getChapterFlashcards(chapter, subjectTitle)
+  }
+
+  return missedQuestions.map((item, idx) => {
+    const q = item.question || item
+    const options = Array.isArray(q.options) ? q.options : []
+    const correctLetter = String.fromCharCode(65 + (q.correct || 0))
+    const correctText = options[q.correct] || ''
+
+    return {
+      id: `rev-fc-${q.id || idx + 1}`,
+      chapterId: chapter?.id,
+      chapterNumber: chapter?.number || 1,
+      chapterTitle: chapter?.name || chapter?.title || 'Targeted Revision',
+      subjectTitle: subjectTitle || chapter?.subject || 'General Studies',
+      conceptId: item.concept?.conceptId || q.conceptId,
+      conceptName: item.concept?.conceptName || q.concept_name || 'Weak Concept',
+      front: `[${item.errorCategory?.label || 'Revision Point'}] ${q.question || q.text}`,
+      back: `✓ Correct Answer (${correctLetter}): ${correctText}\n\n💡 Rationale: ${q.explanation || 'Review governing principles and avoid distractor traps.'}`,
+      tag: item.errorCategory?.label || 'Mistake Review',
+      cardIndex: idx + 1,
+      totalInDeck: missedQuestions.length,
+    }
+  })
 }
 
 /**
@@ -122,7 +204,6 @@ export function recordCardRating(chapterId, cardId, rating) {
     const deck = store[chapterId] || { mastered: 0, reviewed: 0, total: 0, status: {} }
 
     const isMastered = rating === 'good' || rating === 'easy'
-    const wasMastered = deck.status[cardId]?.rating === 'good' || deck.status[cardId]?.rating === 'easy'
 
     deck.status[cardId] = {
       rating,

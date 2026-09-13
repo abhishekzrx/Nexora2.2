@@ -29,19 +29,19 @@ export default function NotesManager({ courseName = '' }) {
   const courseSubjects = useMemo(() => {
     if (!activeWorkspaceId) return []
     const list = allSubjects && allSubjects.length > 0 ? allSubjects : subjects
-    return list.filter((s) => s.courseId === activeWorkspaceId)
+    return list.filter((s) => (s.courseId || s.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, subjects, allSubjects])
 
   const courseChapters = useMemo(() => {
     if (!activeWorkspaceId) return []
     const list = allChapters && allChapters.length > 0 ? allChapters : chapters
-    return list.filter((c) => c.courseId === activeWorkspaceId)
+    return list.filter((c) => (c.courseId || c.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, chapters, allChapters])
 
   const courseNotes = useMemo(() => {
     if (!activeWorkspaceId) return []
     const list = allNotes && allNotes.length > 0 ? allNotes : notes
-    return list.filter((n) => n.courseId === activeWorkspaceId)
+    return list.filter((n) => (n.courseId || n.course_id) === activeWorkspaceId)
   }, [activeWorkspaceId, notes, allNotes])
 
   // Hydrate store from Supabase when workspace changes

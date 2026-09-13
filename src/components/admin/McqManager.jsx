@@ -79,7 +79,7 @@ export default function McqManager() {
   // Filter subjects by selected course
   const availableSubjects = useMemo(() => {
     if (!selectedCourseId) return []
-    return allSubjects.filter((s) => s.courseId === selectedCourseId)
+    return allSubjects.filter((s) => (s.courseId || s.course_id) === selectedCourseId)
   }, [selectedCourseId, allSubjects])
 
   // Auto select / reconcile subject ID
@@ -99,7 +99,7 @@ export default function McqManager() {
     return allChapters.filter(
       (c) =>
         (c.subjectId === selectedSubjectId || c.subject_id === selectedSubjectId) &&
-        (!selectedCourseId || c.courseId === selectedCourseId)
+        (!selectedCourseId || (c.courseId || c.course_id) === selectedCourseId)
     )
   }, [selectedSubjectId, selectedCourseId, allChapters])
 
@@ -114,20 +114,31 @@ export default function McqManager() {
     }
   }, [availableChapters, selectedChapterId])
 
-  // Load MCQs for selected chapter from DB & store
+  // Active Chapter Derivation
+  const selectedChapter = useMemo(() => {
+    return availableChapters.find((c) => String(c.id) === String(selectedChapterId)) || null
+  }, [availableChapters, selectedChapterId])
+
+  // Load MCQs for selected chapter from DB & store with strict 3-tier binding
   const loadChapterMcqs = async () => {
-    if (!selectedChapterId) {
+    if (!selectedCourseId || !selectedSubjectId || !selectedChapterId) {
       setChapterMcqs([])
       return
     }
     setLoading(true)
     const res = await mcqService.getMcqs(selectedCourseId, selectedSubjectId, selectedChapterId)
+
+    const matchHierarchy = (m) => {
+      const cMatch = String(m.chapterId || m.chapter_id || '') === String(selectedChapterId)
+      const sMatch = String(m.subject_id || m.subjectId || '') === String(selectedSubjectId)
+      const coMatch = String(m.course_id || m.courseId || '') === String(selectedCourseId)
+      return cMatch && sMatch && coMatch
+    }
+
     if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-      setChapterMcqs(res.data.filter((m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)))
+      setChapterMcqs(res.data.filter(matchHierarchy))
     } else {
-      const storeFiltered = allMcqs.filter(
-        (m) => String(m.chapterId || m.chapter_id) === String(selectedChapterId)
-      )
+      const storeFiltered = allMcqs.filter(matchHierarchy)
       setChapterMcqs(storeFiltered)
     }
     setLoading(false)
@@ -493,8 +504,6 @@ export default function McqManager() {
       })
     }
   }
-
-  const selectedChapter = availableChapters.find((c) => String(c.id) === String(selectedChapterId))
 
   return (
     <div className="mcq-manager-container edutech-clean-container">
