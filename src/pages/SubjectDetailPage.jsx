@@ -321,10 +321,24 @@ function SubjectDetailPage({
           subjectTitle={subject.title || subject.name}
           isOpen={Boolean(practiceModalChapter)}
           onClose={() => setPracticeModalChapter(null)}
-          onLaunchPractice={(mode, opts) => {
-            testSession.practiceMode = mode
-            testSession.mode = mode
-            testSession.selectedConceptId = opts?.selectedConceptId || null
+          onLaunchPractice={(modeOrConfig, opts) => {
+            if (typeof modeOrConfig === 'object' && modeOrConfig !== null) {
+              const count = modeOrConfig.count || 20
+              testSession.questionCount = count
+              testSession.targetCount = count
+              testSession.practiceMode = modeOrConfig.mode || 'adaptive'
+              testSession.mode = modeOrConfig.mode || 'adaptive'
+              testSession.selectedConceptId = modeOrConfig.selectedConceptId || null
+              testSession.practiceSetName = typeof count === 'number' ? `${count} MCQs Practice Set` : 'All MCQs Practice Set'
+            } else {
+              const count = opts?.count || 20
+              testSession.practiceMode = modeOrConfig || 'adaptive'
+              testSession.mode = modeOrConfig || 'adaptive'
+              testSession.questionCount = count
+              testSession.targetCount = count
+              testSession.selectedConceptId = opts?.selectedConceptId || null
+              testSession.practiceSetName = typeof count === 'number' ? `${count} MCQs Practice Set` : 'All MCQs Practice Set'
+            }
             onChapterClick(practiceModalChapter)
           }}
           onOpenMasterView={(ch) => {

@@ -93,6 +93,11 @@ export const testSession = {
   marked: saved?.marked || new Set(),
   visited: saved?.visited || new Set([0]),
   mode: saved?.mode || 'practice', // 'practice' | 'review'
+  practiceMode: saved?.practiceMode || 'adaptive',
+  questionCount: saved?.questionCount || 20,
+  targetCount: saved?.targetCount || 20,
+  selectedConceptId: saved?.selectedConceptId || null,
+  practiceSetName: saved?.practiceSetName || null,
   result: saved?.result || null,
   timeTakenSeconds: saved?.timeTakenSeconds || 0,
   attemptHistoryData: saved?.attemptHistoryData || [],
@@ -106,6 +111,11 @@ export const testSession = {
     this.marked = loaded?.marked || new Set()
     this.visited = loaded?.visited || new Set([0])
     this.mode = loaded?.mode || 'practice'
+    this.practiceMode = loaded?.practiceMode || 'adaptive'
+    this.questionCount = loaded?.questionCount || 20
+    this.targetCount = loaded?.targetCount || 20
+    this.selectedConceptId = loaded?.selectedConceptId || null
+    this.practiceSetName = loaded?.practiceSetName || null
     this.result = loaded?.result || null
     this.timeTakenSeconds = loaded?.timeTakenSeconds || 0
     this.attemptHistoryData = loaded?.attemptHistoryData || []
@@ -123,6 +133,11 @@ export const testSession = {
         marked: Array.from(this.marked),
         visited: Array.from(this.visited),
         mode: this.mode,
+        practiceMode: this.practiceMode,
+        questionCount: this.questionCount,
+        targetCount: this.targetCount,
+        selectedConceptId: this.selectedConceptId,
+        practiceSetName: this.practiceSetName,
         result: this.result,
         timeTakenSeconds: this.timeTakenSeconds,
         attemptHistoryData: this.attemptHistoryData,
@@ -147,6 +162,11 @@ export const testSession = {
     this.marked = new Set()
     this.visited = new Set([0])
     this.mode = 'practice'
+    this.practiceMode = 'adaptive'
+    this.questionCount = 20
+    this.targetCount = 20
+    this.selectedConceptId = null
+    this.practiceSetName = null
     this.result = null
     this.questions = null
     this.timeTakenSeconds = 0

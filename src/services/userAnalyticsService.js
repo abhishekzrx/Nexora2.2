@@ -92,6 +92,62 @@ export const userAnalyticsService = {
   },
 
   /**
+   * Retrieves all recorded practice sessions (10/20/30 MCQs & full tests) for a user.
+   */
+  async getUserPracticeSessions(userId, courseId = null, limit = 50) {
+    if (!userId) return []
+
+    // 1. Try Supabase practice_sessions table
+    try {
+      const query = courseId
+        ? `?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=completed_at.desc&limit=${limit}`
+        : `?user_id=eq.${encodeURIComponent(userId)}&order=completed_at.desc&limit=${limit}`
+      const res = await apiService.get(`/practice_sessions${query}`)
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setStorageItem(getScopedKey(userId, `sessions_${courseId || 'all'}`), JSON.stringify(res.data))
+        return res.data
+      }
+    } catch {
+      // fallback
+    }
+
+    // 2. Scoped localStorage fallback
+    try {
+      const saved = getStorageItem(getScopedKey(userId, `sessions_${courseId || 'all'}`))
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3. Fallback to user_attempts formatted as sessions
+    const attempts = await this.getUserAttempts(userId, courseId)
+    return attempts.map((a) => ({
+      session_id: a.id,
+      submission_id: a.id,
+      user_id: a.user_id,
+      course_id: a.course_id,
+      subject_id: a.subject_id,
+      subject_title: a.subject_title,
+      chapter_id: a.chapter_id,
+      chapter_title: a.chapter_title,
+      mode: a.mode || 'set_20',
+      requested_count: a.total_questions || 20,
+      actual_count: a.attempted_count || a.total_questions || 20,
+      correct_count: a.correct_count || 0,
+      incorrect_count: a.incorrect_count || 0,
+      skipped_count: a.skipped_count || 0,
+      score: a.score || 0,
+      percentage: a.percentage || 0,
+      accuracy: a.accuracy || 0,
+      time_taken_seconds: a.time_taken_seconds || 0,
+      completed_at: a.created_at,
+    }))
+  },
+
+  /**
    * Records an attempt and updates the single central analytics pipeline.
    */
   async recordAttempt({
@@ -101,6 +157,9 @@ export const userAnalyticsService = {
     subjectTitle,
     chapterId,
     chapterTitle,
+    topicId,
+    conceptId,
+    mode = 'set_20',
     totalQuestions,
     attemptedCount,
     correctCount,
@@ -124,6 +183,9 @@ export const userAnalyticsService = {
       subject_title: subjectTitle || subjectId,
       chapter_id: chapterId,
       chapter_title: chapterTitle || 'Practice Set',
+      topic_id: topicId || null,
+      concept_id: conceptId || null,
+      mode: mode || 'set_20',
       total_questions: totalQuestions,
       attempted_count: attemptedCount,
       correct_count: correctCount,

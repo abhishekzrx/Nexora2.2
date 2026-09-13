@@ -172,6 +172,50 @@ export function classifyMistake({ question, selectedOptionIdx, timeTakenSeconds 
   return ERROR_CATEGORIES.CONCEPTUAL
 }
 
+// ── Practice Set Presets (10, 20, 30, All MCQs) ───────────────────────
+export const PRACTICE_SET_PRESETS = [
+  {
+    id: 'set_10',
+    count: 10,
+    name: '10 MCQs Practice Set',
+    shortName: '10 MCQs',
+    badge: 'Quick Sprint',
+    timeEst: '~10 Mins',
+    icon: 'bolt',
+    description: 'Bite-sized high-focus set ideal for rapid concept recall, daily warmups, and speed drills.',
+  },
+  {
+    id: 'set_20',
+    count: 20,
+    name: '20 MCQs Practice Set',
+    shortName: '20 MCQs',
+    badge: 'Standard • Recommended',
+    timeEst: '~20 Mins',
+    icon: 'target',
+    description: 'Exam-calibrated balanced set covering essential chapter concepts, formula rules, and moderate difficulty questions.',
+  },
+  {
+    id: 'set_30',
+    count: 30,
+    name: '30 MCQs Practice Set',
+    shortName: '30 MCQs',
+    badge: 'Deep Drill',
+    timeEst: '~30 Mins',
+    icon: 'trophy',
+    description: 'In-depth comprehensive test covering multi-step reasoning, tricky edge cases, and exhaustive chapter breadth.',
+  },
+  {
+    id: 'set_all',
+    count: 'all',
+    name: 'All Chapter MCQs',
+    shortName: 'All MCQs',
+    badge: 'Full Pool',
+    timeEst: 'Full Set',
+    icon: 'layers',
+    description: 'Attempt every single available question in this chapter back-to-back for 100% syllabus mastery.',
+  },
+]
+
 // ── 2. Adaptive Question Selection Algorithm ───────────────────────
 /**
  * Intelligently constructs an optimal question set from the chapter pool.
@@ -183,7 +227,7 @@ export function classifyMistake({ question, selectedOptionIdx, timeTakenSeconds 
 export function buildAdaptivePracticeSet(rawQuestions = [], progressList = [], options = {}) {
   const {
     mode = 'adaptive',
-    targetCount = 20,
+    targetCount: rawTargetCount = 20,
     selectedConceptId = null,
     selectedTopicId = null,
     selectedDifficulty = null,
@@ -193,6 +237,11 @@ export function buildAdaptivePracticeSet(rawQuestions = [], progressList = [], o
   if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
     return []
   }
+
+  const targetCount =
+    rawTargetCount === 'all' || rawTargetCount === 'All'
+      ? rawQuestions.length
+      : Math.max(1, Number(rawTargetCount) || 20)
 
   const concepts = getFlatConceptsForChapter(chapter || { title: rawQuestions[0]?.subjectTitle || 'Chapter' })
   const progressMap = new Map()
@@ -262,8 +311,19 @@ export function buildAdaptivePracticeSet(rawQuestions = [], progressList = [], o
       }
     }
 
-    // 5. Difficulty alignment
+    // 5. Difficulty alignment & Mode / Set size tuning
     const diff = String(q.difficulty || 'Moderate').toLowerCase()
+
+    if (targetCount === 10 || mode === 'set_10') {
+      // 10-MCQ Sprint: Heavy focus on weak spots and recent mistakes
+      if (status === 'INCORRECT' || cStats.accuracy < 60) score += 35
+      if (status === 'UNSEEN') score += 20
+    } else if (targetCount === 30 || mode === 'set_30') {
+      // 30-MCQ Marathon: Comprehensive concept breadth & difficult edge cases
+      if (diff === 'difficult' || diff === 'hard' || diff.includes('very')) score += 25
+      if (status === 'MASTERED') score += 15 // Spaced retention inclusion
+    }
+
     if (mode === 'high_difficulty') {
       if (diff === 'difficult' || diff === 'hard' || diff.includes('very')) {
         score += 100
@@ -312,6 +372,7 @@ export function buildAdaptivePracticeSet(rawQuestions = [], progressList = [], o
   const selected = []
   const angleTally = {}
   const conceptTally = {}
+  const maxPerConcept = targetCount === 10 ? 2 : targetCount === 20 ? 4 : 5
 
   for (const q of eligible) {
     if (selected.length >= targetCount) break
@@ -322,8 +383,11 @@ export function buildAdaptivePracticeSet(rawQuestions = [], progressList = [], o
     const currentAngCount = angleTally[ang] || 0
     const currentCCount = conceptTally[cId] || 0
 
-    // Prevent more than 3 questions with exact same angle unless needed
-    if (currentAngCount >= 3 && selected.length < targetCount - 2) {
+    // Prevent over-representation of a single concept or angle
+    if (currentCCount >= maxPerConcept && selected.length < targetCount - 2) {
+      continue
+    }
+    if (currentAngCount >= 4 && selected.length < targetCount - 2) {
       continue
     }
 

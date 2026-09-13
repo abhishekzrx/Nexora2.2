@@ -59,9 +59,10 @@ export const submissionService = {
    */
   isSubmissionProcessed(userId, submissionId) {
     if (!submissionId) return null
+    const scopedMemoryKey = `${userId || 'anon'}_${submissionId}`
 
-    if (memoryProcessed.has(submissionId)) {
-      return memoryProcessed.get(submissionId)
+    if (memoryProcessed.has(scopedMemoryKey)) {
+      return memoryProcessed.get(scopedMemoryKey)
     }
 
     try {
@@ -72,7 +73,7 @@ export const submissionService = {
         if (Array.isArray(list)) {
           const found = list.find((item) => item.submissionId === submissionId)
           if (found) {
-            memoryProcessed.set(submissionId, found.result)
+            memoryProcessed.set(scopedMemoryKey, found.result)
             return found.result
           }
         }
@@ -89,8 +90,9 @@ export const submissionService = {
    */
   markSubmissionProcessed(userId, submissionId, result) {
     if (!submissionId) return
+    const scopedMemoryKey = `${userId || 'anon'}_${submissionId}`
 
-    memoryProcessed.set(submissionId, result)
+    memoryProcessed.set(scopedMemoryKey, result)
 
     try {
       const key = getScopedKey(userId, PROCESSED_SUBMISSIONS_PREFIX)
@@ -169,6 +171,22 @@ export const submissionService = {
   },
 
   /**
+   * Clears all pending submissions for a user.
+   */
+  clearPendingSubmissions(userId) {
+    if (!userId) return
+
+    const key = getScopedKey(userId, PENDING_QUEUE_PREFIX)
+    memoryPendingQueue.delete(userId)
+
+    try {
+      setStorageItem(key, JSON.stringify([]))
+    } catch {
+      // ignore
+    }
+  },
+
+  /**
    * Primary practice submission pipeline.
    *
    * Flow:
@@ -187,6 +205,9 @@ export const submissionService = {
     subjectTitle,
     chapterId,
     chapterTitle,
+    topicId,
+    conceptId,
+    mode = 'set_20',
     totalQuestions,
     attemptedCount,
     correctCount,
@@ -197,6 +218,7 @@ export const submissionService = {
     accuracy,
     timeTakenSeconds = 0,
     progressUpdates = [],
+    attemptLogs = [],
     isReadOnly = false,
   }) {
     if (!userId) {
@@ -209,6 +231,7 @@ export const submissionService = {
       return {
         success: true,
         isReadOnly: true,
+        readOnly: true,
         message: 'Viewing as member (Read-Only Mode): Practice attempt not recorded.',
       }
     }
@@ -229,6 +252,9 @@ export const submissionService = {
       subjectTitle,
       chapterId,
       chapterTitle,
+      topicId,
+      conceptId,
+      mode,
       totalQuestions,
       attemptedCount,
       correctCount,
@@ -239,10 +265,11 @@ export const submissionService = {
       accuracy,
       timeTakenSeconds,
       progressUpdates,
+      attemptLogs,
     }
 
     try {
-      // Step 1: Atomic Supabase RPC (idempotent, handles progress + attempt + snapshots)
+      // Step 1: Atomic Supabase RPC (idempotent, handles progress + attempt + snapshots + sessions)
       const rpcPayload = {
         user_id: userId,
         submission_id: subId,
@@ -251,6 +278,9 @@ export const submissionService = {
         subject_title: subjectTitle,
         chapter_id: chapterId,
         chapter_title: chapterTitle,
+        topic_id: topicId,
+        concept_id: conceptId,
+        mode,
         total_questions: totalQuestions,
         attempted_count: attemptedCount,
         correct_count: correctCount,
@@ -261,6 +291,7 @@ export const submissionService = {
         accuracy,
         time_taken_seconds: timeTakenSeconds,
         progress_updates: progressUpdates || [],
+        attempt_logs: attemptLogs || [],
       }
 
       const rpcRes = await apiService.rpc('submit_practice_session', rpcPayload)
@@ -307,6 +338,9 @@ export const submissionService = {
           subjectTitle,
           chapterId,
           chapterTitle,
+          topicId,
+          conceptId,
+          mode,
           totalQuestions,
           attemptedCount,
           correctCount,

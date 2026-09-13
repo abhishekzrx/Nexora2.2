@@ -115,6 +115,7 @@ export default function MemberManager({ onNavigateStudentView = () => {} }) {
   const [memberMetricsMap, setMemberMetricsMap] = useState({})
 
   // Modals
+  const [detailModalMember, setDetailModalMember] = useState(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [accessModalMember, setAccessModalMember] = useState(null)
   const [identityModalMember, setIdentityModalMember] = useState(null)

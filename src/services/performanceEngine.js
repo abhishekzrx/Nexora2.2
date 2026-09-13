@@ -13,6 +13,7 @@
 import { calculateDeepChapterPerformance } from './chapterAnalyticsService.js'
 import { calculateSubjectIntelligence } from './subjectAnalyticsService.js'
 import { recordChapterSnapshot } from './trendService.js'
+import studentAnalyticsEngine from './studentAnalyticsEngine.js'
 
 // In-memory cache for processed subject intelligence
 const subjectCache = new Map()
@@ -58,12 +59,18 @@ export function getEnrichedSubjectIntelligence(subject, progressList = []) {
 
     const priority = ch.priority || ch.priorityLabel || 'M'
     const deepMetrics = calculateDeepChapterPerformance(totalMcqs, chProgressRecords, priority, ch.id)
+    const authoritativeAnalytics = studentAnalyticsEngine.calculateChapterAnalytics(
+      { ...ch, totalMcqs },
+      chProgressRecords,
+      []
+    )
 
     return {
       ...ch,
       num: String(ch.number || idx + 1).padStart(2, '0'),
       number: Number(ch.number) || idx + 1,
       ...deepMetrics,
+      ...authoritativeAnalytics,
       // Backward compatibility bindings
       progress: deepMetrics.readinessScore,
       pct: `${deepMetrics.readinessScore}%`,
@@ -72,10 +79,12 @@ export function getEnrichedSubjectIntelligence(subject, progressList = []) {
 
   // 2. Aggregate all chapters into deep subject intelligence
   const subjectIntelligence = calculateSubjectIntelligence(subject, enrichedChapters, subjectId)
+  const authoritativeSubject = studentAnalyticsEngine.calculateSubjectAnalytics(subject, enrichedChapters, [])
 
   const result = {
     ...subject,
     ...subjectIntelligence,
+    ...authoritativeSubject,
     chapters: enrichedChapters,
     counts: {
       ...subject.counts,

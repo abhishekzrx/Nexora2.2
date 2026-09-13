@@ -31,6 +31,7 @@ import { useMemberStore } from '../data/memberStore'
 import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
 import { buildAdaptivePracticeSet, analyzePracticeSessionErrors } from '../services/adaptivePracticeEngine'
+import { getFlatConceptsForChapter, tagQuestionWithConcept } from '../services/knowledgeHierarchyService'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -760,9 +761,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       }
     }
 
-    // Adaptive Chapter Practice Selection (Target 20 Qs standard)
+    // Adaptive Chapter Practice Selection (Target Count calibrated from chosen set)
     const practiceMode = testSession.practiceMode || testSession.mode || 'adaptive'
-    const targetSize = 20
+    const targetSize = testSession.questionCount || testSession.targetCount || 20
 
     const selected = buildAdaptivePracticeSet(dbQuestions, Array.from(userProgressMap.values()), {
       mode: practiceMode,
@@ -788,6 +789,11 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
   const availableCount = activeQuestions.length
   const totalGridSize = availableCount
 
+  const totalAllocatedSeconds = useMemo(() => {
+    const qCount = availableCount || (testSession.questionCount === 'all' ? 30 : Number(testSession.questionCount) || 20)
+    return Math.max(10 * 60, qCount * 90)
+  }, [availableCount])
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState(() =>
     isReviewModeState ? { ...testSession.answers } : {},
@@ -801,7 +807,11 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     return new Set([0])
   })
   const [timerOn, setTimerOn] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(29 * 60 + 45)
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const qCount = testSession.questionCount || testSession.targetCount || 20
+    const countNum = qCount === 'all' ? 30 : (Number(qCount) || 20)
+    return Math.max(10 * 60, countNum * 90)
+  })
   const [theme, setTheme] = useState(getInitialTheme)
   const [examMode, setExamMode] = useState(false)
   const [isMobile, setIsMobile] = useState(getIsMobile)
@@ -981,7 +991,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     let attemptedCount = 0
     let newlyMastered = 0
 
+    const chapterConcepts = getFlatConceptsForChapter(resolvedChapter || chapter, subjectTitle)
     const progressUpdates = []
+    const attemptLogs = []
     const newProgressMap = new Map(userProgressMap)
 
     questionList.forEach((q, idx) => {
@@ -1011,12 +1023,25 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
 
       const newStatus = isCorrect ? 'MASTERED' : 'INCORRECT'
 
+      // Hierarchy tagging resolution
+      const tagging = tagQuestionWithConcept(q, chapterConcepts) || {}
+      const resolvedConceptId = q.conceptId || q.concept_id || tagging.conceptId || null
+      const resolvedTopicId = q.topicId || q.topic_id || tagging.topicId || null
+      const resolvedDifficulty = q.difficulty || q.level || 'MEDIUM'
+      const resolvedCognitive = q.cognitiveLevel || q.cognitive_level || 'application'
+      const resolvedAngle = q.questionAngle || q.question_angle || 'direct'
+
       const updatedRecord = {
         user_id: userId,
         mcq_id: q.id,
         course_id: activeWorkspaceId || 'course_default',
         subject_id: subjectKey,
         chapter_id: q.chapterId || chapterId,
+        topic_id: resolvedTopicId,
+        concept_id: resolvedConceptId,
+        difficulty: resolvedDifficulty,
+        cognitive_level: resolvedCognitive,
+        question_angle: resolvedAngle,
         status: newStatus,
         first_attempted_at: existing.first_attempted_at || new Date().toISOString(),
         last_attempted_at: new Date().toISOString(),
@@ -1027,10 +1052,26 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         incorrect_count: (existing.incorrect_attempts || existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
         incorrect_attempts: (existing.incorrect_attempts || existing.incorrect_count || 0) + (isCorrect ? 0 : 1),
         latest_result: isCorrect ? 'CORRECT' : 'INCORRECT',
+        first_result: existing.first_result || (existing.status === 'UNSEEN' ? (isCorrect ? 'CORRECT' : 'INCORRECT') : undefined),
       }
 
       progressUpdates.push(updatedRecord)
       newProgressMap.set(q.id, updatedRecord)
+
+      // Detailed attempt log entry
+      attemptLogs.push({
+        mcq_id: q.id,
+        topic_id: resolvedTopicId,
+        concept_id: resolvedConceptId,
+        difficulty: resolvedDifficulty,
+        cognitive_level: resolvedCognitive,
+        question_angle: resolvedAngle,
+        selected_option: chosen,
+        correct_option: q.correct,
+        is_correct: isCorrect,
+        time_taken_seconds: q.timeSpent || 0,
+        attempt_number: (existing.total_attempts || existing.attempts || 0) + 1,
+      })
     })
 
     // Persisted to database successfully -> Update local component state
@@ -1078,7 +1119,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     testSession.visited = new Set(visited)
     testSession.questions = questionList
     testSession.mode = isReviewModeState ? 'review' : 'practice'
-    const initialSeconds = 29 * 60 + 45
+    const initialSeconds = totalAllocatedSeconds || (29 * 60 + 45)
     testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
     const updatedHistory = [...pastAttempts, currentAttemptRecord]
@@ -1125,6 +1166,9 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       subjectTitle: subjectTitle || subjectKey,
       chapterId: chapter?.id || 'ch_default',
       chapterTitle: chapter?.title || chapter?.name || 'Chapter Practice',
+      topicId: chapterConcepts[0]?.topicId || null,
+      conceptId: chapterConcepts[0]?.id || null,
+      mode: testSession.practiceMode || 'set_20',
       totalQuestions: totalCount,
       attemptedCount,
       correctCount,
@@ -1135,6 +1179,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       accuracy,
       timeTakenSeconds: testSession.timeTakenSeconds,
       progressUpdates,
+      attemptLogs,
       isReadOnly: Boolean(isViewingAs),
     })
 

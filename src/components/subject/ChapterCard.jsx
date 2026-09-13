@@ -156,7 +156,7 @@ function ChapterCard({ chapter, showTrends = false, onClick, onSelectMode }) {
               role="button"
               tabIndex={0}
               className="chapter-mode-select-pill"
-              title="Select Specialized Practice Mode (Targeted Concept, Rapid Revision, High Difficulty, Flashcards)"
+              title="Select MCQ Practice Set (10 MCQs, 20 MCQs, 30 MCQs, All MCQs)"
               onClick={(e) => {
                 e.stopPropagation()
                 onSelectMode(chapter, e)
@@ -168,8 +168,8 @@ function ChapterCard({ chapter, showTrends = false, onClick, onSelectMode }) {
                 }
               }}
             >
-              <AppIcon name="target" size={11} />
-              <span>Modes</span>
+              <AppIcon name="layers" size={11} />
+              <span>Sets</span>
             </span>
           )}
 
