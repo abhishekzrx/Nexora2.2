@@ -1,15 +1,16 @@
 /**
  * sideDrawer.css
- * Forest Green Theme & Clean Light Styling for Side Navigation Drawer.
+ * Combo 05: Fresh Canopy (#2D3E2C) & Lime Sprout (#E4FD97)
+ * High-Contrast, WCAG-compliant, Radiant Side Navigation Drawer.
  */
 
 /* ── Overlay ────────────────────────────────────────────────────────── */
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 28, 21, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(18, 27, 17, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 999;
   opacity: 0;
   pointer-events: none;
@@ -27,16 +28,16 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 300px;
+  width: 310px;
   max-width: 86%;
   background: #ffffff;
-  border-right: 1px solid #E2E8F0;
+  border-right: 1px solid #D6E7D5;
   z-index: 1000;
   transform: translateX(-100%);
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  box-shadow: 10px 0 35px rgba(8, 28, 21, 0.12);
+  box-shadow: 12px 0 40px rgba(18, 27, 17, 0.25);
   overflow: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -46,17 +47,18 @@
   transform: translateX(0);
 }
 
-/* ── Top Profile Header (Sunset Orange Gradient) ─────────────────────── */
+/* ── Top Profile Header (Fresh Canopy & Lime Sprout) ─────────────────── */
 .drawer-profile {
-  background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #EA580C 100%);
+  background: linear-gradient(135deg, #121B11 0%, #1E2B1D 35%, #2D3E2C 75%, #384E37 100%);
   padding: 24px 20px 20px;
   color: #FFFFFF;
   position: relative;
-  border-bottom: 1px solid #C2410C;
-  border-top: 4px solid #FB923C;
+  border-bottom: 1px solid rgba(228, 253, 151, 0.25);
+  border-top: 4px solid #E4FD97;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: 0 4px 20px rgba(18, 27, 17, 0.3);
 }
 
 .drawer-profile-glow {
@@ -65,7 +67,7 @@
   right: -30px;
   width: 140px;
   height: 140px;
-  background: radial-gradient(circle, rgba(251, 146, 60, 0.35) 0%, rgba(251, 146, 60, 0) 70%);
+  background: radial-gradient(circle, rgba(228, 253, 151, 0.28) 0%, rgba(228, 253, 151, 0) 70%);
   pointer-events: none;
 }
 
@@ -76,9 +78,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #FFFFFF;
+  background: rgba(228, 253, 151, 0.16);
+  border: 1px solid rgba(228, 253, 151, 0.35);
+  color: #E4FD97;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,13 +91,13 @@
 }
 
 .drawer-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
+  background: rgba(228, 253, 151, 0.3);
+  transform: rotate(90deg) scale(1.05);
 }
 
 .drawer-name {
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 900;
   color: #FFFFFF;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -105,9 +107,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #FFEDD5;
+  background: rgba(228, 253, 151, 0.16);
+  border: 1px solid rgba(228, 253, 151, 0.35);
+  color: #E4FD97;
   padding: 3px 9px;
   border-radius: 8px;
   font-size: 0.74rem;
@@ -118,8 +120,8 @@
 
 .drawer-sub {
   font-size: 0.78rem;
-  font-weight: 600;
-  color: #FFEDD5;
+  font-weight: 700;
+  color: #E4FD97;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -131,9 +133,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fde047;
+  background: rgba(228, 253, 151, 0.18);
+  border: 1px solid rgba(228, 253, 151, 0.35);
+  color: #E4FD97;
   border-radius: 20px;
   padding: 3px 10px;
   font-size: 0.74rem;
@@ -144,15 +146,15 @@
 /* ── Mode Switcher Card ────────────────────────────────────────────── */
 .drawer-mode-switch-card {
   margin-top: 6px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(18, 27, 17, 0.6);
+  border: 1px solid rgba(228, 253, 151, 0.25);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 .mode-switch-left {
@@ -179,32 +181,32 @@
 
 .mode-role-sub {
   font-size: 0.68rem;
-  color: #FFEDD5;
+  color: #E4FD97;
   margin-top: 1px;
 }
 
 .mode-switch-btn {
-  background: #EA580C;
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #E4FD97 0%, #D0F568 100%);
+  color: #1E2B1D;
   border: none;
   font-size: 0.74rem;
   font-weight: 800;
-  padding: 5px 10px;
+  padding: 6px 11px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
+  box-shadow: 0 2px 8px rgba(228, 253, 151, 0.35);
   white-space: nowrap;
 }
 
 .mode-switch-btn:hover {
-  background: #FB923C;
-  transform: translateY(-1px);
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 4px 14px rgba(228, 253, 151, 0.55);
 }
 
 .drawer-members-quick-btn {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(228, 253, 151, 0.14);
+  border: 1px solid rgba(228, 253, 151, 0.28);
   border-radius: 12px;
   padding: 8px 12px;
   display: flex;
@@ -220,8 +222,8 @@
 }
 
 .drawer-members-quick-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(228, 253, 151, 0.22);
+  border-color: rgba(228, 253, 151, 0.45);
   transform: translateY(-1px);
 }
 
@@ -236,7 +238,7 @@
 }
 
 .drawer-members-btn-arrow {
-  color: #FB923C;
+  color: #E4FD97;
   font-weight: 800;
   font-size: 0.85rem;
 }
@@ -257,14 +259,14 @@
 }
 
 .drawer-menu::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
+  background: #D6E7D5;
   border-radius: 4px;
 }
 
 .drawer-section-label {
   font-size: 0.68rem;
   font-weight: 800;
-  color: #64748B;
+  color: #759F74;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 12px 12px 6px;
@@ -279,7 +281,7 @@
   border-radius: 12px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #334155;
+  color: #334139;
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -289,23 +291,23 @@
 }
 
 .drawer-item:hover:not(.disabled) {
-  background: #F8FAFC;
-  color: #0F172A;
+  background: #F1F6F1;
+  color: #131F17;
   transform: translateX(3px);
-  border-color: #E2E8F0;
+  border-color: #D6E7D5;
 }
 
 .drawer-item.active {
-  background: #FFF7ED;
-  color: #C2410C;
+  background: linear-gradient(135deg, #F1F6F1 0%, #E5F0E4 100%);
+  color: #1E2B1D;
   font-weight: 800;
-  border-left: 3px solid #EA580C;
-  border-color: #FED7AA;
-  border-left-color: #EA580C;
+  border: 1px solid #D6E7D5;
+  border-left: 4px solid #2D3E2C;
+  box-shadow: 0 2px 6px rgba(45, 62, 44, 0.06);
 }
 
 .drawer-item.active .d-icon {
-  color: #EA580C;
+  color: #2D3E2C;
 }
 
 .drawer-item.disabled {
@@ -324,9 +326,9 @@
 
 .d-badge {
   margin-left: auto;
-  background: #FFEDD5;
-  border: 1px solid #FED7AA;
-  color: #C2410C;
+  background: #F1F6F1;
+  border: 1px solid #D6E7D5;
+  color: #2D3E2C;
   font-size: 0.68rem;
   font-weight: 800;
   padding: 1px 7px;
@@ -335,15 +337,15 @@
 
 .drawer-divider {
   height: 1px;
-  background: #F1F5F9;
+  background: #F1F6F1;
   margin: 8px 10px;
 }
 
 /* ── Footer / Log Out ──────────────────────────────────────────────── */
 .drawer-footer {
   padding: 14px;
-  border-top: 1px solid #E2E8F0;
-  background: #F8FAFC;
+  border-top: 1px solid #D6E7D5;
+  background: #F8FAF8;
 }
 
 .drawer-logout {
@@ -366,4 +368,6 @@
   background: #ffe4e6;
   border-color: #fda4af;
   color: #be123c;
+  transform: translateY(-1px);
 }
+

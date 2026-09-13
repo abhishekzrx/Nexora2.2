@@ -244,14 +244,14 @@
   width: 250px;
   min-width: 250px;
   background: #ffffff;
-  border-right: 1px solid #E2E8F0;
+  border-right: 1px solid #D6E7D5;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   height: 100vh;
   position: sticky;
   top: 0;
-  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.03);
+  box-shadow: 2px 0 12px rgba(45, 62, 44, 0.04);
   z-index: 100;
 }
 
@@ -260,7 +260,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 16px 12px;
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid #D6E7D5;
 }
 
 .admin-sidebar-logo {
@@ -270,8 +270,9 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #FFF1E6;
-  color: #F1621B;
+  background: #F1F6F1;
+  color: #2D3E2C;
+  border: 1px solid #D6E7D5;
   flex-shrink: 0;
 }
 
@@ -284,14 +285,14 @@
 .admin-sidebar-title {
   font-size: 15px;
   font-weight: 800;
-  color: #0F172A;
+  color: #131F17;
   line-height: 1.2;
 }
 
 .admin-sidebar-course {
   font-size: 11px;
   font-weight: 700;
-  color: #EA580C;
+  color: #2D3E2C;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -315,7 +316,7 @@
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
-  color: #334155; /* Slate 700 - Deep, rich readable text! */
+  color: #334139;
   text-align: left;
   width: 100%;
   position: relative;
@@ -326,7 +327,7 @@
 }
 
 .admin-sidebar-item .admin-sidebar-icon {
-  color: #64748B; /* Slate 500 */
+  color: #759F74;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -337,23 +338,23 @@
 }
 
 .admin-sidebar-item:hover:not(.disabled):not(.active) {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #F1F6F1;
+  color: #131F17;
 }
 
 .admin-sidebar-item:hover:not(.disabled):not(.active) .admin-sidebar-icon {
-  color: #F1621B;
+  color: #2D3E2C;
 }
 
 .admin-sidebar-item.active {
-  background: #FFF7ED;
-  color: #EA580C;
+  background: linear-gradient(135deg, #F1F6F1 0%, #E5F0E4 100%);
+  color: #1E2B1D;
   font-weight: 800;
-  border-color: #FED7AA;
+  border-color: #D6E7D5;
 }
 
 .admin-sidebar-item.active .admin-sidebar-icon {
-  color: #EA580C;
+  color: #2D3E2C;
 }
 
 .admin-sidebar-item.disabled {
@@ -374,7 +375,7 @@
 .admin-sidebar-active-bar {
   width: 3px;
   height: 14px;
-  background: #EA580C;
+  background: #2D3E2C;
   border-radius: 2px;
   flex-shrink: 0;
 }
