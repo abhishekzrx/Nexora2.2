@@ -253,14 +253,14 @@ function DashboardPage({
   const activeCourse = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || null
   const effectiveCourseId = activeWorkspaceId || activeCourse?.id
 
-  // Hydrate user progress and persistent analytics on mount & when user or course changes
+  // Hydrate user progress and persistent analytics on mount & when user, course, or progress store changes
   useEffect(() => {
     const userId = effectiveMember?.id
     if (!userId || !effectiveCourseId) return
 
     let isMounted = true
     async function hydrate() {
-      await Promise.all([
+      await Promise.allSettled([
         hydrateUserProgressFromSupabase(userId),
         hydrateUserAnalytics(userId, effectiveCourseId),
       ])
@@ -274,15 +274,14 @@ function DashboardPage({
     return () => {
       isMounted = false
     }
-  }, [effectiveMember?.id, effectiveCourseId])
+  }, [effectiveMember?.id, effectiveCourseId, userProgressState.version])
 
   const userAnalytics = useUserAnalytics(effectiveMember?.id, effectiveCourseId, 50)
   const progressList = userProgressState.progressList || []
 
-  // Past attempts history merging persistent Supabase/local attempts with testSession
+  // Past attempts history from persistent Supabase/local attempts
   const pastAttempts = useMemo(() => {
-    let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
-    if (memoryAttempts.length === 0 && persistentAttempts.length > 0) {
+    if (persistentAttempts.length > 0) {
       return persistentAttempts.map((a) => ({
         id: a.id,
         timestamp: new Date(a.created_at || Date.now()).getTime(),
@@ -291,26 +290,24 @@ function DashboardPage({
         subjectTitle: a.subject_title || a.subject_id,
         chapterId: a.chapter_id,
         chapterTitle: a.chapter_title,
-        accuracy: a.accuracy,
-        correct: a.correct_count,
-        attempted: a.attempted_count,
-        total: a.total_questions,
+        accuracy: a.accuracy !== undefined ? a.accuracy : 0,
+        correct: a.correct_count !== undefined ? a.correct_count : 0,
+        attempted: a.attempted_count !== undefined ? a.attempted_count : (a.total_questions || 0),
+        total: a.total_questions || 0,
         time_taken_seconds: a.time_taken_seconds || a.timeTakenSeconds || 0,
       }))
     }
-    if (memoryAttempts.length === 0) {
-      try {
-        const cached = localStorage.getItem(`nexora_attempts_${effectiveMember?.id}`) || localStorage.getItem('nexora_recent_mcq_attempts')
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed)) memoryAttempts = parsed
-        }
-      } catch {
-        // ignore
+    try {
+      const cached = localStorage.getItem(`nexora_attempts_${effectiveMember?.id}`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed)) return parsed
       }
+    } catch {
+      // ignore
     }
-    return memoryAttempts
-  }, [testSession.attemptHistoryData, persistentAttempts, effectiveMember?.id])
+    return []
+  }, [persistentAttempts, effectiveMember?.id])
 
   // Recent attempted MCQs list sorted by newest attempt first
   const recentAttemptsList = useMemo(() => {

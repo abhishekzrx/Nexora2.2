@@ -961,6 +961,8 @@ export function clearCurrentUser() {
     localStorage.removeItem(AUTH_TOKEN_KEY)
     localStorage.removeItem('nexora_is_authenticated')
     localStorage.removeItem(USER_ID_KEY)
+    localStorage.removeItem('nexora_recent_mcq_attempts')
+    localStorage.removeItem('nexora_active_test_session')
   } catch {
     // ignore
   }

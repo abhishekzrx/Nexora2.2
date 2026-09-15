@@ -46,7 +46,7 @@ function getActiveUserId() {
   } catch {
     // ignore
   }
-  return 'usr_super_admin_alpha'
+  return null
 }
 
 function getSessionKey(userId = null) {

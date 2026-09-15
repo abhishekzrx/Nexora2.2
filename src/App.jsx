@@ -186,7 +186,7 @@ function App() {
       timeoutId = setTimeout(async () => {
         const userId = getAuthUserId()
         if (!userId) return
-        const courseId = localStorage.getItem('nexora-active-course') || 'bpsc_prelims'
+        const courseId = activeWorkspaceId || (typeof localStorage !== 'undefined' ? (localStorage.getItem('nexora_active_workspace_id') || localStorage.getItem('nexora-active-course')) : null) || 'bpsc_prelims'
         await Promise.allSettled([
           hydrateUserProgressFromSupabase(userId, true),
           hydrateUserAnalytics(userId, courseId),
@@ -205,7 +205,7 @@ function App() {
       window.removeEventListener('focus', handleFocus)
       clearTimeout(timeoutId)
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, activeWorkspaceId])
 
   useEffect(() => {
     let isMounted = true

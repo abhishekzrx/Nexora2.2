@@ -120,14 +120,14 @@ function PracticeHubPage({
     return []
   })
 
-  // Hydrate user progress and persistent analytics on mount & when user or course changes
+  // Hydrate user progress and persistent analytics on mount & when user, course, or progress store changes
   useEffect(() => {
     const userId = effectiveMember?.id
     if (!userId || !effectiveCourseId) return
 
     let isMounted = true
     async function hydrate() {
-      await Promise.all([
+      await Promise.allSettled([
         hydrateUserProgressFromSupabase(userId),
         hydrateUserAnalytics(userId, effectiveCourseId),
       ])
@@ -141,15 +141,14 @@ function PracticeHubPage({
     return () => {
       isMounted = false
     }
-  }, [effectiveMember?.id, effectiveCourseId])
+  }, [effectiveMember?.id, effectiveCourseId, userProgressState.version])
 
   const userAnalytics = useUserAnalytics(effectiveMember?.id, effectiveCourseId, 50)
   const progressList = userProgressState.progressList || []
 
   // Past attempts filtered / derived for active course
   const pastAttempts = useMemo(() => {
-    let memoryAttempts = Array.isArray(testSession.attemptHistoryData) ? testSession.attemptHistoryData : []
-    if (memoryAttempts.length === 0 && persistentAttempts.length > 0) {
+    if (persistentAttempts.length > 0) {
       return persistentAttempts.map((a) => ({
         id: a.id,
         timestamp: new Date(a.created_at || Date.now()).getTime(),
@@ -165,19 +164,17 @@ function PracticeHubPage({
         time_taken_seconds: a.time_taken_seconds || a.timeTakenSeconds || 0,
       }))
     }
-    if (memoryAttempts.length === 0) {
-      try {
-        const cached = localStorage.getItem(`nexora_attempts_${effectiveMember?.id}`) || localStorage.getItem('nexora_recent_mcq_attempts')
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed)) memoryAttempts = parsed
-        }
-      } catch {
-        // ignore
+    try {
+      const cached = localStorage.getItem(`nexora_attempts_${effectiveMember?.id}`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed)) return parsed
       }
+    } catch {
+      // ignore
     }
-    return memoryAttempts
-  }, [testSession.attemptHistoryData, persistentAttempts, effectiveMember?.id])
+    return []
+  }, [persistentAttempts, effectiveMember?.id])
 
   // Filter attempts strictly belonging to active course subjects
   const courseAttempts = useMemo(() => {

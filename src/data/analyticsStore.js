@@ -112,17 +112,20 @@ export function clearAnalyticsStore() {
 export function useUserAnalytics(userId, courseId, totalPool = 0) {
   const store = useSyncExternalStore(subscribeAnalyticsStore, getAnalyticsStoreSnapshot, getAnalyticsStoreSnapshot)
   const cacheKey = `${userId}_${courseId}`
-  const cached = store.analyticsCache.get(cacheKey)
+  const cached = store.analyticsCache.get(cacheKey) || loadLocalAnalytics(userId, courseId)
 
   if (cached) {
     return cached
   }
 
   return {
+    userId,
+    courseId,
     readinessScore: 0,
     accuracy: 0,
     coverage: 0,
     mastery: 0,
+    studyStreakDays: 0,
     totalAttemptsCount: 0,
     totalQuestionsAttempted: 0,
     masteredCount: 0,
@@ -132,6 +135,7 @@ export function useUserAnalytics(userId, courseId, totalPool = 0) {
     strongAreas: ['Foundations'],
     weakAreas: ['Advanced Topics'],
     trendHistory: [],
+    snapshots: [],
     lastActiveAt: null,
   }
 }

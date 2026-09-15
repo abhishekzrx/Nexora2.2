@@ -121,10 +121,8 @@ export async function hydrateUserProgressFromSupabase(targetUserId = undefined, 
             progressMap.set(String(mcqId), item)
           }
         })
-        // Only persist to localStorage if cloud returned non-empty data
-        if (res.data.length > 0) {
-          saveLocalUserProgress(userId, res.data)
-        }
+        // Persist authoritative cloud data to local cache
+        saveLocalUserProgress(userId, res.data)
         isHydrated = true
         emit()
         return { success: true, data: res.data }

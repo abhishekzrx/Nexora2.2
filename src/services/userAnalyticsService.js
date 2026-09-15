@@ -64,15 +64,15 @@ export const userAnalyticsService = {
     // 1. Try Supabase
     try {
       const query = courseId
-        ? `?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=created_at.asc`
-        : `?user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc`
+        ? `?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=created_at.asc&limit=10000`
+        : `?user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc&limit=10000`
       const res = await apiService.get(`/user_attempts${query}`)
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res && res.success && Array.isArray(res.data)) {
         setStorageItem(getScopedKey(userId, 'attempts'), JSON.stringify(res.data))
         return res.data
       }
     } catch {
-      // fallback to scoped local storage
+      // fallback to scoped local storage only on network error
     }
 
     // 2. Scoped localStorage fallback
@@ -352,7 +352,7 @@ export const userAnalyticsService = {
       const res = await apiService.get(
         `/user_analytics_snapshots?user_id=eq.${encodeURIComponent(userId)}&course_id=eq.${encodeURIComponent(courseId)}&order=date.asc&limit=${limit}`
       )
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res && res.success && Array.isArray(res.data)) {
         setStorageItem(getScopedKey(userId, `snapshots_${courseId}`), JSON.stringify(res.data))
         return res.data
       }
@@ -479,6 +479,43 @@ export const userAnalyticsService = {
       }))
     }
 
+    // Study streak calculation
+    const activeDays = new Set()
+    attempts.forEach((a) => {
+      const ts = a.created_at || a.timestamp
+      if (ts) {
+        try {
+          const d = new Date(ts).toISOString().split('T')[0]
+          activeDays.add(d)
+        } catch {
+          // ignore
+        }
+      }
+    })
+    snapshots.forEach((s) => {
+      if (s.date) activeDays.add(s.date)
+    })
+
+    let studyStreakDays = 0
+    if (activeDays.size > 0) {
+      const sorted = Array.from(activeDays).sort().reverse()
+      const todayStr = new Date().toISOString().split('T')[0]
+      const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+      if (sorted[0] === todayStr || sorted[0] === yesterdayStr) {
+        let checkDate = new Date(sorted[0])
+        while (true) {
+          const dateStr = checkDate.toISOString().split('T')[0]
+          if (activeDays.has(dateStr)) {
+            studyStreakDays += 1
+            checkDate.setDate(checkDate.getDate() - 1)
+          } else {
+            break
+          }
+        }
+      }
+    }
+
     return {
       userId,
       courseId,
@@ -486,6 +523,7 @@ export const userAnalyticsService = {
       accuracy: overallAccuracy,
       coverage: coveragePercentage,
       mastery: masteryPercentage,
+      studyStreakDays,
       totalAttemptsCount,
       totalQuestionsAttempted,
       masteredCount,
@@ -495,6 +533,7 @@ export const userAnalyticsService = {
       strongAreas: strongAreas.length > 0 ? strongAreas : ['Foundations'],
       weakAreas: weakAreas.length > 0 ? weakAreas : ['Complex Scenarios'],
       trendHistory,
+      snapshots,
       lastActiveAt: attempts.length > 0 ? attempts[attempts.length - 1].created_at : new Date().toISOString(),
     }
   },

@@ -555,54 +555,50 @@ export const mcqService = {
       return { success: true, data: [] }
     }
 
-    let cloudData = []
-    let localData = []
-
+    // 1. Authoritative Cloud Fetch from Supabase
     try {
       const res = await apiService.get(
-        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}&order=updated_at.desc`
+        `/mcq_progress?user_id=eq.${encodeURIComponent(userId)}&order=updated_at.desc&limit=10000`
       )
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-        cloudData = res.data
+      if (res && res.success && Array.isArray(res.data)) {
         try {
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(cloudData))
+            localStorage.setItem(`nexora_progress_${userId}`, JSON.stringify(res.data))
           }
         } catch {
-          // ignore
+          // ignore storage error
+        }
+        return {
+          success: true,
+          data: res.data,
         }
       }
     } catch {
-      // network failure: fall back to local only
+      // network failure: fall back to local user-scoped cache
     }
 
+    // 2. Offline Fallback to User-Scoped Local Storage Cache ONLY when offline
     try {
       if (typeof localStorage !== 'undefined') {
         const raw = localStorage.getItem(`nexora_progress_${userId}`)
         if (raw) {
           const parsed = JSON.parse(raw)
-          if (Array.isArray(parsed)) localData = parsed
+          if (Array.isArray(parsed)) {
+            return {
+              success: true,
+              data: parsed,
+              isOffline: true,
+            }
+          }
         }
       }
     } catch {
       // ignore
     }
 
-    if (cloudData.length > 0 && localData.length > 0) {
-      const cloudMap = new Map(cloudData.map((item) => [String(item.mcq_id || item.mcqId), item]))
-      localData.forEach((item) => {
-        const mcqId = String(item.mcq_id || item.mcqId)
-        if (!cloudMap.has(mcqId)) {
-          cloudData.push(item)
-        }
-      })
-    } else if (cloudData.length === 0 && localData.length > 0) {
-      cloudData = localData
-    }
-
     return {
       success: true,
-      data: cloudData,
+      data: [],
     }
   },
 

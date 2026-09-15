@@ -272,26 +272,43 @@ export const submissionService = {
       // Step 1: Atomic Supabase RPC (idempotent, handles progress + attempt + snapshots + sessions)
       const rpcPayload = {
         user_id: userId,
+        userId,
         submission_id: subId,
+        submissionId: subId,
         course_id: courseId,
+        courseId,
         subject_id: subjectId,
+        subjectId,
         subject_title: subjectTitle,
+        subjectTitle,
         chapter_id: chapterId,
+        chapterId,
         chapter_title: chapterTitle,
+        chapterTitle,
         topic_id: topicId,
+        topicId,
         concept_id: conceptId,
+        conceptId,
         mode,
         total_questions: totalQuestions,
+        totalQuestions,
         attempted_count: attemptedCount,
+        attemptedCount,
         correct_count: correctCount,
+        correctCount,
         incorrect_count: incorrectCount,
+        incorrectCount,
         skipped_count: skippedCount,
+        skippedCount,
         score,
         percentage,
         accuracy,
         time_taken_seconds: timeTakenSeconds,
+        timeTakenSeconds,
         progress_updates: progressUpdates || [],
+        progressUpdates: progressUpdates || [],
         attempt_logs: attemptLogs || [],
+        attemptLogs: attemptLogs || [],
       }
 
       const rpcRes = await apiService.rpc('submit_practice_session', rpcPayload)
@@ -300,6 +317,41 @@ export const submissionService = {
         // Step 2: Update local progress store from cloud
         if (Array.isArray(progressUpdates) && progressUpdates.length > 0) {
           updateUserProgressStore(progressUpdates)
+        }
+
+        // Mirror attempt to user-scoped local attempts cache
+        try {
+          const attemptRecord = {
+            id: rpcRes.data?.attempt_id || subId,
+            user_id: userId,
+            course_id: courseId || 'course_default',
+            subject_id: subjectId,
+            subject_title: subjectTitle || subjectId,
+            chapter_id: chapterId,
+            chapter_title: chapterTitle || 'Practice Set',
+            topic_id: topicId || null,
+            concept_id: conceptId || null,
+            mode: mode || 'set_20',
+            total_questions: totalQuestions,
+            attempted_count: attemptedCount,
+            correct_count: correctCount,
+            incorrect_count: incorrectCount,
+            skipped_count: skippedCount,
+            score,
+            percentage,
+            accuracy,
+            time_taken_seconds: timeTakenSeconds,
+            created_at: new Date().toISOString(),
+          }
+          const key = `nexora_attempts_${userId}`
+          const saved = getStorageItem(key)
+          const list = saved ? JSON.parse(saved) : []
+          if (Array.isArray(list)) {
+            list.push(attemptRecord)
+            setStorageItem(key, JSON.stringify(list.slice(-200)))
+          }
+        } catch {
+          // ignore
         }
 
         // Step 3: Refresh analytics from cloud (snapshots are authoritative)
