@@ -1,0 +1,533 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ADMIN SECURITY MODAL (CYBER SECURITY CLEARANCE VAULT)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.admin-sec-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 7, 13, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: adminFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes adminFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.admin-sec-modal {
+  position: relative;
+  width: 100%;
+  max-width: 410px;
+  background: linear-gradient(180deg, #131b26 0%, #090e15 100%);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 16px;
+  box-shadow: 
+    0 24px 60px -12px rgba(0, 0, 0, 0.85),
+    0 0 35px -5px rgba(249, 115, 22, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 24px 22px;
+  box-sizing: border-box;
+  color: #e2e8f0;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  animation: adminScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes adminScaleIn {
+  from {
+    transform: scale(0.94) translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Security Shake on Error */
+.admin-sec-modal.is-shaking {
+  animation: securityShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 35px -5px rgba(239, 68, 68, 0.35);
+}
+
+@keyframes securityShake {
+  10%, 90% { transform: translate3d(-3px, 0, 0); }
+  20%, 80% { transform: translate3d(5px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+/* Access Granted Pulse */
+.admin-sec-modal.is-granted {
+  border-color: rgba(34, 197, 94, 0.8);
+  box-shadow: 0 0 45px rgba(34, 197, 94, 0.35);
+  animation: clearanceGranted 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes clearanceGranted {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Top Glow Line */
+.admin-sec-glowline {
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #f97316, transparent);
+  opacity: 0.9;
+}
+
+.admin-sec-modal.is-granted .admin-sec-glowline {
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+}
+
+.admin-sec-modal.is-shaking .admin-sec-glowline {
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+}
+
+/* Close Button */
+.admin-sec-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.admin-sec-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Header Area */
+.admin-sec-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.admin-sec-icon-wrap {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(19, 27, 38, 0.9) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f97316;
+  margin-bottom: 12px;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.25);
+  transition: all 0.3s ease;
+}
+
+.admin-sec-modal.is-granted .admin-sec-icon-wrap {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(19, 27, 38, 0.9) 100%);
+  border-color: rgba(34, 197, 94, 0.6);
+  color: #22c55e;
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+}
+
+.admin-sec-modal.is-shaking .admin-sec-icon-wrap {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(19, 27, 38, 0.9) 100%);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
+}
+
+.admin-sec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.admin-sec-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+  margin: 0 0 4px 0;
+}
+
+.admin-sec-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Mode Switch Tabs (PIN Matrix vs Master Key) */
+.admin-sec-mode-tabs {
+  display: flex;
+  padding: 3px;
+  background: rgba(6, 9, 14, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  gap: 3px;
+}
+
+.admin-sec-mode-tab {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.admin-sec-mode-tab.active {
+  background: rgba(249, 115, 22, 0.18);
+  color: #f97316;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.admin-sec-mode-tab:hover:not(.active) {
+  color: #cbd5e1;
+}
+
+/* PIN Slots Display */
+.admin-sec-pin-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 0;
+}
+
+.admin-sec-pin-slot {
+  width: 44px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(6, 9, 14, 0.8);
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f97316;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-sec-pin-slot.filled {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+  box-shadow: 
+    0 0 14px rgba(249, 115, 22, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.admin-sec-pin-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f97316;
+  box-shadow: 0 0 10px #f97316;
+}
+
+/* Numeric Keypad Grid */
+.admin-sec-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.admin-sec-key {
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(19, 27, 38, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  outline: none;
+  user-select: none;
+}
+
+.admin-sec-key:hover {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #ffedd5;
+  transform: translateY(-1px);
+}
+
+.admin-sec-key:active {
+  transform: scale(0.95);
+  background: rgba(249, 115, 22, 0.3);
+}
+
+.admin-sec-key.action-key {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  background: rgba(6, 9, 14, 0.6);
+}
+
+.admin-sec-key.action-key:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.admin-sec-key.action-key.clear:hover {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Alphanumeric Cipher Input Box */
+.admin-sec-cipher-wrap {
+  margin-bottom: 16px;
+}
+
+.admin-sec-cipher-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  background: rgba(6, 9, 14, 0.85);
+  border: 1.5px solid rgba(249, 115, 22, 0.3);
+  padding: 0 12px;
+  transition: all 0.2s ease;
+}
+
+.admin-sec-cipher-input-box:focus-within {
+  border-color: #f97316;
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.25);
+}
+
+.admin-sec-cipher-input {
+  width: 100%;
+  height: 48px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-sec-cipher-input::placeholder {
+  color: #475569;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.admin-sec-cipher-paste-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.admin-sec-cipher-paste-btn:hover {
+  color: #f97316;
+}
+
+/* Feedback Message Banner */
+.admin-sec-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.admin-sec-feedback.error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.admin-sec-feedback.success {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+
+.admin-sec-feedback.info {
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #fdba74;
+}
+
+/* Submit Action Button */
+.admin-sec-submit-btn {
+  width: 100%;
+  height: 46px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 20px -4px rgba(249, 115, 22, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.admin-sec-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 10px 25px -2px rgba(249, 115, 22, 0.6);
+  transform: translateY(-1px);
+}
+
+.admin-sec-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.admin-sec-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.admin-sec-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: adminSecSpin 0.7s linear infinite;
+}
+
+@keyframes adminSecSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Footer / Puzzle Clue Area */
+.admin-sec-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.admin-sec-hint-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  transition: color 0.15s ease;
+}
+
+.admin-sec-hint-btn:hover {
+  color: #f97316;
+}
+
+.admin-sec-hint-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(6, 9, 14, 0.9);
+  border: 1px dashed rgba(249, 115, 22, 0.3);
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.admin-sec-hint-box code {
+  color: #f97316;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  background: rgba(249, 115, 22, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}

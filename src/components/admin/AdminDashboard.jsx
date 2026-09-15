@@ -185,7 +185,7 @@ function AdminDashboard({ activeSection, onNavigate, onBackHome, onLogout }) {
       case 'flashcards':
         return <ChapterMcqInjection key={activeWorkspaceId} />
       case 'courses':
-        return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} />
+        return <CourseManager key={activeWorkspaceId} courseName={activeCourse?.name} onNavigate={onNavigate} />
       case 'users':
       case 'members':
         return <MemberManager onNavigateStudentView={onBackHome} />

@@ -124,11 +124,16 @@ import AccountBoxRounded from '@mui/icons-material/AccountBoxRounded'
 import FaceRounded from '@mui/icons-material/FaceRounded'
 import HubRounded from '@mui/icons-material/HubRounded'
 import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded'
+import DialpadRounded from '@mui/icons-material/DialpadRounded'
+import BackspaceRounded from '@mui/icons-material/BackspaceRounded'
 
 export const iconRegistry = {
   // ── Navigation ──────────────────────────────────────────────
   adminPanelSettings: { component: AdminPanelSettingsRounded, optical: 0 },
   shieldPerson: { component: AdminPanelSettingsRounded, optical: 0 },
+  dialpad: { component: DialpadRounded, optical: 0 },
+  backspace: { component: BackspaceRounded, optical: 1 },
+  vpnKey: { component: VpnKeyRounded, optical: 0 },
   home: { component: HomeRounded, optical: 0 },
   subjects: { component: MenuBookRounded, optical: 0 },
   practice: { component: TrackChangesRounded, optical: 2 },

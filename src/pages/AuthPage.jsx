@@ -3,6 +3,7 @@ import AppIcon from '../components/ui/AppIcon'
 import '../styles/auth.css'
 import { userService } from '../services/userService'
 import { useWorkspaceStore, hydrateWorkspacesFromSupabase } from '../data/workspaceStore'
+import AdminSecurityModal from '../components/auth/AdminSecurityModal'
 
 export default function AuthPage({
   mode = 'login',
@@ -42,6 +43,7 @@ export default function AuthPage({
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
+  const [isAdminSecurityModalOpen, setIsAdminSecurityModalOpen] = useState(false)
 
   const timerRef = useRef(null)
   const cooldownTimerRef = useRef(null)
@@ -311,40 +313,29 @@ export default function AuthPage({
     }
   }
 
-  // Quick Supreme Admin Login Trigger
-  const handleSupremeAdminQuickLogin = async () => {
-    setIsLoading(true)
+  // Open Admin Security Clearance Modal
+  const handleOpenAdminSecurityModal = () => {
     setErrorMessage('')
-    try {
-      const res = await userService.authenticateUser({
-        identifier: 'adminalpha',
-        password: 'password',
-      })
-      if (res.success) {
-        setSuccessMessage('Supreme Alpha Admin authorized. Loading console...')
-        timerRef.current = setTimeout(() => {
-          onLoginSuccess?.()
-        }, 500)
-      } else {
-        setIsLoading(false)
-        setErrorMessage(res.error || 'Failed to authenticate Administrator.')
-      }
-    } catch (err) {
-      setIsLoading(false)
-      setErrorMessage(err.message || 'Administrator login error.')
-    }
+    setIsAdminSecurityModalOpen(true)
+  }
+
+  const handleAdminSecuritySuccess = () => {
+    setSuccessMessage('Supreme Alpha Admin clearance verified. Loading console...')
+    timerRef.current = setTimeout(() => {
+      onLoginSuccess?.()
+    }, 450)
   }
 
   return (
     <div className="alpha-auth-root">
-      {/* Top-Right Administrator Access Quick Button with Tooltip */}
+      {/* Top-Right Administrator Access Button */}
       <div className="auth-top-admin-container">
         <button
           type="button"
           className="auth-top-admin-btn"
-          aria-label="Administrator Access"
-          title="Administrator Access"
-          onClick={handleSupremeAdminQuickLogin}
+          aria-label="Administrator Access Clearance"
+          title="Administrator Access Clearance"
+          onClick={handleOpenAdminSecurityModal}
         >
           <AppIcon name="adminPanelSettings" size={20} />
           <span className="auth-top-admin-tooltip">Admin Access</span>
@@ -698,6 +689,13 @@ export default function AuthPage({
           )}
         </div>
       </div>
+
+      {/* Sovereign Admin Clearance Security Modal */}
+      <AdminSecurityModal
+        open={isAdminSecurityModalOpen}
+        onClose={() => setIsAdminSecurityModalOpen(false)}
+        onSuccess={handleAdminSecuritySuccess}
+      />
     </div>
   )
 }

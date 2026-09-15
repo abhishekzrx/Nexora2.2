@@ -42,18 +42,25 @@ export default function MCQHealthSection({ analytics, onNavigate }) {
         <div className="mcq-health-gauge-box">
           <div className="mcq-gauge-svg-wrap">
             <svg viewBox="0 0 100 100" className="mcq-gauge-svg">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#F1F5F9" strokeWidth="10" />
+              <defs>
+                <linearGradient id="mcqGaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#10B981" />
+                  <stop offset="100%" stopColor="#059669" />
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#F1F5F9" strokeWidth="9" />
               <circle
                 cx="50"
                 cy="50"
                 r="40"
                 fill="none"
-                stroke={coveragePct >= 80 ? '#12B76A' : coveragePct >= 50 ? '#F59E0B' : '#EF4444'}
-                strokeWidth="10"
+                stroke={coveragePct >= 80 ? 'url(#mcqGaugeGrad)' : coveragePct >= 50 ? '#F59E0B' : '#EF4444'}
+                strokeWidth="9"
                 strokeDasharray={2 * Math.PI * 40}
                 strokeDashoffset={2 * Math.PI * 40 - (coveragePct / 100) * (2 * Math.PI * 40)}
                 strokeLinecap="round"
                 transform="rotate(-90 50 50)"
+                style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
               />
             </svg>
             <div className="mcq-gauge-center">

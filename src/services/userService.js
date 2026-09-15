@@ -263,6 +263,96 @@ export function getAssignedCourse() {
   return current.assigned_course_id || (Array.isArray(current.assigned_courses) ? current.assigned_courses[0] : null)
 }
 
+export const ADMIN_MASTER_CODES = [
+  'ALPHA-7789',
+  'ALPHA7789',
+  '7789',
+  'NEXORA-ALPHA-7789',
+  'NEXORA-7789',
+]
+
+/**
+ * Validates whether the provided candidate code matches the hardcoded master admin security cipher.
+ */
+export function verifyAdminMasterCode(code) {
+  if (!code || typeof code !== 'string') return false
+  const clean = code.trim().toUpperCase()
+  const normalized = clean.replace(/[\s\-_]/g, '')
+  return ADMIN_MASTER_CODES.some((validCode) => {
+    const validNorm = validCode.replace(/[\s\-_]/g, '')
+    return clean === validCode || normalized === validNorm
+  })
+}
+
+/**
+ * Authoritatively logs in Supreme Alpha Admin (adminalpha) using the hardcoded master security code.
+ */
+export async function authenticateAdminByMasterCode(candidateCode) {
+  if (!verifyAdminMasterCode(candidateCode)) {
+    return {
+      success: false,
+      error: 'Security clearance denied: Invalid Administrator master cipher.',
+    }
+  }
+
+  const adminRes = await memberService.getMemberById('adminalpha')
+  const adminProfile = adminRes?.data || PRIMARY_SUPER_ADMIN
+
+  // Try to obtain Supabase Auth token for adminalpha to enable RLS
+  try {
+    const tokenRes = await apiService.post('/auth/v1/token?grant_type=password', {
+      email: 'adminalpha@nexora.io',
+      password: 'Adminalpha@Nexora#2024',
+    })
+    if (tokenRes.success && tokenRes.data?.access_token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, tokenRes.data.access_token)
+    }
+  } catch {
+    // If password auth fails, try signup
+    try {
+      const signupRes = await apiService.post('/auth/v1/signup', {
+        email: 'adminalpha@nexora.io',
+        password: 'Adminalpha@Nexora#2024',
+        data: { username: 'adminalpha' }
+      })
+      if (signupRes.success && signupRes.data?.access_token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, signupRes.data.access_token)
+      }
+    } catch {
+      // Proceed without Supabase Auth token (RLS won't apply, app-level auth still protects)
+    }
+  }
+
+  // Clear user progress & analytics before switching identity
+  clearUserProgressStore()
+  clearAnalyticsStore()
+
+  // Bind session
+  setActiveMember(adminProfile)
+
+  // Hydrate adminalpha's personal learning progress from cloud
+  const adminCourseId = adminProfile.assigned_course_id || (Array.isArray(adminProfile.assigned_courses) ? adminProfile.assigned_courses[0] : null)
+  if (adminCourseId && adminCourseId !== '*') {
+    setActiveWorkspace(adminCourseId)
+    await Promise.allSettled([
+      hydrateUserProgressFromSupabase(adminProfile.id, true),
+      hydrateUserAnalytics(adminProfile.id, adminCourseId),
+    ])
+  }
+
+  try {
+    localStorage.setItem('nexora_is_authenticated', 'true')
+  } catch {
+    // ignore
+  }
+
+  return {
+    success: true,
+    data: adminProfile,
+    message: 'Supreme Alpha Admin clearance verified. Access granted.',
+  }
+}
+
 /**
  * Authenticates user credentials via Supabase Auth + Member Directory.
  * Supports identifier as email or username.
@@ -282,62 +372,20 @@ export async function authenticateUser({ identifier, password }) {
   // 1. Supreme Alpha Admin Login
   const lower = cleanIdentifier.toLowerCase()
   if (lower === 'adminalpha' || lower === 'student01' || lower === 'adminalpha@nexora.io') {
-    const adminRes = await memberService.getMemberById('adminalpha')
-    const adminProfile = adminRes?.data || PRIMARY_SUPER_ADMIN
+    // Verify against hardcoded master codes or standard admin passwords
+    const isValidAdminPass =
+      verifyAdminMasterCode(cleanPassword) ||
+      cleanPassword === 'Adminalpha@Nexora#2024' ||
+      cleanPassword === 'password'
 
-    // Try to obtain Supabase Auth token for adminalpha to enable RLS
-    try {
-      const tokenRes = await apiService.post('/auth/v1/token?grant_type=password', {
-        email: 'adminalpha@nexora.io',
-        password: cleanPassword || 'Adminalpha@Nexora#2024',
-      })
-      if (tokenRes.success && tokenRes.data?.access_token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, tokenRes.data.access_token)
-      }
-    } catch {
-      // If password auth fails, try signup
-      try {
-        const signupRes = await apiService.post('/auth/v1/signup', {
-          email: 'adminalpha@nexora.io',
-          password: cleanPassword || 'Adminalpha@Nexora#2024',
-          data: { username: 'adminalpha' }
-        })
-        if (signupRes.success && signupRes.data?.access_token) {
-          localStorage.setItem(AUTH_TOKEN_KEY, signupRes.data.access_token)
-        }
-      } catch {
-        // Proceed without Supabase Auth token (RLS won't apply, app-level auth still protects)
+    if (!isValidAdminPass) {
+      return {
+        success: false,
+        error: 'Invalid Administrator passcode. Please verify your master clearance key.',
       }
     }
 
-    // Clear user progress & analytics before switching identity
-    clearUserProgressStore()
-    clearAnalyticsStore()
-
-    // Bind session
-    setActiveMember(adminProfile)
-
-    // Hydrate adminalpha's personal learning progress from cloud
-    const adminCourseId = adminProfile.assigned_course_id || (Array.isArray(adminProfile.assigned_courses) ? adminProfile.assigned_courses[0] : null)
-    if (adminCourseId && adminCourseId !== '*') {
-      setActiveWorkspace(adminCourseId)
-      await Promise.allSettled([
-        hydrateUserProgressFromSupabase(adminProfile.id, true),
-        hydrateUserAnalytics(adminProfile.id, adminCourseId),
-      ])
-    }
-
-    try {
-      localStorage.setItem('nexora_is_authenticated', 'true')
-    } catch {
-      // ignore
-    }
-
-    return {
-      success: true,
-      data: adminProfile,
-      message: 'Logged in as Supreme Alpha Admin.',
-    }
+    return authenticateAdminByMasterCode(cleanPassword.startsWith('ALPHA') || /^\d{4}$/.test(cleanPassword) ? cleanPassword : 'ALPHA-7789')
   }
 
   // 2. Resolve username / mobile / email to authoritative member profile
@@ -985,9 +1033,12 @@ export const userService = {
   resendSignupOtp,
   updateUserProfile,
   clearCurrentUser,
+  verifyAdminMasterCode,
+  authenticateAdminByMasterCode,
 }
 
 export default userService
+
 
 
 
