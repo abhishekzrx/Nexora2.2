@@ -179,12 +179,55 @@ export function generateRevisionFlashcardsForErrors(missedQuestions = [], chapte
   })
 }
 
+function getActiveUserId(explicitUserId) {
+  if (explicitUserId) return explicitUserId
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('nexora_user_id')
+      if (stored) return stored
+      const viewAs = localStorage.getItem('nexora_view_as_member_profile')
+      if (viewAs) {
+        const parsed = JSON.parse(viewAs)
+        if (parsed?.id) return parsed.id
+      }
+      const prof = localStorage.getItem('nexora_active_member_profile')
+      if (prof) {
+        const parsed = JSON.parse(prof)
+        if (parsed?.id) return parsed.id
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return 'default_user'
+}
+
+function getProgressStorageKey(userId) {
+  const uid = getActiveUserId(userId)
+  return `nexora_flashcard_progress_${uid}`
+}
+
+function getRecentDeckStorageKey(userId) {
+  const uid = getActiveUserId(userId)
+  return `nexora_recent_flashcard_deck_${uid}`
+}
+
+// Spaced repetition interval in milliseconds based on rating
+const RATING_INTERVAL_MS = {
+  again: 0, // Due immediately / today
+  hard: 1 * 24 * 60 * 60 * 1000, // 1 day
+  good: 3 * 24 * 60 * 60 * 1000, // 3 days
+  easy: 7 * 24 * 60 * 60 * 1000, // 7 days
+}
+
 /**
  * Get student's review progress for a deck
  */
-export function getDeckProgress(chapterId) {
+export function getDeckProgress(chapterId, userId = null) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PROGRESS)
+    if (typeof localStorage === 'undefined') return { mastered: 0, reviewed: 0, total: 0, status: {} }
+    const key = getProgressStorageKey(userId)
+    const raw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY_PROGRESS)
     if (!raw) return { mastered: 0, reviewed: 0, total: 0, status: {} }
     const store = JSON.parse(raw)
     return store[chapterId] || { mastered: 0, reviewed: 0, total: 0, status: {} }
@@ -197,17 +240,23 @@ export function getDeckProgress(chapterId) {
  * Save progress when a card is rated in practice mode
  * rating: 'again' | 'hard' | 'good' | 'easy'
  */
-export function recordCardRating(chapterId, cardId, rating) {
+export function recordCardRating(chapterId, cardId, rating, userId = null) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PROGRESS)
+    if (typeof localStorage === 'undefined') return null
+    const key = getProgressStorageKey(userId)
+    const raw = localStorage.getItem(key)
     const store = raw ? JSON.parse(raw) : {}
     const deck = store[chapterId] || { mastered: 0, reviewed: 0, total: 0, status: {} }
 
     const isMastered = rating === 'good' || rating === 'easy'
+    const now = Date.now()
+    const interval = RATING_INTERVAL_MS[rating] ?? 0
+    const nextDue = now + interval
 
     deck.status[cardId] = {
       rating,
-      timestamp: Date.now(),
+      timestamp: now,
+      nextDue,
       isMastered,
     }
 
@@ -217,7 +266,7 @@ export function recordCardRating(chapterId, cardId, rating) {
     deck.mastered = cards.filter((c) => c.isMastered).length
 
     store[chapterId] = deck
-    localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(store))
+    localStorage.setItem(key, JSON.stringify(store))
     return deck
   } catch {
     return null
@@ -227,10 +276,12 @@ export function recordCardRating(chapterId, cardId, rating) {
 /**
  * Save recently practiced deck
  */
-export function setRecentDeck(subjectKey, chapterId) {
+export function setRecentDeck(subjectKey, chapterId, userId = null) {
   try {
+    if (typeof localStorage === 'undefined') return
+    const key = getRecentDeckStorageKey(userId)
     localStorage.setItem(
-      STORAGE_KEY_RECENT_DECK,
+      key,
       JSON.stringify({ subjectKey, chapterId, timestamp: Date.now() })
     )
   } catch {
@@ -241,11 +292,85 @@ export function setRecentDeck(subjectKey, chapterId) {
 /**
  * Get recently practiced deck ID
  */
-export function getRecentDeck() {
+export function getRecentDeck(userId = null) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_RECENT_DECK)
+    if (typeof localStorage === 'undefined') return null
+    const key = getRecentDeckStorageKey(userId)
+    const raw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY_RECENT_DECK)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
+  }
+}
+
+/**
+ * Count flashcards reviewed by the student today (for Daily Mission progress)
+ */
+export function getTodayFlashcardReviewCount(userId = null) {
+  try {
+    if (typeof localStorage === 'undefined') return 0
+    const key = getProgressStorageKey(userId)
+    const raw = localStorage.getItem(key)
+    if (!raw) return 0
+    const store = JSON.parse(raw)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayStartMs = todayStart.getTime()
+
+    let count = 0
+    Object.values(store).forEach((deck) => {
+      if (deck && deck.status) {
+        Object.values(deck.status).forEach((card) => {
+          if (card && card.timestamp && card.timestamp >= todayStartMs) {
+            count += 1
+          }
+        })
+      }
+    })
+    return count
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Get the personalized count of flashcards currently due for review for this user.
+ * Combines spaced repetition schedule (cards with nextDue <= now) and mistake revision cards.
+ * Returns 0 if student has no past reviews or mistake cards.
+ */
+export function getUserDueFlashcardsCount(userId = null, courseRegistry = null, userAnalytics = null) {
+  try {
+    if (typeof localStorage === 'undefined') return 0
+    const key = getProgressStorageKey(userId)
+    const raw = localStorage.getItem(key)
+    let dueCount = 0
+    const now = Date.now()
+
+    if (raw) {
+      const store = JSON.parse(raw)
+      Object.values(store).forEach((deck) => {
+        if (deck && deck.status) {
+          Object.values(deck.status).forEach((card) => {
+            if (card) {
+              const due = card.nextDue !== undefined ? card.nextDue : card.timestamp
+              if (due <= now || card.rating === 'again') {
+                dueCount += 1
+              }
+            }
+          })
+        }
+      })
+    }
+
+    // If user has incorrect questions in their analytics, factor in mistake revision cards
+    const incorrectCount = Number(userAnalytics?.incorrectCount || 0)
+    if (incorrectCount > 0 && dueCount === 0) {
+      // If user made mistakes and hasn't cleared them, schedule mistake revision flashcards
+      dueCount = Math.min(20, incorrectCount)
+    }
+
+    return dueCount
+  } catch {
+    return 0
   }
 }

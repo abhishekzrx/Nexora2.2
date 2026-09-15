@@ -13,8 +13,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import AppIcon from '../ui/AppIcon'
 import { recordCardRating, getDeckProgress } from '../../services/flashcardService'
+import { useMemberStore } from '../../data/memberStore'
 
-export default function FlashcardFocusModal({ chapter, cards = [], onClose, onDeckCompleted }) {
+export default function FlashcardFocusModal({ chapter, cards = [], userId = null, onClose, onDeckCompleted }) {
+  const { effectiveMember } = useMemberStore()
+  const activeUserId = userId || effectiveMember?.id
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [completed, setCompleted] = useState(false)
@@ -38,8 +41,8 @@ export default function FlashcardFocusModal({ chapter, cards = [], onClose, onDe
     (rating) => {
       if (!currentCard.id) return
 
-      // Save to persistence
-      recordCardRating(chapter?.id || chapter?.number, currentCard.id, rating)
+      // Save to user-scoped persistence
+      recordCardRating(chapter?.id || chapter?.number, currentCard.id, rating, activeUserId)
 
       setRatings((prev) => ({ ...prev, [currentCard.id]: rating }))
       if (rating === 'good' || rating === 'easy') {
@@ -55,7 +58,7 @@ export default function FlashcardFocusModal({ chapter, cards = [], onClose, onDe
         onDeckCompleted?.()
       }
     },
-    [currentCard.id, chapter, currentIndex, totalCards, onDeckCompleted]
+    [currentCard.id, chapter, activeUserId, currentIndex, totalCards, onDeckCompleted]
   )
 
   // Keyboard navigation

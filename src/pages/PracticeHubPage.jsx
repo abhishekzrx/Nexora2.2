@@ -20,6 +20,7 @@ import { hydrateUserProgressFromSupabase, useUserProgressStore } from '../data/p
 import { formatCompactNumber, formatInteger } from '../services/mcqAnalyticsService'
 import { testSession } from '../utils/navigation'
 import { calculateExamCountdown } from '../utils/dateUtils'
+import { getUserDueFlashcardsCount } from '../services/flashcardService'
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently'
@@ -209,19 +210,21 @@ function PracticeHubPage({
 
   // Flashcard Activity (Activity 2)
   const topFlashcardActivity = useMemo(() => {
+    const userId = effectiveMember?.id
     const list = courseRegistry.subjectsList || []
     const firstSubWithCards = list.find((s) => (s.counts?.flashcards || s.totalFlashcards || 0) > 0) || list[0]
     const totalCourseFlashcards = courseRegistry.flashcardCount || list.reduce((sum, s) => sum + (s.counts?.flashcards || s.totalFlashcards || 0), 0)
+    const cardsDue = getUserDueFlashcardsCount(userId, courseRegistry, userAnalytics)
     
     return {
       subjectKey: firstSubWithCards?.subjectKey || 'core-topics',
       subjectTitle: firstSubWithCards?.title || 'Course Flashcards',
-      cardsDue: Math.min(25, Math.max(5, Math.round(totalCourseFlashcards * 0.3) || 12)),
+      cardsDue,
       totalCards: totalCourseFlashcards || 40,
       retentionScore: 94,
       deckName: 'Spaced Repetition Active Recall Queue',
     }
-  }, [courseRegistry])
+  }, [courseRegistry, effectiveMember?.id, userAnalytics])
 
   // Dynamic Course Stats
   const courseStats = useMemo(() => {
@@ -273,23 +276,6 @@ function PracticeHubPage({
         }
       })
     })
-
-    if (weakList.length === 0 && list.length > 0) {
-      list.slice(0, 2).forEach((sub) => {
-        const firstCh = sub.chapters?.[0]
-        if (firstCh) {
-          weakList.push({
-            id: firstCh.id,
-            subjectKey: sub.subjectKey,
-            subjectTitle: sub.title,
-            chapterName: firstCh.name || firstCh.title,
-            accuracy: 40,
-            opportunity: 'Recommended Focus',
-            readinessGain: '+8%',
-          })
-        }
-      })
-    }
 
     return weakList.slice(0, 3)
   }, [courseRegistry.subjectsList])

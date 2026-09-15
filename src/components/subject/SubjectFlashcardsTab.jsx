@@ -16,12 +16,15 @@ import {
   getRecentDeck,
   setRecentDeck,
 } from '../../services/flashcardService'
+import { useMemberStore } from '../../data/memberStore'
 
 export default function SubjectFlashcardsTab({
   subject,
   courseId,
   allFlashcards = [],
 }) {
+  const { effectiveMember } = useMemberStore()
+  const userId = effectiveMember?.id
   const [selectedChapterId, setSelectedChapterId] = useState(null)
   const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [isPreviewFlipped, setIsPreviewFlipped] = useState(false)
@@ -36,13 +39,13 @@ export default function SubjectFlashcardsTab({
   useEffect(() => {
     if (chapters.length === 0) return
 
-    const recent = getRecentDeck()
+    const recent = getRecentDeck(userId)
     if (recent && recent.subjectKey === subject?.key && chapters.some((c) => c.id === recent.chapterId)) {
       setSelectedChapterId(recent.chapterId)
     } else {
       setSelectedChapterId(chapters[0]?.id || chapters[0]?.number || 'ch-1')
     }
-  }, [chapters, subject])
+  }, [chapters, subject, userId])
 
   const selectedChapter = useMemo(() => {
     if (!selectedChapterId) return chapters[0] || null
@@ -63,26 +66,26 @@ export default function SubjectFlashcardsTab({
   // Deck progress
   const deckProgress = useMemo(() => {
     if (!selectedChapter) return { mastered: 0, reviewed: 0, total: 0 }
-    const prog = getDeckProgress(selectedChapter.id || selectedChapter.number)
+    const prog = getDeckProgress(selectedChapter.id || selectedChapter.number, userId)
     return {
       ...prog,
       total: currentDeckCards.length,
       pct: currentDeckCards.length > 0 ? Math.round((prog.mastered / currentDeckCards.length) * 100) : 0,
     }
-  }, [selectedChapter, currentDeckCards])
+  }, [selectedChapter, currentDeckCards, userId])
 
   const handleSelectChapter = (ch) => {
     setSelectedChapterId(ch.id || ch.number)
     setActiveCardIndex(0)
     setIsPreviewFlipped(false)
-    setRecentDeck(subject?.key, ch.id || ch.number)
+    setRecentDeck(subject?.key, ch.id || ch.number, userId)
   }
 
   const handleStartFocusMode = (ch = selectedChapter) => {
     if (!ch) return
     setFocusChapter(ch)
     setFocusModalOpen(true)
-    setRecentDeck(subject?.key, ch.id || ch.number)
+    setRecentDeck(subject?.key, ch.id || ch.number, userId)
   }
 
   const handlePrevCard = () => {
@@ -239,7 +242,7 @@ export default function SubjectFlashcardsTab({
           {chapters.map((ch, idx) => {
             const isSelected = (ch.id || ch.number) === selectedChapterId
             const cards = getChapterFlashcards(ch, subject?.title)
-            const prog = getDeckProgress(ch.id || ch.number)
+            const prog = getDeckProgress(ch.id || ch.number, userId)
             const cardCount = cards.length
             const mastered = prog.mastered || 0
             const pct = cardCount > 0 ? Math.round((mastered / cardCount) * 100) : 0
@@ -294,6 +297,7 @@ export default function SubjectFlashcardsTab({
         <FlashcardFocusModal
           chapter={focusChapter}
           cards={getChapterFlashcards(focusChapter, subject?.title)}
+          userId={userId}
           onClose={() => setFocusModalOpen(false)}
           onDeckCompleted={() => {
             // refresh progress

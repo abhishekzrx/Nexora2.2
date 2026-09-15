@@ -19,6 +19,7 @@ import { userAnalyticsService } from './services/userAnalyticsService'
 import { hydrateUserAnalytics, useUserAnalytics } from './data/analyticsStore'
 import { hydrateUserProgressFromSupabase, useUserProgressStore } from './data/progressStore'
 import { calculateExamCountdown } from './utils/dateUtils'
+import { getUserDueFlashcardsCount, getTodayFlashcardReviewCount } from './services/flashcardService'
 
 const strongAreasFallback = ['DBMS', 'Operating System', 'Computer Networks']
 const weakAreasFallback = ['COA', 'Digital Electronics']
@@ -346,6 +347,7 @@ function DashboardPage({
   // Subject last attempt / access timestamp lookup map
   const subjectLastAttemptMap = useMemo(() => {
     const map = {}
+    const userId = effectiveMember?.id
     pastAttempts.forEach((att, idx) => {
       if (att.subjectKey) {
         const ts = att.timestamp || (idx + 1) * 1000
@@ -353,7 +355,8 @@ function DashboardPage({
       }
     })
     try {
-      const cachedAccess = localStorage.getItem('nexora_recent_subject_access')
+      const cachedAccess = (userId ? localStorage.getItem(`nexora_recent_subject_access_${userId}`) : null) ||
+        localStorage.getItem('nexora_recent_subject_access')
       if (cachedAccess) {
         const accessMap = JSON.parse(cachedAccess)
         Object.keys(accessMap).forEach((key) => {
@@ -364,7 +367,7 @@ function DashboardPage({
       // ignore
     }
     return map
-  }, [pastAttempts])
+  }, [pastAttempts, effectiveMember?.id])
 
   // Subject performance metrics map calculated from MCQ attempt history
   const subjectPerformanceMap = useMemo(() => {
@@ -537,6 +540,8 @@ function DashboardPage({
       return { dynamicStrongAreas: strongAreasFallback, dynamicWeakAreas: weakAreasFallback }
     }
 
+    const hasAnyAttempts = pastAttempts.length > 0 || list.some((s) => s.hasAttempts || s.attemptedMcqs > 0)
+
     const evaluated = list.map((s) => {
       const perf = subjectPerformanceMap[s.subjectKey]
       const hasAttempts = Boolean(s.hasAttempts || s.attemptedMcqs > 0 || (perf && perf.attemptsCount > 0))
@@ -559,22 +564,27 @@ function DashboardPage({
     const sorted = [...evaluated].sort((a, b) => b.rankScore - a.rankScore)
     const strong = sorted.slice(0, 3).map((s) => s.title)
 
-    const lowAccuracySubs = sorted.filter((s) => s.hasAttempts && s.accuracy < 55)
     let weak = []
-    if (lowAccuracySubs.length > 0) {
-      weak = lowAccuracySubs.slice(0, 2).map((s) => s.title)
-    } else if (sorted.length > 3) {
-      weak = sorted.slice(-2).reverse().map((s) => s.title)
-    } else if (sorted.length > 1) {
-      weak = [sorted[sorted.length - 1].title]
+    if (hasAnyAttempts) {
+      const lowAccuracySubs = sorted.filter((s) => s.hasAttempts && s.accuracy < 55)
+      if (lowAccuracySubs.length > 0) {
+        weak = lowAccuracySubs.slice(0, 2).map((s) => s.title)
+      } else if (sorted.length > 3) {
+        weak = sorted.slice(-2).reverse().map((s) => s.title)
+      } else if (sorted.length > 1) {
+        weak = [sorted[sorted.length - 1].title]
+      }
+    } else {
+      // No attempts yet: clean starter guidance
+      weak = ['Start practice to identify focus areas']
     }
 
     const filteredWeak = weak.filter((w) => !strong.includes(w)).slice(0, 2)
     return {
-      dynamicStrongAreas: strong.length > 0 ? strong : strongAreasFallback,
-      dynamicWeakAreas: filteredWeak.length > 0 ? filteredWeak : (sorted.length > 1 ? [sorted[sorted.length - 1].title] : weakAreasFallback),
+      dynamicStrongAreas: strong.length > 0 ? strong : list.slice(0, 3).map((s) => s.title),
+      dynamicWeakAreas: filteredWeak.length > 0 ? filteredWeak : (weak.length > 0 ? weak : ['None identified yet']),
     }
-  }, [courseRegistry.subjectsList, subjectPerformanceMap])
+  }, [courseRegistry.subjectsList, subjectPerformanceMap, pastAttempts])
 
   // Dynamic Activity Items
   const dynamicActivityItems = useMemo(() => {
@@ -607,7 +617,8 @@ function DashboardPage({
 
   // Daily Focus real metrics
   const dailyFocus = useMemo(() => {
-    const flashcardsDue = totalFlashcards || 0
+    const userId = effectiveMember?.id
+    const flashcardsDue = getUserDueFlashcardsCount(userId, courseRegistry, userAnalytics)
     const incorrectQuestions = userAnalytics.incorrectCount || progressList.filter((p) => p.status === 'INCORRECT').length || 0
 
     let forgottenTopics = 0
@@ -615,10 +626,10 @@ function DashboardPage({
     list.forEach((sub) => {
       const chs = sub.chapters || []
       chs.forEach((ch) => {
-        if (ch.hasAttempts && ch.masteryPercent < 50) {
-          forgottenTopics += 1
-        } else if (ch.revisionRequirement) {
-          forgottenTopics += 1
+        if (ch.hasAttempts) {
+          if (ch.masteryPercent < 50 || ch.revisionRequirement === 'Revision due' || ch.revisionRequirement === 'Urgent revision needed') {
+            forgottenTopics += 1
+          }
         }
       })
     })
@@ -634,8 +645,10 @@ function DashboardPage({
     const mcqPercent = Math.min(100, Math.round((todayMcqsSolved / mcqDailyTarget) * 100))
 
     const todayFlashcardsSolved = todayAttempts.reduce((sum, a) => sum + (Number(a.flashcardsReviewed || 0)), 0)
+    const todayFlashcardRatings = getTodayFlashcardReviewCount(userId)
+    const totalTodayCards = todayFlashcardsSolved + todayFlashcardRatings
     const flashcardDailyTarget = 10
-    const flashcardPercent = Math.min(100, Math.round((todayFlashcardsSolved / flashcardDailyTarget) * 100))
+    const flashcardPercent = Math.min(100, Math.round((totalTodayCards / flashcardDailyTarget) * 100))
 
     const todayMocks = todayAttempts.filter((a) => a.isMockTest || a.type === 'mock').length
     const mockDailyTarget = 1
@@ -649,7 +662,7 @@ function DashboardPage({
       flashcardPercent,
       mockPercent,
     }
-  }, [totalFlashcards, userAnalytics.incorrectCount, progressList, courseRegistry.subjectsList, pastAttempts])
+  }, [effectiveMember?.id, courseRegistry, userAnalytics, progressList, pastAttempts])
 
   // Metrics for Performance Overview
   const totalQuestionsAttempted = useMemo(() => {
