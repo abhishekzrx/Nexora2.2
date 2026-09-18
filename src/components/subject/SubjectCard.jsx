@@ -132,12 +132,17 @@ export function SubjectCard({ subject, onSelect, className = '' }) {
           {title}
         </h4>
 
-        {/* Row 3: Status Badge */}
+        {/* Row 3: Status Badge & Trend */}
         <div className="sub-card-badge-row">
           <span className={`sub-status-pill ${themeVariant}`}>
             <span className="sub-status-dot" />
             {statusBadgeText}
           </span>
+          {hasAttempts && (
+            <span className="sub-trend-pill" title="Performance Momentum">
+              {masteryPercent >= 65 ? '↑ Improving' : coveragePercent >= 30 ? '⚡ Active' : '→ Steady'}
+            </span>
+          )}
         </div>
 
         {/* Row 4: Stats & Mini Progress Track */}

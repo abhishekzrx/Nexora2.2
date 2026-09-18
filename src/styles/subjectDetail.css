@@ -69,21 +69,25 @@
   padding: 0 18px;
 }
 
-/* Fresh Canopy & Lime Sprout Subject Hero */
-.subject-detail-shell .hero-card {
-  background: linear-gradient(135deg, #152014 0%, #1E2B1D 35%, #2D3E2C 75%, #384E37 100%);
+/* Crisp & Structured Subject Performance Intelligence Hero */
+.subject-detail-shell .hero-card,
+.hero-card.hero-intelligence-redesign {
+  background: linear-gradient(140deg, #0C1510 0%, #122117 40%, #182C1F 100%);
   border-radius: 18px;
   padding: 14px 16px;
   color: #fff;
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1.5px solid rgba(228, 253, 151, 0.25);
-  box-shadow: 0 8px 24px -4px rgba(45, 62, 44, 0.4), 0 0 20px rgba(228, 253, 151, 0.12);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 10px;
+  border: 1.5px solid rgba(228, 253, 151, 0.22);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.45), 0 0 20px rgba(52, 211, 153, 0.08);
   box-sizing: border-box;
+  width: 100%;
+  cursor: default;
 }
 
 .subject-detail-shell .hero-main-content {
@@ -2475,102 +2479,527 @@
 }
 
 /* ==========================================================================
-   PERFORMANCE INTELLIGENCE & HERO REDESIGN STYLES
+   PERFORMANCE INTELLIGENCE & HERO REDESIGN STYLES (CRISP & UNIFIED)
    ========================================================================== */
 
-/* Hero Metric Switcher Tabs */
-.hero-metric-selector-row {
+/* ── 1. Top Header Row: Subject Identity + Concentric Ring Readiness ── */
+.hero-intelligence-redesign .hero-top-header {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(15, 23, 42, 0.6);
-  padding: 2.5px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  width: fit-content;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
 }
 
-.hero-metric-tab-pill {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+.hero-intelligence-redesign .hero-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hero-intelligence-redesign .hero-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(228, 253, 151, 0.12);
+  border: 1px solid rgba(228, 253, 151, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #E4FD97;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.hero-intelligence-redesign .hero-title-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hero-intelligence-redesign .hero-subject-name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.hero-intelligence-redesign .hero-subject-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin: 0;
+  letter-spacing: -0.25px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-intelligence-redesign .hero-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #E4FD97;
+  background: rgba(228, 253, 151, 0.12);
+  border: 1px solid rgba(228, 253, 151, 0.28);
+  padding: 1.5px 6.5px;
+  border-radius: 999px;
   line-height: 1.2;
 }
 
-.hero-metric-tab-pill:hover {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.08);
+.hero-intelligence-redesign .hero-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #E4FD97;
+  box-shadow: 0 0 6px #E4FD97;
+  animation: heroLiveDotPulse 2s infinite ease-in-out;
 }
 
-.hero-metric-tab-pill.active {
-  background: var(--pill-accent, #38BDF8);
-  color: #0F172A;
+@keyframes heroLiveDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.25); }
+}
+
+.hero-intelligence-redesign .hero-subject-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-intelligence-redesign .hero-dot-sep {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 9px;
+}
+
+.hero-intelligence-redesign .hero-ring-badge-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ── 2. Unified 4 KPI Selector Cards (Zero Duplication) ── */
+.hero-intelligence-redesign .hero-kpi-unified-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hero-intelligence-redesign .hero-kpi-btn {
+  background: rgba(13, 22, 17, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 11px;
+  padding: 8px 9px 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.hero-intelligence-redesign .hero-kpi-btn:hover {
+  background: rgba(18, 30, 23, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+/* Active Glow States for Each Metric */
+.hero-intelligence-redesign .hero-kpi-btn.active-emerald {
+  border-color: #34D399;
+  background: rgba(6, 32, 22, 0.92);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.22), inset 0 0 10px rgba(52, 211, 153, 0.06);
+}
+
+.hero-intelligence-redesign .hero-kpi-btn.active-sky {
+  border-color: #38BDF8;
+  background: rgba(8, 28, 44, 0.92);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.22), inset 0 0 10px rgba(56, 189, 248, 0.06);
+}
+
+.hero-intelligence-redesign .hero-kpi-btn.active-amber {
+  border-color: #FBBF24;
+  background: rgba(36, 28, 8, 0.92);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.22), inset 0 0 10px rgba(251, 191, 36, 0.06);
+}
+
+.hero-intelligence-redesign .hero-kpi-btn.active-orange {
+  border-color: #FB923C;
+  background: rgba(36, 20, 8, 0.92);
+  box-shadow: 0 0 14px rgba(251, 146, 60, 0.22), inset 0 0 10px rgba(251, 146, 60, 0.06);
+}
+
+.hero-intelligence-redesign .hero-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  width: 100%;
+}
+
+.hero-intelligence-redesign .hero-kpi-name {
+  font-size: 9.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-intelligence-redesign .hero-kpi-trend {
+  font-size: 8px;
   font-weight: 800;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  padding: 1px 3.5px;
+  border-radius: 3.5px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.hero-perf-badges-group {
+.hero-intelligence-redesign .hero-kpi-trend.up {
+  color: #34D399;
+  background: rgba(52, 211, 153, 0.2);
+}
+
+.hero-intelligence-redesign .hero-kpi-trend.neutral {
+  color: #94A3B8;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.hero-intelligence-redesign .hero-kpi-trend.pace {
+  color: #FB923C;
+  background: rgba(251, 146, 60, 0.18);
+}
+
+.hero-intelligence-redesign .hero-kpi-val {
+  font-size: 15px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+  margin-top: 1px;
+}
+
+.hero-intelligence-redesign .hero-kpi-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.hero-intelligence-redesign .hero-kpi-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+
+.hero-intelligence-redesign .hero-kpi-sub {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* ── 3. Prominent Structured Trend Graph ── */
+.hero-intelligence-redesign .hero-graph-panel {
+  background: rgba(8, 14, 11, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 9px 12px 7px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+}
+
+.hero-intelligence-redesign .hero-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.hero-intelligence-redesign .hero-graph-title-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-intelligence-redesign .hero-metric-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.hero-intelligence-redesign .hero-graph-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.hero-intelligence-redesign .hero-graph-score-pill {
+  font-size: 11px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 1.5px 6.5px;
+  border-radius: 6px;
+}
+
+.hero-intelligence-redesign .hero-graph-title-right {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.hero-trend-dir-badge {
-  font-size: 9.5px;
+.hero-intelligence-redesign .hero-graph-trend-tag {
+  font-size: 9px;
   font-weight: 800;
-  padding: 1.5px 5px;
+  padding: 2px 6.5px;
   border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
+  white-space: nowrap;
 }
 
-.hero-trend-dir-badge.dir-improving {
-  background: rgba(16, 185, 129, 0.2);
+.hero-intelligence-redesign .hero-graph-trend-tag.up {
   color: #34D399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(52, 211, 153, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.3);
 }
 
-.hero-trend-dir-badge.dir-declining {
-  background: rgba(239, 68, 68, 0.2);
-  color: #F87171;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-}
-
-.hero-trend-dir-badge.dir-stable {
-  background: rgba(148, 163, 184, 0.18);
+.hero-intelligence-redesign .hero-graph-trend-tag.neutral {
   color: #CBD5E1;
+  background: rgba(148, 163, 184, 0.15);
   border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-.hero-perf-empty-trend {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  height: 28px;
+.hero-intelligence-redesign .hero-graph-velocity {
+  font-size: 9px;
+  font-weight: 800;
+  color: #FBBF24;
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 2px 6.5px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.hero-intelligence-redesign .hero-svg-container {
   width: 100%;
   position: relative;
+  overflow: visible;
 }
 
-.hero-perf-svg-placeholder {
+.hero-intelligence-redesign .hero-svg-canvas {
   width: 100%;
-  height: 16px;
+  height: 84px;
+  display: block;
+  overflow: visible;
 }
 
-.hero-placeholder-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
-  padding-left: 2px;
+.hero-intelligence-redesign .sparkline-point {
+  transition: r 0.2s ease, fill 0.2s ease;
+  cursor: pointer;
+}
+
+.hero-intelligence-redesign .sparkline-point:hover {
+  r: 4.5;
+  fill: #FFFFFF;
+}
+
+.hero-intelligence-redesign .sparkline-pulse-ring {
+  animation: sparklinePulse 2s infinite ease-out;
+}
+
+@keyframes sparklinePulse {
+  0% {
+    r: 3.5;
+    opacity: 0.9;
+  }
+  100% {
+    r: 8;
+    opacity: 0;
+  }
+}
+
+.hero-intelligence-redesign .hero-sparkline-tooltip {
+  position: absolute;
+  background: #090D16;
+  border: 1px solid rgba(56, 189, 248, 0.85);
+  color: #38BDF8;
+  font-size: 10px;
+  font-weight: 850;
+  padding: 2px 6px;
+  border-radius: 5px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+/* ── 4. Actionable AI Contextual Diagnosis ── */
+.hero-intelligence-redesign .hero-ai-tip-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-strip.level-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #E2E8F0;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-strip.level-high {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  color: #D1FAE5;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-strip.level-focus {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  color: #FEF3C7;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-strip.level-medium {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #E0F2FE;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-intelligence-redesign .hero-ai-tip-text strong {
+  color: #FFFFFF;
+}
+
+/* ── 5. Clean Footer Meta Chips Strip (Zero Overflow) ── */
+.hero-intelligence-redesign .hero-footer-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.hero-intelligence-redesign .hero-meta-chip {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(228, 253, 151, 0.1);
+  border: 1px solid rgba(228, 253, 151, 0.22);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.hero-intelligence-redesign .hero-meta-chip.streak {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.35);
+  color: #FB923C;
+}
+
+/* Mobile Responsiveness for Intelligence Redesign */
+@media (max-width: 480px) {
+  .hero-intelligence-redesign .hero-kpi-unified-grid {
+    gap: 4px;
+  }
+
+  .hero-intelligence-redesign .hero-kpi-btn {
+    padding: 6px 5px;
+    border-radius: 9px;
+  }
+
+  .hero-intelligence-redesign .hero-kpi-name {
+    font-size: 8.5px;
+  }
+
+  .hero-intelligence-redesign .hero-kpi-trend {
+    font-size: 7px;
+    padding: 1px 2px;
+  }
+
+  .hero-intelligence-redesign .hero-kpi-val {
+    font-size: 13px;
+  }
+
+  .hero-intelligence-redesign .hero-kpi-sub {
+    font-size: 7.5px;
+  }
+
+  .hero-intelligence-redesign .hero-graph-panel {
+    padding: 7px 8px 5px 8px;
+  }
+
+  .hero-intelligence-redesign .hero-graph-title {
+    font-size: 10px;
+  }
+
+  .hero-intelligence-redesign .hero-graph-velocity {
+    display: none;
+  }
+
+  .hero-intelligence-redesign .hero-meta-chip {
+    font-size: 9px;
+    padding: 2.5px 6px;
+  }
 }
 
 /* ==========================================================================

@@ -97,7 +97,10 @@ function TestResultsPage({
   // Compute detailed response models for each question
   const mappedQuestions = useMemo(() => {
     return questions.map((q, idx) => {
-      const chosen = answers[idx]
+      const rawAns = q?.id && answers[q.id] !== undefined ? answers[q.id] : answers[idx]
+      const chosen = (rawAns !== undefined && rawAns !== null && typeof rawAns === 'object')
+        ? (rawAns.selected_option ?? rawAns.selectedOption)
+        : rawAns
       const isAttempted = chosen !== undefined && chosen !== null
       const isCorrect = isAttempted && chosen === q.correct
       const isIncorrect = isAttempted && chosen !== q.correct

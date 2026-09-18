@@ -16,6 +16,8 @@ import { setActiveMember, clearMemberSession, getMemberStoreSnapshot } from '../
 import { clearUserProgressStore, hydrateUserProgressFromSupabase } from '../data/progressStore.js'
 import { clearAnalyticsStore, hydrateUserAnalytics } from '../data/analyticsStore.js'
 import { setActiveWorkspace, getWorkspaces } from '../data/workspaceStore.js'
+import { practiceSessionService } from './practiceSessionService.js'
+import { testSession } from '../utils/navigation.js'
 
 const USER_ID_KEY = 'nexora_user_id'
 const MEMBER_PROFILE_KEY = 'nexora_active_member_profile'
@@ -202,11 +204,12 @@ export async function restoreSession() {
       setActiveWorkspace(primaryCourse)
     }
 
-    // 6. Hydrate Progress & Analytics for this authenticated user (cloud-first, await both)
+    // 6. Hydrate Progress, Analytics & Active Practice Session for this authenticated user (cloud-first, await all)
     const courseId = primaryCourse || 'bpsc_prelims'
     await Promise.allSettled([
       hydrateUserProgressFromSupabase(sanitizedMember.id, true),
       hydrateUserAnalytics(sanitizedMember.id, courseId),
+      practiceSessionService.findActiveSession({ userId: sanitizedMember.id, courseId }),
     ])
 
     return {
@@ -1006,6 +1009,7 @@ export async function updateUserProfile(userId, updates) {
 export function clearCurrentUser() {
   clearMemberSession()
   try {
+    testSession.reset()
     localStorage.removeItem(AUTH_TOKEN_KEY)
     localStorage.removeItem('nexora_is_authenticated')
     localStorage.removeItem(USER_ID_KEY)

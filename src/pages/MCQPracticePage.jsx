@@ -32,6 +32,7 @@ import FormattedQuestionText from '../components/mcq/FormattedQuestionText'
 import PyqBadge from '../components/mcq/PyqBadge'
 import { buildAdaptivePracticeSet, analyzePracticeSessionErrors } from '../services/adaptivePracticeEngine'
 import { getFlatConceptsForChapter, tagQuestionWithConcept } from '../services/knowledgeHierarchyService'
+import { practiceSessionService } from '../services/practiceSessionService'
 
 function shuffleArray(array) {
   const arr = [...array]
@@ -167,7 +168,10 @@ const QuestionPanel = memo(function QuestionPanel({
                   key={`opt-${optionIndex}`}
                   type="button"
                   className={`option${isSelected ? ' selected' : ''}${reviewClass}`}
-                  onClick={() => onSelectOption(optionIndex)}
+                  onClick={(e) => {
+                    e.currentTarget.blur()
+                    onSelectOption(optionIndex)
+                  }}
                   disabled={reviewMode}
                 >
                   <div className="radio">
@@ -240,15 +244,37 @@ const Sidebar = memo(function Sidebar({
   onBack,
   reviewMode,
   isEvaluating,
+  questions = [],
 }) {
-  const answeredCount = Object.keys(answers).length
+  const answeredCount = questions.length > 0
+    ? questions.filter((q) => {
+        if (!q) return false
+        const raw = answers[q.id]
+        return raw !== undefined && raw !== null
+      }).length
+    : Object.keys(answers).length
+
   const markedCount = marked.size
   const unansweredCount = Math.max(0, availableCount - answeredCount)
 
+  const isQuestionAnswered = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && answers[qId] !== undefined && answers[qId] !== null) return true
+    return answers[index] !== undefined && answers[index] !== null
+  }
+
+  const isQuestionMarked = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && marked.has(qId)) return true
+    return marked.has(index)
+  }
+
   const getQuestionClass = (index) => {
     if (index >= availableCount) return ' unavailable'
-    if (answers[index] !== undefined) return ' answered'
-    if (marked.has(index)) return ' marked'
+    if (isQuestionAnswered(index)) return ' answered'
+    if (isQuestionMarked(index)) return ' marked'
     return ''
   }
 
@@ -291,7 +317,7 @@ const Sidebar = memo(function Sidebar({
               title={isAvailable ? `Question ${i + 1}` : `Question ${i + 1} is unavailable`}
             >
               {i + 1}
-              {marked.has(i) ? (
+              {isQuestionMarked(i) ? (
                 <span className="flag-mini">
                   <AppIcon name="flag" size={7} />
                 </span>
@@ -354,11 +380,26 @@ const MobileQuestionRibbon = memo(function MobileQuestionRibbon({
   marked,
   onGoTo,
   onOpenMap,
+  questions = [],
 }) {
+  const isQuestionAnswered = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && answers[qId] !== undefined && answers[qId] !== null) return true
+    return answers[index] !== undefined && answers[index] !== null
+  }
+
+  const isQuestionMarked = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && marked.has(qId)) return true
+    return marked.has(index)
+  }
+
   const getQuestionClass = (index) => {
     if (index >= availableCount) return ' unavailable'
-    if (answers[index] !== undefined) return ' answered'
-    if (marked.has(index)) return ' marked'
+    if (isQuestionAnswered(index)) return ' answered'
+    if (isQuestionMarked(index)) return ' marked'
     return ''
   }
 
@@ -383,7 +424,7 @@ const MobileQuestionRibbon = memo(function MobileQuestionRibbon({
             aria-label={`Jump to question ${i + 1}`}
           >
             {i + 1}
-            {marked.has(i) ? (
+            {isQuestionMarked(i) ? (
               <span style={{ position: 'absolute', top: 2, right: 3, fontSize: 7, color: 'var(--orange)' }}>
                 ●
               </span>
@@ -408,13 +449,28 @@ function MobilePaletteModal({
   answers,
   marked,
   onGoTo,
+  questions = [],
 }) {
   if (!isOpen) return null
 
+  const isQuestionAnswered = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && answers[qId] !== undefined && answers[qId] !== null) return true
+    return answers[index] !== undefined && answers[index] !== null
+  }
+
+  const isQuestionMarked = (index) => {
+    const q = questions[index]
+    const qId = q?.id
+    if (qId && marked.has(qId)) return true
+    return marked.has(index)
+  }
+
   const getQuestionClass = (index) => {
     if (index >= availableCount) return ' unavailable'
-    if (answers[index] !== undefined) return ' answered'
-    if (marked.has(index)) return ' marked'
+    if (isQuestionAnswered(index)) return ' answered'
+    if (isQuestionMarked(index)) return ' marked'
     return ''
   }
 
@@ -454,7 +510,7 @@ function MobilePaletteModal({
                 disabled={!isAvailable}
               >
                 {i + 1}
-                {marked.has(i) ? (
+                {isQuestionMarked(i) ? (
                   <span className="flag-mini">
                     <AppIcon name="flag" size={7} />
                   </span>
@@ -580,6 +636,34 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
   const [loadingMcqs, setLoadingMcqs] = useState(false)
   const [isReviewModeState, setIsReviewModeState] = useState(reviewMode)
 
+  // ── Authoritative Practice Session State (Frozen Question Set) ────
+  const [activeSession, setActiveSession] = useState(null)
+  const [frozenQuestions, setFrozenQuestions] = useState([])
+  const [sessionInitialized, setSessionInitialized] = useState(false)
+  const [autosaveStatus, setAutosaveStatus] = useState('saved') // 'saved' | 'saving' | 'error'
+
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [answers, setAnswers] = useState({}) // Keyed strictly by question_id: { [qId]: optionIndex }
+  const [marked, setMarked] = useState(new Set()) // Set of question_id strings
+  const [visited, setVisited] = useState(new Set()) // Set of question_id strings
+  const [timerOn, setTimerOn] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(1800)
+  const [theme, setTheme] = useState(getInitialTheme)
+  const [examMode, setExamMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(getIsMobile)
+  const [showMobilePalette, setShowMobilePalette] = useState(false)
+
+  // ── Question transition state ──────────────────────────────
+  const [displayed, setDisplayed] = useState(0)
+  const [phase, setPhase] = useState('in')
+  const [dir, setDir] = useState('next')
+  const directionRef = useRef('next')
+  const questionScrollRef = useRef(null)
+
+  // Evaluation state
+  const [isEvaluating, setIsEvaluating] = useState(false)
+  const [evalStep, setEvalStep] = useState(0)
+
   useEffect(() => {
     setIsReviewModeState(reviewMode)
   }, [reviewMode])
@@ -593,6 +677,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       setUserProgressMap(new Map())
       setMcqError(null)
       setLoadingMcqs(true)
+      setSessionInitialized(false)
 
       const effectiveCourseId = activeWorkspaceId || subject?.courseId || subject?.course_id || null
       const subjectId = subject?.id || subject?.subjectId || subjectKey
@@ -600,6 +685,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
 
       if (!targetChapterId && !subjectId && !subjectKey) {
         setLoadingMcqs(false)
+        setSessionInitialized(true)
         return
       }
 
@@ -680,6 +766,8 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
             subjectId: m.subject_id || m.subjectId || subjectId,
             courseId: m.course_id || m.courseId || effectiveCourseId,
             difficulty: m.difficulty || 'Medium',
+            conceptName: m.conceptName || null,
+            questionAngle: m.questionAngle || null,
             pyq_year: m.pyq_year || m.pyqYear,
             exam_profile: m.exam_profile,
           })
@@ -695,6 +783,118 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         })
         setUserProgressMap(pMap)
         setMcqError(null)
+
+        // ── Authoritative Session Setup (Fixed Question Set Rule) ─────
+        if (isReviewModeState) {
+          const reviewList = testSession.questions && testSession.questions.length > 0 ? testSession.questions : validList
+          setFrozenQuestions(reviewList)
+          setAnswers({ ...testSession.answers })
+          setMarked(new Set(testSession.marked || []))
+          setVisited(new Set(testSession.visited || []))
+          if (typeof testSession.currentIndex === 'number') {
+            setCurrentIndex(testSession.currentIndex)
+            setDisplayed(testSession.currentIndex)
+          }
+          setSessionInitialized(true)
+        } else {
+          try {
+            // 1. Check for an active persisted session (Priority: Supabase -> User-Scoped Cache)
+            const existing = await practiceSessionService.findActiveSession({
+              userId,
+              courseId: effectiveCourseId,
+              chapterId: targetChapterId,
+              subjectId,
+              sessionId: testSession.sessionId,
+            })
+
+            if (existing && Array.isArray(existing.questionIds) && existing.questionIds.length > 0) {
+              const restored = practiceSessionService.restoreSessionQuestions(existing, validList)
+              if (restored.length > 0) {
+                setActiveSession(existing)
+                setFrozenQuestions(restored)
+
+                // Normalize answers mapped to question_id
+                const restoredAnswers = {}
+                Object.entries(existing.answers || {}).forEach(([qId, val]) => {
+                  const opt = (val !== null && typeof val === 'object') ? (val.selected_option ?? val.selectedOption) : val
+                  if (opt !== undefined && opt !== null) {
+                    restoredAnswers[qId] = opt
+                  }
+                })
+                setAnswers(restoredAnswers)
+
+                const restoredMarked = new Set(existing.markedQuestionIds || [])
+                setMarked(restoredMarked)
+
+                const restoredVisited = new Set(existing.visitedQuestionIds || (restored[0] ? [restored[0].id] : []))
+                setVisited(restoredVisited)
+
+                const savedIdx = Math.min(existing.currentQuestionIndex || 0, restored.length - 1)
+                setCurrentIndex(savedIdx)
+                setDisplayed(savedIdx)
+
+                if (typeof existing.secondsLeft === 'number' && existing.secondsLeft > 0) {
+                  setSecondsLeft(existing.secondsLeft)
+                }
+
+                testSession.sessionId = existing.sessionId
+                testSession.questionIds = existing.questionIds
+                testSession.questions = restored
+                testSession.answers = restoredAnswers
+                testSession.marked = restoredMarked
+                testSession.visited = restoredVisited
+                testSession.currentIndex = savedIdx
+                testSession.save(userId)
+
+                setSessionInitialized(true)
+                return
+              }
+            }
+
+            // 2. If no active session exists, create a brand-new session ONCE
+            if (validList.length > 0) {
+              const practiceMode = testSession.practiceMode || testSession.mode || 'adaptive'
+              const targetSize = testSession.questionCount || testSession.targetCount || 20
+
+              const newSess = await practiceSessionService.createSession({
+                userId,
+                courseId: effectiveCourseId,
+                subjectId,
+                subjectTitle,
+                chapterId: targetChapterId,
+                chapterTitle: chapter?.title || chapter?.name || 'Chapter Practice',
+                targetCount: targetSize,
+                mode: practiceMode,
+                selectedConceptId: testSession.selectedConceptId || null,
+                candidateQuestions: validList,
+                progressList: progressData,
+                chapter: resolvedChapter,
+              })
+
+              setActiveSession(newSess)
+              setFrozenQuestions(newSess.frozenQuestions || [])
+              setAnswers({})
+              setMarked(new Set())
+              setVisited(new Set([newSess.questionIds[0]]))
+              setCurrentIndex(0)
+              setDisplayed(0)
+              setSecondsLeft(newSess.secondsLeft)
+
+              testSession.sessionId = newSess.sessionId
+              testSession.questionIds = newSess.questionIds
+              testSession.questions = newSess.frozenQuestions
+              testSession.answers = {}
+              testSession.marked = new Set()
+              testSession.visited = new Set([newSess.questionIds[0]])
+              testSession.currentIndex = 0
+              testSession.save(userId)
+            }
+          } catch (initErr) {
+            console.error('[MCQPracticePage] Session setup failed:', initErr)
+          } finally {
+            setSessionInitialized(true)
+          }
+        }
       } catch (err) {
         if (!isMounted || abortController?.signal.aborted) return
         const message = err.message || 'Network request failed'
@@ -704,6 +904,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
         setDbQuestions([])
         setUserProgressMap(new Map())
         setMcqError(null)
+        setSessionInitialized(true)
       } finally {
         if (isMounted && !abortController?.signal.aborted) {
           setLoadingMcqs(false)
@@ -720,111 +921,39 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     }
   }, [activeWorkspaceId, subjectKey, subjectTitle, subject, targetChapterId])
 
-  // Practice session pool logic with persistent question retirement & mastery prioritization
-  const { activeQuestions, newCount, practicedCount, masteredCount, totalPool } = useMemo(() => {
-    if (loadingMcqs) {
-      return {
-        activeQuestions: [],
-        newCount: 0,
-        practicedCount: 0,
-        masteredCount: 0,
-        totalPool: 0,
-      }
-    }
-
-    const poolSize = dbQuestions.length
-    const unseenList = []
-    const incorrectList = []
-    const masteredList = []
-
-    dbQuestions.forEach((q) => {
-      const progress = userProgressMap.get(q.id)
-      const status = progress ? progress.status : 'UNSEEN'
-
-      if (status === 'MASTERED') {
-        masteredList.push(q)
-      } else if (status === 'INCORRECT') {
-        incorrectList.push(q)
-      } else {
-        unseenList.push(q)
-      }
-    })
-
-    if (isReviewModeState) {
-      const reviewList = testSession.questions && testSession.questions.length > 0 ? testSession.questions : (masteredList.length > 0 ? masteredList : dbQuestions)
-      return {
-        activeQuestions: reviewList,
-        newCount: 0,
-        practicedCount: reviewList.length,
-        masteredCount: masteredList.length,
-        totalPool: poolSize,
-      }
-    }
-
-    // Adaptive Chapter Practice Selection (Target Count calibrated from chosen set)
-    const practiceMode = testSession.practiceMode || testSession.mode || 'adaptive'
-    const targetSize = testSession.questionCount || testSession.targetCount || 20
-
-    const selected = buildAdaptivePracticeSet(dbQuestions, Array.from(userProgressMap.values()), {
-      mode: practiceMode,
-      targetCount: targetSize,
-      selectedConceptId: testSession.selectedConceptId || null,
-      chapter: resolvedChapter,
-    })
-
-    const sessionUnseenCount = selected.filter((q) => {
-      const p = userProgressMap.get(q.id)
-      return !p || p.status === 'UNSEEN'
-    }).length
-
-    return {
-      activeQuestions: selected,
-      newCount: sessionUnseenCount,
-      practicedCount: selected.length - sessionUnseenCount,
-      masteredCount: masteredList.length,
-      totalPool: poolSize,
-    }
-  }, [dbQuestions, userProgressMap, loadingMcqs, isReviewModeState, resolvedChapter])
-
-  const availableCount = activeQuestions.length
+  // ── Metrics derived from the frozen question pool ───────────────
+  const availableCount = frozenQuestions.length
   const totalGridSize = availableCount
+  const totalPool = dbQuestions.length
+
+  const masteredCount = useMemo(() => {
+    let count = 0
+    dbQuestions.forEach((q) => {
+      const p = userProgressMap.get(q.id)
+      if (p && p.status === 'MASTERED') count += 1
+    })
+    return count
+  }, [dbQuestions, userProgressMap])
+
+  const practicedCount = useMemo(() => {
+    let count = 0
+    dbQuestions.forEach((q) => {
+      const p = userProgressMap.get(q.id)
+      if (p && (p.status === 'MASTERED' || p.status === 'INCORRECT' || (p.attempts || 0) > 0)) {
+        count += 1
+      }
+    })
+    return count
+  }, [dbQuestions, userProgressMap])
+
+  const newCount = Math.max(0, totalPool - practicedCount)
 
   const totalAllocatedSeconds = useMemo(() => {
     const qCount = availableCount || (testSession.questionCount === 'all' ? 30 : Number(testSession.questionCount) || 20)
     return Math.max(10 * 60, qCount * 90)
   }, [availableCount])
 
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState(() =>
-    isReviewModeState ? { ...testSession.answers } : {},
-  )
-  const [marked, setMarked] = useState(() => {
-    if (isReviewModeState) return new Set(testSession.marked)
-    return new Set()
-  })
-  const [visited, setVisited] = useState(() => {
-    if (isReviewModeState) return new Set(testSession.visited)
-    return new Set([0])
-  })
-  const [timerOn, setTimerOn] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(() => {
-    const qCount = testSession.questionCount || testSession.targetCount || 20
-    const countNum = qCount === 'all' ? 30 : (Number(qCount) || 20)
-    return Math.max(10 * 60, countNum * 90)
-  })
-  const [theme, setTheme] = useState(getInitialTheme)
-  const [examMode, setExamMode] = useState(false)
-  const [isMobile, setIsMobile] = useState(getIsMobile)
-  const [showMobilePalette, setShowMobilePalette] = useState(false)
-
-  // ── Question transition state ──────────────────────────────
-  const [displayed, setDisplayed] = useState(0)
-  const [phase, setPhase] = useState('in')
-  const [dir, setDir] = useState('next')
-  const directionRef = useRef('next')
-  const questionScrollRef = useRef(null)
-
-  // Bounds reset when active questions count or set size changes
+  // Bounds reset when active questions count changes
   useEffect(() => {
     if (displayed >= availableCount && availableCount > 0) {
       setDisplayed(availableCount - 1)
@@ -832,8 +961,22 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     }
   }, [availableCount, displayed])
 
-  const current = activeQuestions[displayed] || activeQuestions[0] || null
-  const answeredCount = Object.keys(answers).length
+  const current = frozenQuestions[displayed] || frozenQuestions[0] || null
+
+  const selectedOption = useMemo(() => {
+    if (!current) return undefined
+    const raw = answers[current.id]
+    if (raw === undefined || raw === null) return undefined
+    return typeof raw === 'object' ? (raw.selected_option ?? raw.selectedOption) : raw
+  }, [answers, current])
+
+  const answeredCount = useMemo(() => {
+    return frozenQuestions.filter((q) => {
+      const a = answers[q.id]
+      return a !== undefined && a !== null
+    }).length
+  }, [frozenQuestions, answers])
+
   const markedCount = marked.size
   const notVisitedCount = Math.max(0, totalGridSize - visited.size)
 
@@ -861,10 +1004,6 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-  // Evaluation state
-  const [isEvaluating, setIsEvaluating] = useState(false)
-  const [evalStep, setEvalStep] = useState(0)
 
   const evalStages = useMemo(() => [
     'Checking your responses...',
@@ -915,6 +1054,95 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     }
   }, [isReviewModeState])
 
+  // ── Cross-Device Real-Time Convergence & Remote Status Sync ──────
+  useEffect(() => {
+    const sessId = activeSession?.sessionId || testSession.sessionId
+    const userId = getUserId()
+    if (!sessId || !userId || isReviewModeState || isEvaluating) return undefined
+
+    const unsubscribe = practiceSessionService.subscribeToSession({
+      sessionId: sessId,
+      userId,
+      pollIntervalMs: 4000,
+      onRemoteUpdate: (result) => {
+        if (result.answers && typeof result.answers === 'object') {
+          setAnswers((prev) => {
+            const next = { ...prev }
+            let changed = false
+            Object.entries(result.answers).forEach(([qId, val]) => {
+              const opt = (val !== null && typeof val === 'object') ? (val.selected_option ?? val.selectedOption) : val
+              if (opt !== undefined && opt !== null && next[qId] !== opt) {
+                next[qId] = opt
+                changed = true
+              }
+            })
+            return changed ? next : prev
+          })
+          setAutosaveStatus('saved')
+        }
+      },
+      onRemoteSubmitted: (status) => {
+        if (status === 'SUBMITTED') {
+          showToast({
+            type: 'info',
+            title: 'Session Submitted',
+            message: 'This practice session was submitted from another device.',
+            duration: 4000,
+          })
+          onSubmit?.()
+        }
+      },
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [activeSession?.sessionId, isReviewModeState, isEvaluating, onSubmit])
+
+  // ── Interruption resilience: save state on tab switch or page close ──
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const sessId = activeSession?.sessionId || testSession.sessionId
+        const userId = getUserId()
+        if (sessId && userId) {
+          practiceSessionService.saveProgress({
+            sessionId: sessId,
+            userId,
+            currentIndex,
+            markedQuestionIds: Array.from(marked),
+            visitedQuestionIds: Array.from(visited),
+            secondsLeft,
+            status: 'ACTIVE',
+          }).catch(() => {})
+          testSession.currentIndex = currentIndex
+          testSession.secondsLeft = secondsLeft
+          testSession.save(userId)
+        }
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      const sessId = activeSession?.sessionId || testSession.sessionId
+      const userId = getUserId()
+      if (sessId && userId) {
+        testSession.currentIndex = currentIndex
+        testSession.secondsLeft = secondsLeft
+        testSession.save(userId)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handleBeforeUnload)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handleBeforeUnload)
+    }
+  }, [activeSession, currentIndex, marked, visited, secondsLeft])
+
   const formattedTime = useMemo(() => {
     const h = Math.floor(secondsLeft / 3600)
     const m = Math.floor((secondsLeft % 3600) / 60)
@@ -922,23 +1150,60 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }, [secondsLeft])
 
+  // ── Answer selection associated strictly with question_id ───────
   const selectOption = useCallback((optionIndex) => {
-    if (isReviewModeState || isEvaluating) return
-    setAnswers((prev) => ({ ...prev, [displayed]: optionIndex }))
-  }, [displayed, isReviewModeState, isEvaluating])
+    if (isReviewModeState || isEvaluating || !current) return
+    const qId = String(current.id)
+    setAnswers((prev) => {
+      if (prev[qId] === optionIndex) return prev
+      return { ...prev, [qId]: optionIndex }
+    })
+    setAutosaveStatus('saving')
+
+    const sessId = activeSession?.sessionId || testSession.sessionId
+    const userId = getUserId()
+    if (sessId && userId) {
+      practiceSessionService.saveAnswer({
+        sessionId: sessId,
+        userId,
+        questionId: qId,
+        selectedOption: optionIndex,
+      }).then(() => {
+        setAutosaveStatus('saved')
+      }).catch(() => {
+        setAutosaveStatus('error')
+      })
+
+      testSession.answers = { ...testSession.answers, [qId]: optionIndex }
+      testSession.save(userId)
+    }
+  }, [isReviewModeState, isEvaluating, current, activeSession])
 
   const toggleMark = useCallback(() => {
-    if (isReviewModeState || isEvaluating) return
+    if (isReviewModeState || isEvaluating || !current) return
+    const qId = String(current.id)
     setMarked((prev) => {
       const next = new Set(prev)
-      if (next.has(displayed)) {
-        next.delete(displayed)
+      if (next.has(qId)) {
+        next.delete(qId)
       } else {
-        next.add(displayed)
+        next.add(qId)
+      }
+
+      const sessId = activeSession?.sessionId || testSession.sessionId
+      const userId = getUserId()
+      if (sessId && userId) {
+        practiceSessionService.saveProgress({
+          sessionId: sessId,
+          userId,
+          markedQuestionIds: Array.from(next),
+        }).catch(() => {})
+        testSession.marked = new Set(next)
+        testSession.save(userId)
       }
       return next
     })
-  }, [displayed, isReviewModeState, isEvaluating])
+  }, [isReviewModeState, isEvaluating, current, activeSession])
 
   const goTo = useCallback((index, direction = 'fade') => {
     if (index >= availableCount) {
@@ -948,13 +1213,36 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     directionRef.current = direction
     setDir(direction)
     setCurrentIndex(index)
-    setVisited((prev) => new Set(prev).add(index))
+
+    const targetQ = frozenQuestions[index]
+    if (targetQ) {
+      const qId = String(targetQ.id)
+      setVisited((prev) => {
+        const next = new Set(prev).add(qId)
+        const sessId = activeSession?.sessionId || testSession.sessionId
+        const userId = getUserId()
+        if (sessId && userId) {
+          practiceSessionService.saveProgress({
+            sessionId: sessId,
+            userId,
+            currentIndex: index,
+            visitedQuestionIds: Array.from(next),
+            secondsLeft,
+          }).catch(() => {})
+          testSession.currentIndex = index
+          testSession.visited = new Set(next)
+          testSession.save(userId)
+        }
+        return next
+      })
+    }
+
     requestAnimationFrame(() => {
       if (questionScrollRef.current) {
         questionScrollRef.current.scrollTop = 0
       }
     })
-  }, [availableCount, handleUnavailableClick])
+  }, [availableCount, handleUnavailableClick, frozenQuestions, activeSession, secondsLeft])
 
   const goPrev = useCallback(() => {
     goTo(Math.max(0, currentIndex - 1), 'prev')
@@ -981,10 +1269,27 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     setExamMode((prev) => !prev)
   }, [])
 
-  // Finalize attempt and update persistent user progress in Supabase
+  // ── Finalize attempt with strict question_id evaluation & safety checks ──
   const finalizeSubmission = useCallback(async (questionList) => {
     const userId = getUserId()
     const chapterId = chapter?.id || dbQuestions[0]?.chapterId || 'ch-default'
+    const sessId = activeSession?.sessionId || testSession.sessionId
+
+    // 1. Result Safety Foundation Check
+    if (activeSession) {
+      const safety = practiceSessionService.validateSessionResultSafety(activeSession, questionList)
+      if (!safety.valid) {
+        console.error('[MCQPracticePage] Result Safety Violation:', safety.error)
+        showToast({
+          type: 'error',
+          title: 'Session Integrity Violation',
+          message: 'Questions could not be safely validated against active session. Evaluation aborted to protect data integrity.',
+          duration: 6000,
+        })
+        setIsEvaluating(false)
+        return
+      }
+    }
 
     let correctCount = 0
     let incorrectCount = 0
@@ -996,8 +1301,12 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     const attemptLogs = []
     const newProgressMap = new Map(userProgressMap)
 
-    questionList.forEach((q, idx) => {
-      const chosen = answers[idx]
+    questionList.forEach((q) => {
+      const rawChosen = answers[q.id]
+      const chosen = (rawChosen !== undefined && rawChosen !== null && typeof rawChosen === 'object')
+        ? (rawChosen.selected_option ?? rawChosen.selectedOption)
+        : rawChosen
+
       if (chosen === undefined || chosen === null) return
       attemptedCount += 1
 
@@ -1118,12 +1427,15 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
     testSession.marked = new Set(marked)
     testSession.visited = new Set(visited)
     testSession.questions = questionList
+    testSession.questionIds = questionList.map((q) => q.id)
+    testSession.sessionId = sessId
     testSession.mode = isReviewModeState ? 'review' : 'practice'
     const initialSeconds = totalAllocatedSeconds || (29 * 60 + 45)
     testSession.timeTakenSeconds = Math.max(0, initialSeconds - secondsLeft)
     testSession.attemptHistory = [...(testSession.attemptHistory || []), percentage]
     const updatedHistory = [...pastAttempts, currentAttemptRecord]
     testSession.attemptHistoryData = updatedHistory
+
     // Compute deep Error Intelligence for this session
     const errorAnalysis = analyzePracticeSessionErrors({
       questions: questionList,
@@ -1182,6 +1494,15 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       attemptLogs,
       isReadOnly: Boolean(isViewingAs),
     })
+
+    // Mark session completed in practiceSessionService
+    if (sessId && userId) {
+      await practiceSessionService.markSessionSubmitted({
+        sessionId: sessId,
+        userId,
+        result: testSession.result,
+      })
+    }
 
     if (isViewingAs) {
       showToast({
@@ -1250,7 +1571,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
 
     setIsEvaluating(false)
     onSubmit?.()
-  }, [answers, marked, visited, subjectKey, chapter, secondsLeft, totalPool, dbQuestions, userProgressMap, isReviewModeState, onSubmit])
+  }, [answers, marked, visited, subjectKey, chapter, secondsLeft, totalPool, dbQuestions, userProgressMap, isReviewModeState, activeSession, onSubmit])
 
   const handleSubmit = () => {
     if (isEvaluating) return
@@ -1264,12 +1585,19 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
       duration: 1500,
     })
 
-    const questionList = activeQuestions.map((q) => ({
+    const questionList = frozenQuestions.map((q) => ({
       id: q.id,
-      correct: q.correct,
-      text: q.text,
+      correct: q.correct !== undefined ? q.correct : (q.correct_answer ?? 0),
+      text: q.text || q.question,
       options: q.options,
       explanation: q.explanation,
+      chapterId: q.chapterId,
+      subjectId: q.subjectId,
+      conceptId: q.conceptId,
+      topicId: q.topicId,
+      difficulty: q.difficulty,
+      cognitiveLevel: q.cognitiveLevel,
+      questionAngle: q.questionAngle,
     }))
 
     let step = 0
@@ -1329,6 +1657,15 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
             </div>
           </div>
           <div className="header-right">
+            <div className="autosave-pill" title="Session integrity & autosave status">
+              {autosaveStatus === 'saving' ? (
+                <span className="autosave-text saving"><span className="autosave-dot blink" /> Saving...</span>
+              ) : autosaveStatus === 'error' ? (
+                <span className="autosave-text error">⚠ Offline</span>
+              ) : (
+                <span className="autosave-text saved"><span className="autosave-dot" /> Session Synced ✓</span>
+              )}
+            </div>
             <div className="timer-box">
               <div className="timer-top">
                 <span className="clock">
@@ -1446,6 +1783,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                   currentIndex={currentIndex}
                   answers={answers}
                   marked={marked}
+                  questions={frozenQuestions}
                   onGoTo={goTo}
                   onOpenMap={() => setShowMobilePalette(true)}
                 />
@@ -1459,6 +1797,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                     currentIndex={currentIndex}
                     answers={answers}
                     marked={marked}
+                    questions={frozenQuestions}
                     onGoTo={goTo}
                     onUnavailableClick={handleUnavailableClick}
                     theme={theme}
@@ -1473,7 +1812,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                   question={current}
                   questionNumber={displayed + 1}
                   totalQuestions={availableCount}
-                  selectedOption={answers[displayed]}
+                  selectedOption={selectedOption}
                   onSelectOption={selectOption}
                   onToggleMark={toggleMark}
                   onPrev={goPrev}
@@ -1500,6 +1839,7 @@ function MCQPracticePage({ subjectKey = 'computer-networks', chapterId: propChap
                 currentIndex={currentIndex}
                 answers={answers}
                 marked={marked}
+                questions={frozenQuestions}
                 onGoTo={goTo}
               />
             </>

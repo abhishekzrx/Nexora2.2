@@ -62,16 +62,26 @@ function loadSavedSession(userId = null) {
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
+        sessionId: parsed.sessionId || parsed.session_id || null,
         subjectKey: parsed.subjectKey || null,
         chapter: parsed.chapter || null,
         answers: parsed.answers || {},
         marked: new Set(parsed.marked || []),
         visited: new Set(parsed.visited || [0]),
         mode: parsed.mode || 'practice',
+        practiceMode: parsed.practiceMode || 'adaptive',
+        questionCount: parsed.questionCount || 20,
+        targetCount: parsed.targetCount || 20,
+        selectedConceptId: parsed.selectedConceptId || null,
+        practiceSetName: parsed.practiceSetName || null,
         result: parsed.result || null,
         timeTakenSeconds: parsed.timeTakenSeconds || 0,
+        secondsLeft: parsed.secondsLeft !== undefined ? parsed.secondsLeft : null,
+        currentIndex: parsed.currentIndex || 0,
+        status: parsed.status || 'ACTIVE',
         attemptHistoryData: parsed.attemptHistoryData || [],
         questions: parsed.questions || null,
+        questionIds: parsed.questionIds || (Array.isArray(parsed.questions) ? parsed.questions.map(q => q.id) : null),
       }
     }
   } catch {
@@ -87,6 +97,7 @@ const saved = loadSavedSession()
  * and browser refresh restore the exact chapter, answers, and visited state.
  */
 export const testSession = {
+  sessionId: saved?.sessionId || null,
   subjectKey: saved?.subjectKey || null,
   chapter: saved?.chapter || null,
   answers: saved?.answers || {},
@@ -100,11 +111,16 @@ export const testSession = {
   practiceSetName: saved?.practiceSetName || null,
   result: saved?.result || null,
   timeTakenSeconds: saved?.timeTakenSeconds || 0,
+  secondsLeft: saved?.secondsLeft ?? null,
+  currentIndex: saved?.currentIndex || 0,
+  status: saved?.status || 'ACTIVE',
   attemptHistoryData: saved?.attemptHistoryData || [],
   questions: saved?.questions || null,
+  questionIds: saved?.questionIds || null,
 
   loadForUser(userId = null) {
     const loaded = loadSavedSession(userId)
+    this.sessionId = loaded?.sessionId || null
     this.subjectKey = loaded?.subjectKey || null
     this.chapter = loaded?.chapter || null
     this.answers = loaded?.answers || {}
@@ -118,8 +134,12 @@ export const testSession = {
     this.practiceSetName = loaded?.practiceSetName || null
     this.result = loaded?.result || null
     this.timeTakenSeconds = loaded?.timeTakenSeconds || 0
+    this.secondsLeft = loaded?.secondsLeft ?? null
+    this.currentIndex = loaded?.currentIndex || 0
+    this.status = loaded?.status || 'ACTIVE'
     this.attemptHistoryData = loaded?.attemptHistoryData || []
     this.questions = loaded?.questions || null
+    this.questionIds = loaded?.questionIds || null
     return this
   },
 
@@ -127,6 +147,7 @@ export const testSession = {
     try {
       const key = getSessionKey(userId)
       const data = JSON.stringify({
+        sessionId: this.sessionId,
         subjectKey: this.subjectKey,
         chapter: this.chapter,
         answers: this.answers,
@@ -140,8 +161,12 @@ export const testSession = {
         practiceSetName: this.practiceSetName,
         result: this.result,
         timeTakenSeconds: this.timeTakenSeconds,
+        secondsLeft: this.secondsLeft,
+        currentIndex: this.currentIndex,
+        status: this.status,
         attemptHistoryData: this.attemptHistoryData,
         questions: this.questions,
+        questionIds: this.questionIds || (Array.isArray(this.questions) ? this.questions.map(q => q.id) : null),
       })
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem(key, data)
@@ -156,6 +181,7 @@ export const testSession = {
 
   reset(userId = null) {
     const key = getSessionKey(userId)
+    this.sessionId = null
     this.subjectKey = null
     this.chapter = null
     this.answers = {}
@@ -169,7 +195,11 @@ export const testSession = {
     this.practiceSetName = null
     this.result = null
     this.questions = null
+    this.questionIds = null
     this.timeTakenSeconds = 0
+    this.secondsLeft = null
+    this.currentIndex = 0
+    this.status = 'ACTIVE'
     this.attemptHistoryData = []
     try {
       if (typeof sessionStorage !== 'undefined') {

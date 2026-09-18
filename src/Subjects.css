@@ -267,6 +267,200 @@ img {
   overflow: visible;
 }
 
+/* Course Metric Switcher Tabs with Repeated Trends */
+.course-metric-selector-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.course-metric-tab-pill {
+  background: rgba(19, 31, 23, 0.65);
+  border: 1px solid rgba(228, 253, 151, 0.15);
+  color: rgba(255, 255, 255, 0.75);
+  padding: 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.course-metric-tab-pill:hover {
+  background: rgba(19, 31, 23, 0.85);
+  border-color: rgba(228, 253, 151, 0.3);
+}
+
+.course-metric-tab-pill.active {
+  background: rgba(21, 32, 20, 0.95);
+  color: #FFFFFF;
+  border-color: var(--course-pill-accent, #E4FD97);
+  box-shadow: 0 0 10px rgba(228, 253, 151, 0.18);
+}
+
+.course-tab-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  gap: 3px;
+}
+
+.course-tab-trend {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 0.5px 3px;
+  border-radius: 3px;
+  line-height: 1.1;
+}
+
+.course-tab-trend.up {
+  color: #34D399;
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.course-tab-trend.down {
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.course-tab-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-top: 1px;
+}
+
+/* Course Velocity Tag */
+.course-velocity-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #E4FD97;
+  background: rgba(228, 253, 151, 0.16);
+  border: 1px solid rgba(228, 253, 151, 0.35);
+  padding: 1px 5px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+/* 4-Box Course Performance KPI Grid */
+.course-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin: 6px 0;
+  width: 100%;
+}
+
+.course-kpi-card {
+  background: rgba(19, 31, 23, 0.6);
+  border: 1px solid rgba(228, 253, 151, 0.12);
+  border-radius: 8px;
+  padding: 6px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.course-kpi-card:hover {
+  background: rgba(19, 31, 23, 0.85);
+  border-color: rgba(228, 253, 151, 0.25);
+}
+
+.course-kpi-card.active-kpi {
+  border-color: #E4FD97;
+  background: rgba(21, 32, 20, 0.95);
+  box-shadow: 0 0 8px rgba(228, 253, 151, 0.15);
+}
+
+.course-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.course-kpi-lbl {
+  font-size: 8px;
+  font-weight: 750;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.course-kpi-trend {
+  font-size: 7.5px;
+  font-weight: 800;
+  padding: 0.5px 3px;
+  border-radius: 3px;
+}
+
+.course-kpi-trend.up {
+  color: #34D399;
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.course-kpi-trend.pace {
+  color: #FB923C;
+  background: rgba(251, 146, 60, 0.2);
+}
+
+.course-kpi-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+
+.course-kpi-sub {
+  font-size: 7.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Course Smart Tip Banner */
+.course-smart-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(228, 253, 151, 0.1);
+  border: 1px solid rgba(228, 253, 151, 0.22);
+  border-radius: 7px;
+  padding: 5px 8px;
+  margin: 5px 0;
+  font-size: 9px;
+  line-height: 1.3;
+  color: #E4FD97;
+}
+
+.course-tip-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.course-tip-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.course-tip-text strong {
+  color: #E4FD97;
+  font-weight: 800;
+  margin-right: 3px;
+}
+
+.course-hero-chip.streak-chip {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.35);
+  color: #FB923C;
+}
+
 /* Horizontal Info Chips (Subjects, Chapters, MCQs, Remaining) */
 .course-hero-chips-row {
   display: flex;

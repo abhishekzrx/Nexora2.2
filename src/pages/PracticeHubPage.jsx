@@ -21,6 +21,7 @@ import { formatCompactNumber, formatInteger } from '../services/mcqAnalyticsServ
 import { testSession } from '../utils/navigation'
 import { calculateExamCountdown } from '../utils/dateUtils'
 import { getUserDueFlashcardsCount } from '../services/flashcardService'
+import { practiceSessionService } from '../services/practiceSessionService'
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'Recently'
@@ -121,6 +122,8 @@ function PracticeHubPage({
     return []
   })
 
+  const [activeServerSession, setActiveServerSession] = useState(null)
+
   // Hydrate user progress and persistent analytics on mount & when user, course, or progress store changes
   useEffect(() => {
     const userId = effectiveMember?.id
@@ -135,6 +138,19 @@ function PracticeHubPage({
       const attempts = await userAnalyticsService.getUserAttempts(userId, effectiveCourseId)
       if (isMounted && Array.isArray(attempts)) {
         setPersistentAttempts(attempts)
+      }
+
+      // Check for active practice session created on any device
+      try {
+        const activeSess = await practiceSessionService.findActiveSession({
+          userId,
+          courseId: effectiveCourseId,
+        })
+        if (isMounted && activeSess && (activeSess.status === 'ACTIVE' || activeSess.status === 'PAUSED')) {
+          setActiveServerSession(activeSess)
+        }
+      } catch {
+        // ignore
       }
     }
 
@@ -410,9 +426,13 @@ function PracticeHubPage({
                       </svg>
                     </div>
                     <div className="stack-title-col">
-                      <span className="dopamine-kicker">RECENT MCQ PRACTICE</span>
-                      <h3 className="dopamine-title stack-title" title={`${topRecentMcqAttempt?.subjectTitle || courseRegistry.subjectsList?.[0]?.title || 'Course'}: ${topRecentMcqAttempt?.chapterTitle || courseRegistry.subjectsList?.[0]?.chapters?.[0]?.name || 'MCQ Practice Session'}`}>
-                        {topRecentMcqAttempt
+                      <span className="dopamine-kicker">
+                        {activeServerSession ? 'ACTIVE SESSION (CROSS-DEVICE)' : 'RECENT MCQ PRACTICE'}
+                      </span>
+                      <h3 className="dopamine-title stack-title" title={activeServerSession ? `Active Session: ${activeServerSession.chapterTitle || 'Chapter Practice'}` : (topRecentMcqAttempt?.chapterTitle || 'MCQ Practice Session')}>
+                        {activeServerSession
+                          ? `${activeServerSession.subjectTitle || 'Subject'}: ${activeServerSession.chapterTitle || 'Chapter Practice'}`
+                          : topRecentMcqAttempt
                           ? `${topRecentMcqAttempt.subjectTitle}: ${topRecentMcqAttempt.chapterTitle}`
                           : `${courseRegistry.subjectsList?.[0]?.title || activeCourse?.name || 'Core Course'}: ${courseRegistry.subjectsList?.[0]?.chapters?.[0]?.name || 'MCQ Practice Session'}`}
                       </h3>
@@ -421,10 +441,10 @@ function PracticeHubPage({
 
                   <div className="stack-header-right">
                     <span className="stack-time-tag">
-                      {topRecentMcqAttempt?.timeAgo || 'Available Now'}
+                      {activeServerSession ? 'Active on Server' : (topRecentMcqAttempt?.timeAgo || 'Available Now')}
                     </span>
                     <span className="dopamine-pill pill-mcq">
-                      {topRecentMcqAttempt ? '🔥 ACTIVE RECALL' : '🚀 SMART SPRINT'}
+                      {activeServerSession ? '⚡ IN PROGRESS' : topRecentMcqAttempt ? '🔥 ACTIVE RECALL' : '🚀 SMART SPRINT'}
                     </span>
                   </div>
                 </div>
@@ -432,12 +452,20 @@ function PracticeHubPage({
                 <div className="stack-card-body">
                   <div className="dopamine-stats-row">
                     <div className="d-stat-chip chip-orange">
-                      <span className="d-chip-lbl">Accuracy</span>
-                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.accuracy}%` : (courseStats.accuracy > 0 ? `${courseStats.accuracy}%` : '85% Target')}</span>
+                      <span className="d-chip-lbl">{activeServerSession ? 'Answered' : 'Accuracy'}</span>
+                      <span className="d-chip-val">
+                        {activeServerSession
+                          ? `${Object.keys(activeServerSession.answers || {}).length}/${activeServerSession.sessionSize || 20}`
+                          : topRecentMcqAttempt ? `${topRecentMcqAttempt.accuracy}%` : (courseStats.accuracy > 0 ? `${courseStats.accuracy}%` : '85% Target')}
+                      </span>
                     </div>
                     <div className="d-stat-chip chip-slate">
-                      <span className="d-chip-lbl">Correct</span>
-                      <span className="d-chip-val">{topRecentMcqAttempt ? `${topRecentMcqAttempt.correct}/${topRecentMcqAttempt.total}` : `0/${courseRegistry.subjectsList?.[0]?.counts?.mcqs || 10}`}</span>
+                      <span className="d-chip-lbl">{activeServerSession ? 'Remaining' : 'Correct'}</span>
+                      <span className="d-chip-val">
+                        {activeServerSession
+                          ? `${Math.max(0, (activeServerSession.sessionSize || 20) - Object.keys(activeServerSession.answers || {}).length)} Left`
+                          : topRecentMcqAttempt ? `${topRecentMcqAttempt.correct}/${topRecentMcqAttempt.total}` : `0/${courseRegistry.subjectsList?.[0]?.counts?.mcqs || 10}`}
+                      </span>
                     </div>
                     <div className="d-stat-chip chip-amber">
                       <span className="d-chip-lbl">XP Earned</span>
@@ -447,7 +475,9 @@ function PracticeHubPage({
 
                   <div className="stack-footer-row">
                     <p className="dopamine-microcopy stack-microcopy">
-                      {topRecentMcqAttempt
+                      {activeServerSession
+                        ? '🔄 Active practice session found across devices. Resume immediately with zero lost answers or questions.'
+                        : topRecentMcqAttempt
                         ? topRecentMcqAttempt.accuracy >= 75
                           ? '🏆 High mastery level! One more quick run will secure peak retention.'
                           : '🔥 Strong momentum! Practice 5 more questions to boost accuracy above 80%.'
@@ -458,7 +488,13 @@ function PracticeHubPage({
                       type="button"
                       className="dopamine-action-btn btn-mcq stack-action-btn"
                       onClick={() => {
-                        if (topRecentMcqAttempt?.subjectKey) {
+                        if (activeServerSession) {
+                          onResume({
+                            subjectKey: activeServerSession.subjectId,
+                            chapterId: activeServerSession.chapterId,
+                            chapterTitle: activeServerSession.chapterTitle,
+                          })
+                        } else if (topRecentMcqAttempt?.subjectKey) {
                           onResume({
                             subjectKey: topRecentMcqAttempt.subjectKey,
                             chapterId: topRecentMcqAttempt.chapterId,
@@ -471,7 +507,7 @@ function PracticeHubPage({
                         }
                       }}
                     >
-                      <span>{topRecentMcqAttempt ? 'Resume MCQ Practice' : 'Start MCQ Sprint'}</span>
+                      <span>{activeServerSession ? 'Resume Active Session' : topRecentMcqAttempt ? 'Resume MCQ Practice' : 'Start MCQ Sprint'}</span>
                       <span className="btn-arrow">→</span>
                     </button>
                   </div>

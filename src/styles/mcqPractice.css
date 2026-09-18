@@ -143,6 +143,60 @@
   margin-top: 2px;
 }
 
+.mcq-shell .autosave-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 124px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.mcq-shell .autosave-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  text-align: center;
+}
+
+.mcq-shell .autosave-text.saved {
+  color: #10b981;
+}
+
+.mcq-shell .autosave-text.saving {
+  color: #f59e0b;
+}
+
+.mcq-shell .autosave-text.error {
+  color: #ef4444;
+}
+
+.mcq-shell .autosave-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mcq-shell .autosave-dot.blink {
+  animation: autosave-blink 0.8s infinite alternate;
+}
+
+@keyframes autosave-blink {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
 .mcq-shell .pause-btn {
   width: 40px;
   height: 40px;
@@ -504,7 +558,14 @@
   color: var(--card-text);
   position: relative;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mcq-shell .qbtn:focus {
+  outline: none;
 }
 
 .mcq-shell .qbtn:hover {
@@ -603,6 +664,8 @@
   padding: 2px 7px;
   border-radius: 12px;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .mcq-shell .stat-pill.pill-answered {
@@ -848,6 +911,8 @@
   margin-bottom: 8px;
   scrollbar-width: thin;
   scrollbar-color: var(--card-border) transparent;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
   width: 100%;
   min-width: 0;
 }
@@ -910,7 +975,21 @@
   cursor: pointer;
   word-break: break-word;
   overflow-wrap: anywhere;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mcq-shell .option:focus {
+  outline: none;
+}
+
+.mcq-shell .option:focus-visible {
+  outline: 2px solid #10B981;
+  outline-offset: 1px;
 }
 
 .mcq-shell .option:hover:not(:disabled) {
@@ -932,11 +1011,12 @@
 
 .mcq-shell .option.selected .opt-letter-prefix {
   color: #059669;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mcq-shell.theme-dark .option.selected .opt-letter-prefix {
   color: #34D399;
+  font-weight: 700;
 }
 
 .mcq-shell .radio {
@@ -975,6 +1055,9 @@
 .mcq-shell .opt-letter-prefix {
   color: var(--card-muted);
   margin-right: 4px;
+  font-weight: 700;
+  display: inline-block;
+  min-width: 18px;
 }
 
 /* Review mode — correct / wrong option highlighting */

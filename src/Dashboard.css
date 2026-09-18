@@ -1491,6 +1491,22 @@ button {
   height: 18px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.sub-trend-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #15803D;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .sub-status-pill {
